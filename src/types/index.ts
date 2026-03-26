@@ -214,6 +214,7 @@ export interface VisaRequirement {
   education_requirements?: string;
   quota_limited: boolean;
   annual_quota?: number;
+  notes?: string;
   source_url: string;
   last_scraped_at: string;
   last_changed_at: string;

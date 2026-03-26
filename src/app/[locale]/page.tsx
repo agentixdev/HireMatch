@@ -1,6 +1,16 @@
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
+import {
+  AnimatedSection,
+  StaggerSection,
+  StaggerItem,
+  HeroAnimated,
+  HeroItem,
+  CountUp,
+  CountryPill,
+} from '@/components/AnimatedSection';
 
 export default function HomePage() {
   const t = useTranslations();
@@ -12,43 +22,53 @@ export default function HomePage() {
         {/* Hero */}
         <section className="relative overflow-hidden">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 sm:py-28">
-            <div className="text-center max-w-4xl mx-auto">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-bebas)' }}>
-                {t('hero.title')}
-              </h1>
-              <p className="mt-6 text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
-                {t('hero.subtitle', { countryCount: '29' })}
-              </p>
-              <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link
-                  href="/auth?mode=signup&role=candidate"
-                  className="w-full sm:w-auto px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
-                >
-                  {t('hero.candidateCta')}
-                </Link>
-                <Link
-                  href="/auth?mode=signup&role=recruiter"
-                  className="w-full sm:w-auto px-8 py-4 text-lg font-semibold text-white/80 bg-white/5 ring-1 ring-white/10 hover:ring-white/20 hover:bg-white/10 rounded-xl transition-all"
-                >
-                  {t('hero.recruiterCta')}
-                </Link>
-              </div>
-            </div>
+            <HeroAnimated className="text-center max-w-4xl mx-auto">
+              <HeroItem>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight" style={{ fontFamily: 'var(--font-bebas)' }}>
+                  {t('hero.title')}
+                </h1>
+              </HeroItem>
+              <HeroItem>
+                <p className="mt-6 text-lg sm:text-xl text-white/60 max-w-2xl mx-auto">
+                  {t('hero.subtitle', { countryCount: '29' })}
+                </p>
+              </HeroItem>
+              <HeroItem>
+                <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <Link
+                    href="/auth?mode=signup&role=candidate"
+                    className="w-full sm:w-auto px-8 py-4 text-lg font-semibold text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-xl shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all"
+                  >
+                    {t('hero.candidateCta')}
+                  </Link>
+                  <Link
+                    href="/auth?mode=signup&role=recruiter"
+                    className="w-full sm:w-auto px-8 py-4 text-lg font-semibold text-white/80 bg-white/5 ring-1 ring-white/10 hover:ring-white/20 hover:bg-white/10 rounded-xl transition-all"
+                  >
+                    {t('hero.recruiterCta')}
+                  </Link>
+                </div>
+              </HeroItem>
+            </HeroAnimated>
 
             {/* Stats */}
-            <div className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
+            <StaggerSection className="mt-20 grid grid-cols-2 sm:grid-cols-4 gap-6 max-w-3xl mx-auto">
               {[
-                { label: t('hero.statsJobs'), value: '10,000+' },
-                { label: t('hero.statsCandidates'), value: '50,000+' },
-                { label: t('hero.statsCountries'), value: '29' },
-                { label: t('hero.statsMatches'), value: '100,000+' },
+                { label: t('hero.statsJobs'), target: 10000, suffix: '+' },
+                { label: t('hero.statsCandidates'), target: 50000, suffix: '+' },
+                { label: t('hero.statsCountries'), target: 29, suffix: '' },
+                { label: t('hero.statsMatches'), target: 100000, suffix: '+' },
               ].map((stat) => (
-                <div key={stat.label} className="text-center bg-white/[0.04] ring-1 ring-white/[0.06] rounded-xl p-4">
-                  <div className="text-2xl font-bold text-blue-400">{stat.value}</div>
-                  <div className="mt-1 text-xs text-white/50">{stat.label}</div>
-                </div>
+                <StaggerItem key={stat.label}>
+                  <div className="text-center bg-white/[0.04] ring-1 ring-white/[0.06] rounded-xl p-4">
+                    <div className="text-2xl font-bold text-blue-400">
+                      <CountUp target={stat.target} suffix={stat.suffix} />
+                    </div>
+                    <div className="mt-1 text-xs text-white/50">{stat.label}</div>
+                  </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerSection>
           </div>
         </section>
 
@@ -56,7 +76,7 @@ export default function HomePage() {
         <section className="py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <h2 className="text-3xl font-bold text-white text-center" style={{ fontFamily: 'var(--font-bebas)' }}>How It Works</h2>
-            <div className="mt-14 grid md:grid-cols-3 gap-8">
+            <StaggerSection className="mt-14 grid md:grid-cols-3 gap-8">
               {[
                 {
                   step: '1',
@@ -80,15 +100,17 @@ export default function HomePage() {
                   color: 'from-green-500/20 to-green-600/10',
                 },
               ].map((item) => (
-                <div key={item.step} className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 text-center hover:ring-white/20 transition-all">
-                  <div className={`w-14 h-14 mx-auto bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center`}>
-                    <span className="text-2xl text-white/80">{item.step}</span>
+                <StaggerItem key={item.step}>
+                  <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 text-center hover:ring-white/20 transition-all">
+                    <div className={`w-14 h-14 mx-auto bg-gradient-to-br ${item.color} rounded-xl flex items-center justify-center`}>
+                      <span className="text-2xl text-white/80">{item.step}</span>
+                    </div>
+                    <h3 className="mt-5 text-lg font-semibold text-white">{item.title}</h3>
+                    <p className="mt-3 text-sm text-white/50">{item.desc}</p>
                   </div>
-                  <h3 className="mt-5 text-lg font-semibold text-white">{item.title}</h3>
-                  <p className="mt-3 text-sm text-white/50">{item.desc}</p>
-                </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerSection>
           </div>
         </section>
 
@@ -102,19 +124,21 @@ export default function HomePage() {
                 with built-in visa compliance.
               </p>
             </div>
-            <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <StaggerSection className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {[
                 { title: 'AI Candidate Ranking', desc: 'Candidates auto-ranked by match score against your JD', icon: 'solar:ranking-bold' },
                 { title: 'Visa Compliance', desc: 'Auto-tagged sponsorship requirements per country', icon: 'solar:passport-bold' },
                 { title: 'Pipeline Management', desc: 'Kanban board from applied to hired', icon: 'solar:widget-5-bold' },
                 { title: 'ATS Webhooks', desc: 'Integrate with your existing tools via webhooks', icon: 'solar:programming-bold' },
               ].map((feature) => (
-                <div key={feature.title} className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-5 hover:ring-white/20 transition-all">
-                  <h3 className="font-semibold text-white text-sm">{feature.title}</h3>
-                  <p className="mt-2 text-xs text-white/50">{feature.desc}</p>
-                </div>
+                <StaggerItem key={feature.title}>
+                  <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-5 hover:ring-white/20 transition-all">
+                    <h3 className="font-semibold text-white text-sm">{feature.title}</h3>
+                    <p className="mt-2 text-xs text-white/50">{feature.desc}</p>
+                  </div>
+                </StaggerItem>
               ))}
-            </div>
+            </StaggerSection>
             <div className="mt-10 text-center">
               <Link
                 href="/auth?mode=signup&role=recruiter"
@@ -168,7 +192,7 @@ export default function HomePage() {
             <p className="mt-4 text-lg text-white/50">
               29 countries with real-time visa requirements and work permit data.
             </p>
-            <div className="mt-10 flex flex-wrap justify-center gap-2">
+            <StaggerSection className="mt-10 flex flex-wrap justify-center gap-2">
               {[
                 '🇺🇸 USA', '🇨🇦 Canada', '🇬🇧 UK', '🇨🇭 Switzerland', '🇩🇪 Germany',
                 '🇫🇷 France', '🇪🇸 Spain', '🇮🇹 Italy', '🇳🇱 Netherlands', '🇧🇪 Belgium',
@@ -176,40 +200,16 @@ export default function HomePage() {
                 '🇳🇴 Norway', '🇫🇮 Finland', '🇵🇱 Poland', '🇨🇿 Czech Republic', '🇷🇴 Romania',
                 '🇮🇳 India', '🇲🇽 Mexico', '🇧🇷 Brazil', '🇦🇷 Argentina', '🇨🇳 China',
                 '🇯🇵 Japan', '🇰🇷 South Korea', '🇻🇳 Vietnam', '🇵🇭 Philippines',
-              ].map((country) => (
-                <span
-                  key={country}
-                  className="px-3 py-1.5 bg-white/[0.04] ring-1 ring-white/[0.08] rounded-full text-xs text-white/60 hover:ring-white/20 hover:text-white/80 transition-all cursor-default"
-                >
+              ].map((country, i) => (
+                <CountryPill key={country} index={i}>
                   {country}
-                </span>
+                </CountryPill>
               ))}
-            </div>
+            </StaggerSection>
           </div>
         </section>
 
-        {/* Footer */}
-        <footer className="bg-[#0a0a0f] border-t border-white/[0.06] py-10">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                  <span className="text-white font-bold text-sm">H</span>
-                </div>
-                <span className="font-bold text-white">HireMatch</span>
-              </div>
-              <div className="flex items-center gap-6 text-sm text-white/40">
-                <Link href="/jobs" className="hover:text-white/70 transition-colors">Jobs</Link>
-                <Link href="/candidates" className="hover:text-white/70 transition-colors">Candidates</Link>
-                <Link href="/matchmaker" className="hover:text-white/70 transition-colors">Matchmaker</Link>
-                <Link href="/pricing" className="hover:text-white/70 transition-colors">Pricing</Link>
-              </div>
-              <p className="text-xs text-white/30">
-                &copy; {new Date().getFullYear()} HireMatch. AI-powered recruitment.
-              </p>
-            </div>
-          </div>
-        </footer>
+        <Footer />
       </main>
     </>
   );

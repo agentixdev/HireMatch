@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase';
-import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
 import type { Recruiter, Job } from '@/types';
 
 export default function RecruiterDashboard() {
@@ -70,10 +70,8 @@ export default function RecruiterDashboard() {
   const canPostJob = recruiter?.tier !== 'free' || jobs.length < limits.jobs;
 
   return (
-    <>
-      <Header />
-      <main className="flex-1 bg-transparent">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <DashboardLayout role="recruiter" userName={recruiter?.company_name}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Company Header */}
           <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 mb-8">
             <div className="flex items-center justify-between">
@@ -202,7 +200,6 @@ export default function RecruiterDashboard() {
             )}
           </div>
         </div>
-      </main>
-    </>
+    </DashboardLayout>
   );
 }

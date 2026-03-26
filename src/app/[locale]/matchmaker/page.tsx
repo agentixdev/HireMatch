@@ -1,9 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { createClient } from '@/lib/supabase';
 import Header from '@/components/Header';
+
+const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 };
 
 interface QuizQuestion {
   id: number;
@@ -129,6 +132,8 @@ export default function MatchmakerPage() {
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [showResults, setShowResults] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [direction, setDirection] = useState(1); // 1 = forward, -1 = back
+  const [savedToProfile, setSavedToProfile] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -136,11 +141,40 @@ export default function MatchmakerPage() {
     });
   }, []);
 
+  // Save quiz results to candidate profile when completed
+  useEffect(() => {
+    if (!showResults || !isAuthenticated) return;
+
+    async function saveResults() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const topTags = computeTags();
+        await supabase.from('candidates')
+          .update({
+            quiz_answers: answers,
+            match_tags: topTags.map(([tag]) => tag),
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', user.id);
+
+        setSavedToProfile(true);
+        setTimeout(() => setSavedToProfile(false), 4000);
+      } catch (err) {
+        console.error('Failed to save quiz results:', err);
+      }
+    }
+
+    saveResults();
+  }, [showResults]);
+
   const handleAnswer = (optionIndex: number) => {
     const newAnswers = { ...answers, [currentQuestion]: optionIndex };
     setAnswers(newAnswers);
 
     if (currentQuestion < QUIZ_QUESTIONS.length - 1) {
+      setDirection(1);
       setTimeout(() => setCurrentQuestion(currentQuestion + 1), 300);
     } else {
       setShowResults(true);
@@ -187,7 +221,13 @@ export default function MatchmakerPage() {
               <h3 className="font-semibold text-white mb-4">Your Top Traits</h3>
               <div className="space-y-3">
                 {topTags.map(([tag, score], i) => (
-                  <div key={tag} className="flex items-center gap-3">
+                  <motion.div
+                    key={tag}
+                    className="flex items-center gap-3"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ ...springTransition, delay: i * 0.06 }}
+                  >
                     <span className="text-xs text-white/40 w-5">{i + 1}</span>
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
@@ -197,13 +237,15 @@ export default function MatchmakerPage() {
                         <span className="text-xs text-blue-400">{score} pts</span>
                       </div>
                       <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
-                          style={{ width: `${(score / topTags[0][1]) * 100}%` }}
+                        <motion.div
+                          className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${(score / topTags[0][1]) * 100}%` }}
+                          transition={{ ...springTransition, delay: i * 0.06 + 0.2 }}
                         />
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
 
@@ -268,52 +310,78 @@ export default function MatchmakerPage() {
               <span className="text-xs text-white/40">{Math.round(progress)}%</span>
             </div>
             <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full transition-all duration-500"
-                style={{ width: `${progress}%` }}
+              <motion.div
+                className="h-full bg-gradient-to-r from-blue-600 to-indigo-600 rounded-full"
+                animate={{ width: `${progress}%` }}
+                transition={springTransition}
               />
             </div>
           </div>
 
-          {/* Category + Icon */}
-          <div className="text-center mb-6">
-            <div
-              className={`w-16 h-16 mx-auto bg-gradient-to-br ${question.color} rounded-xl flex items-center justify-center mb-4`}
+          {/* Category + Icon + Question + Options — animated */}
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={currentQuestion}
+              custom={direction}
+              initial={{ opacity: 0, x: direction * 80 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: direction * -80 }}
+              transition={springTransition}
             >
-              <span className="text-3xl">{question.icon}</span>
-            </div>
-            <span className="text-xs text-blue-400 font-medium uppercase tracking-wider">
-              {question.category}
-            </span>
-          </div>
+              {/* Category + Icon */}
+              <div className="text-center mb-6">
+                <div
+                  className={`w-16 h-16 mx-auto bg-gradient-to-br ${question.color} rounded-xl flex items-center justify-center mb-4`}
+                >
+                  <span className="text-3xl">{question.icon}</span>
+                </div>
+                <span className="text-xs text-blue-400 font-medium uppercase tracking-wider">
+                  {question.category}
+                </span>
+              </div>
 
-          {/* Question */}
-          <h2 className="text-2xl font-bold text-white text-center mb-8">{question.question}</h2>
+              {/* Question */}
+              <h2 className="text-2xl font-bold text-white text-center mb-8">{question.question}</h2>
 
-          {/* Options */}
-          <div className="space-y-3">
-            {question.options.map((option, i) => (
-              <button
-                key={i}
-                onClick={() => handleAnswer(i)}
-                className={`w-full text-left px-6 py-4 rounded-xl transition-all ${
-                  answers[currentQuestion] === i
-                    ? 'bg-blue-600/20 ring-2 ring-blue-500 text-white'
-                    : 'bg-[#0F172A] ring-1 ring-white/10 text-white/70 hover:ring-white/20 hover:bg-[#0F172A]/80'
-                }`}
+              {/* Options */}
+              <motion.div
+                className="space-y-3"
+                variants={{ show: { transition: { staggerChildren: 0.08 } }, hidden: {} }}
+                initial="hidden"
+                animate="show"
               >
-                <span className="text-sm font-medium">{option.label}</span>
-              </button>
-            ))}
-          </div>
+                {question.options.map((option, i) => (
+                  <motion.button
+                    key={i}
+                    variants={{
+                      hidden: { opacity: 0, y: 20 },
+                      show: { opacity: 1, y: 0, transition: springTransition },
+                    }}
+                    onClick={() => handleAnswer(i)}
+                    whileTap={{ scale: 0.98 }}
+                    className={`w-full text-left px-6 py-4 rounded-xl transition-all ${
+                      answers[currentQuestion] === i
+                        ? 'bg-blue-600/20 ring-2 ring-blue-500 text-white shadow-[0_0_15px_rgba(59,130,246,0.3)]'
+                        : 'bg-[#0F172A] ring-1 ring-white/10 text-white/70 hover:ring-white/20 hover:bg-[#0F172A]/80'
+                    }`}
+                  >
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            </motion.div>
+          </AnimatePresence>
 
           {/* Navigation */}
           {currentQuestion > 0 && (
             <button
-              onClick={() => setCurrentQuestion(currentQuestion - 1)}
+              onClick={() => {
+                setDirection(-1);
+                setCurrentQuestion(currentQuestion - 1);
+              }}
               className="mt-6 text-sm text-white/40 hover:text-white/60 transition-colors"
             >
-              ← Previous question
+              &larr; Previous question
             </button>
           )}
         </div>

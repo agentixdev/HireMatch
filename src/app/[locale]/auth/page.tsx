@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase';
 import Header from '@/components/Header';
@@ -34,6 +35,11 @@ export default function AuthPage() {
     // Handle callback errors
     if (searchParams.get('error') === 'callback_failed') {
       setError('Email confirmation failed. Please try signing in or resend the confirmation email.');
+    }
+
+    // Handle password reset success
+    if (searchParams.get('message') === 'password_updated') {
+      setSuccess('Password updated successfully. You can now sign in with your new password.');
     }
 
     // Handle PKCE code exchange (if redirected here with ?code=)
@@ -264,6 +270,17 @@ export default function AuthPage() {
                   className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
                 />
               </div>
+
+              {mode === 'signin' && (
+                <div className="text-right -mt-1">
+                  <Link
+                    href="/auth/forgot-password"
+                    className="text-xs text-blue-400 hover:text-blue-300 font-medium"
+                  >
+                    Forgot Password?
+                  </Link>
+                </div>
+              )}
 
               {mode === 'signup' && (
                 <div>

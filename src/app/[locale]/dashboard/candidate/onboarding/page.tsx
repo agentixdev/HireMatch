@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import Header from '@/components/Header';
+import AvatarUpload from '@/components/AvatarUpload';
 import type { CountryCode } from '@/types';
 
 const COUNTRIES: { code: CountryCode; name: string; flag: string }[] = [
@@ -72,6 +73,7 @@ export default function CandidateOnboarding() {
   const [remotePreference, setRemotePreference] = useState<'remote' | 'hybrid' | 'onsite' | 'any'>('any');
   const [visaStatus, setVisaStatus] = useState('');
   const [saving, setSaving] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   // Check auth on mount
   useEffect(() => {
@@ -156,6 +158,7 @@ export default function CandidateOnboarding() {
         city,
         remote_preference: remotePreference,
         visa_status: visaStatus || null,
+        photo_url: photoUrl || null,
         match_tags: skills.map(s => s.toLowerCase()),
         updated_at: new Date().toISOString(),
       };
@@ -273,6 +276,16 @@ export default function CandidateOnboarding() {
               <p className="text-white/60 mt-2">
                 Our AI extracted this from your CV. Edit anything that needs correction.
               </p>
+
+              <div className="flex justify-center mt-6">
+                <AvatarUpload
+                  bucket="avatars"
+                  currentUrl={photoUrl}
+                  onUpload={setPhotoUrl}
+                  shape="circle"
+                  size={96}
+                />
+              </div>
 
               <div className="mt-8 space-y-6">
                 <div>

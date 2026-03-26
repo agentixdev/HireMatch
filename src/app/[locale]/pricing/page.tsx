@@ -1,8 +1,21 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
+import { CountUp } from '@/components/AnimatedSection';
+
+const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 };
+const staggerContainer = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.08 } },
+};
+const fadeUp = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } },
+};
 
 const PLANS = [
   {
@@ -120,10 +133,17 @@ export default function PricingPage() {
           </div>
 
           {/* Plans Grid */}
-          <div className="mt-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <motion.div
+            className="mt-16 grid sm:grid-cols-2 lg:grid-cols-4 gap-6"
+            variants={staggerContainer}
+            initial="hidden"
+            whileInView="show"
+            viewport={{ once: true, amount: 0.2 }}
+          >
             {PLANS.map((plan) => (
-              <div
+              <motion.div
                 key={plan.name}
+                variants={fadeUp}
                 className={`relative bg-[#0F172A] rounded-xl p-6 flex flex-col ${
                   plan.highlight
                     ? 'ring-2 ring-blue-500 shadow-xl shadow-blue-500/10'
@@ -131,14 +151,20 @@ export default function PricingPage() {
                 }`}
               >
                 {plan.highlight && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full">
+                  <motion.div
+                    className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 bg-blue-600 text-white text-xs font-bold rounded-full"
+                    animate={{ scale: [1, 1.08, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  >
                     Most Popular
-                  </div>
+                  </motion.div>
                 )}
                 <div>
                   <h3 className="text-lg font-bold text-white">{plan.name}</h3>
                   <div className="mt-3">
-                    <span className="text-3xl font-bold text-white">{plan.price}</span>
+                    <span className="text-3xl font-bold text-white">
+                      {'$'}<CountUp target={parseInt(plan.price.replace(/\D/g, '') || '0')} />
+                    </span>
                     <span className="text-sm text-white/40 ml-1">{plan.period}</span>
                   </div>
                   <p className="mt-2 text-sm text-white/50">{plan.desc}</p>
@@ -165,9 +191,9 @@ export default function PricingPage() {
                 >
                   {plan.cta}
                 </Link>
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
 
           {/* FAQ */}
           <div className="mt-20 max-w-3xl mx-auto">
@@ -177,42 +203,83 @@ export default function PricingPage() {
             >
               Frequently Asked Questions
             </h2>
-            <div className="mt-10 space-y-4">
-              {[
-                {
-                  q: 'Is it really free for candidates?',
-                  a: 'Yes, 100%. Job seekers can create profiles, upload CVs, take quizzes, and apply to unlimited jobs without ever paying.',
-                },
-                {
-                  q: 'Can I try Pro before committing?',
-                  a: 'Yes — Pro comes with a 14-day free trial. No credit card required to start.',
-                },
-                {
-                  q: 'What payment methods do you accept?',
-                  a: 'We accept all major credit cards via Stripe. Enterprise and Agency plans also support invoicing.',
-                },
-                {
-                  q: 'Can I upgrade or downgrade at any time?',
-                  a: 'Absolutely. Changes take effect on your next billing cycle. Downgrading preserves your data.',
-                },
-                {
-                  q: 'What happens to my job posts if I downgrade?',
-                  a: 'Active job posts beyond your plan limit are paused (not deleted). Re-activate them anytime by upgrading.',
-                },
-                {
-                  q: 'Do you offer discounts for nonprofits?',
-                  a: 'Yes. Verified nonprofits get 50% off any paid plan. Contact us for details.',
-                },
-              ].map((faq) => (
-                <div key={faq.q} className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-5">
-                  <h3 className="font-semibold text-white text-sm">{faq.q}</h3>
-                  <p className="mt-2 text-sm text-white/50">{faq.a}</p>
-                </div>
-              ))}
-            </div>
+            <FaqAccordion />
           </div>
         </div>
       </main>
     </>
+  );
+}
+
+const FAQ_ITEMS = [
+  {
+    q: 'Is it really free for candidates?',
+    a: 'Yes, 100%. Job seekers can create profiles, upload CVs, take quizzes, and apply to unlimited jobs without ever paying.',
+  },
+  {
+    q: 'Can I try Pro before committing?',
+    a: 'Yes — Pro comes with a 14-day free trial. No credit card required to start.',
+  },
+  {
+    q: 'What payment methods do you accept?',
+    a: 'We accept all major credit cards via Stripe. Enterprise and Agency plans also support invoicing.',
+  },
+  {
+    q: 'Can I upgrade or downgrade at any time?',
+    a: 'Absolutely. Changes take effect on your next billing cycle. Downgrading preserves your data.',
+  },
+  {
+    q: 'What happens to my job posts if I downgrade?',
+    a: 'Active job posts beyond your plan limit are paused (not deleted). Re-activate them anytime by upgrading.',
+  },
+  {
+    q: 'Do you offer discounts for nonprofits?',
+    a: 'Yes. Verified nonprofits get 50% off any paid plan. Contact us for details.',
+  },
+];
+
+function FaqAccordion() {
+  const [openIndex, setOpenIndex] = useState<number | null>(null);
+
+  return (
+    <div className="mt-10 space-y-4">
+      {FAQ_ITEMS.map((faq, i) => (
+        <motion.div
+          key={faq.q}
+          className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl overflow-hidden"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.2 }}
+          transition={{ ...springTransition, delay: i * 0.05 }}
+        >
+          <button
+            onClick={() => setOpenIndex(openIndex === i ? null : i)}
+            className="w-full flex items-center justify-between p-5 text-left"
+          >
+            <h3 className="font-semibold text-white text-sm">{faq.q}</h3>
+            <motion.span
+              animate={{ rotate: openIndex === i ? 45 : 0 }}
+              transition={springTransition}
+              className="text-white/40 text-lg ml-4 shrink-0"
+            >
+              +
+            </motion.span>
+          </button>
+          <AnimatePresence initial={false}>
+            {openIndex === i && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                className="overflow-hidden"
+              >
+                <p className="px-5 pb-5 text-sm text-white/50">{faq.a}</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+      ))}
+    </div>
   );
 }

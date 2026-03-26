@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
+import AvatarUpload from '@/components/AvatarUpload';
 import type { Candidate, CountryCode } from '@/types';
 
 const COUNTRIES: { code: CountryCode; name: string }[] = [
@@ -47,6 +48,7 @@ export default function EditProfilePage() {
   const [salaryMin, setSalaryMin] = useState('');
   const [salaryMax, setSalaryMax] = useState('');
   const [isPublic, setIsPublic] = useState(false);
+  const [photoUrl, setPhotoUrl] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -74,6 +76,7 @@ export default function EditProfilePage() {
       setSalaryMin(c.salary_expectation_min?.toString() || '');
       setSalaryMax(c.salary_expectation_max?.toString() || '');
       setIsPublic(c.is_public);
+      setPhotoUrl(c.photo_url || '');
       setLoading(false);
     }
     load();
@@ -109,6 +112,7 @@ export default function EditProfilePage() {
         salary_expectation_min: salaryMin ? parseInt(salaryMin) : null,
         salary_expectation_max: salaryMax ? parseInt(salaryMax) : null,
         is_public: isPublic,
+        photo_url: photoUrl || null,
         match_tags: skills.map(s => s.toLowerCase()),
         updated_at: new Date().toISOString(),
       })
@@ -126,10 +130,8 @@ export default function EditProfilePage() {
   if (loading) return <div className="flex-1 flex items-center justify-center">Loading...</div>;
 
   return (
-    <>
-      <Header />
-      <main className="flex-1 bg-transparent">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+    <DashboardLayout role="candidate" userName={candidate?.full_name}>
+      <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-white">Edit Profile</h1>
             <button
@@ -144,6 +146,16 @@ export default function EditProfilePage() {
           {success && <div className="mb-4 p-3 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-green-400 text-sm">Profile saved!</div>}
 
           <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 space-y-6">
+            <div className="flex justify-center">
+              <AvatarUpload
+                bucket="avatars"
+                currentUrl={photoUrl}
+                onUpload={setPhotoUrl}
+                shape="circle"
+                size={96}
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-1">Full Name</label>
@@ -253,7 +265,6 @@ export default function EditProfilePage() {
             </div>
           </div>
         </div>
-      </main>
-    </>
+    </DashboardLayout>
   );
 }

@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
+import AvatarUpload from '@/components/AvatarUpload';
 import type { Recruiter, CountryCode } from '@/types';
 
 const COUNTRIES: { code: CountryCode; name: string }[] = [
@@ -48,6 +49,7 @@ export default function RecruiterProfilePage() {
   const [bio, setBio] = useState('');
   const [cultureTags, setCultureTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
 
   useEffect(() => {
     async function load() {
@@ -71,6 +73,7 @@ export default function RecruiterProfilePage() {
       setCity(r.city || '');
       setBio(r.bio || '');
       setCultureTags(r.culture_tags || []);
+      setLogoUrl(r.company_logo_url || '');
       setLoading(false);
     }
     load();
@@ -103,6 +106,7 @@ export default function RecruiterProfilePage() {
         city: city || null,
         bio: bio || null,
         culture_tags: cultureTags,
+        company_logo_url: logoUrl || null,
         updated_at: new Date().toISOString(),
       })
       .eq('user_id', user.id);
@@ -115,10 +119,8 @@ export default function RecruiterProfilePage() {
   if (loading) return <div className="flex-1 flex items-center justify-center">Loading...</div>;
 
   return (
-    <>
-      <Header />
-      <main className="flex-1 bg-transparent">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+    <DashboardLayout role="recruiter">
+      <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-white">Company Profile</h1>
             <button onClick={() => router.push('/dashboard/recruiter')} className="text-sm text-white/60 hover:text-white">
@@ -130,6 +132,16 @@ export default function RecruiterProfilePage() {
           {success && <div className="mb-4 p-3 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-green-400 text-sm">Profile saved!</div>}
 
           <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 space-y-6">
+            <div className="flex justify-center">
+              <AvatarUpload
+                bucket="logos"
+                currentUrl={logoUrl}
+                onUpload={setLogoUrl}
+                shape="square"
+                size={96}
+              />
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
                 <label className="block text-sm font-medium text-white/70 mb-1">Company Name</label>
@@ -210,7 +222,6 @@ export default function RecruiterProfilePage() {
             </div>
           </div>
         </div>
-      </main>
-    </>
+    </DashboardLayout>
   );
 }

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase';
-import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
 import type { Candidate, Application } from '@/types';
 
 export default function CandidateDashboard() {
@@ -68,10 +68,8 @@ export default function CandidateDashboard() {
   };
 
   return (
-    <>
-      <Header />
-      <main className="flex-1 bg-transparent">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <DashboardLayout role="candidate" userName={candidate?.full_name}>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Profile Summary */}
           <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 mb-8">
             <div className="flex items-start gap-6">
@@ -168,7 +166,6 @@ export default function CandidateDashboard() {
             )}
           </div>
         </div>
-      </main>
-    </>
+    </DashboardLayout>
   );
 }

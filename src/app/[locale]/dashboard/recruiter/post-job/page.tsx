@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase';
-import Header from '@/components/Header';
+import DashboardLayout from '@/components/DashboardLayout';
 import type { CountryCode, JobType, WorkMode } from '@/types';
 
 const COUNTRIES: { code: CountryCode; name: string }[] = [
@@ -175,10 +175,8 @@ export default function PostJobPage() {
   };
 
   return (
-    <>
-      <Header />
-      <main className="flex-1 bg-transparent">
-        <div className="max-w-3xl mx-auto px-4 py-8">
+    <DashboardLayout role="recruiter">
+      <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
             <h1 className="text-2xl font-bold text-white">{t('postJob')}</h1>
             <button onClick={() => router.back()} className="text-sm text-white/60 hover:text-white">Cancel</button>
@@ -407,7 +405,6 @@ export default function PostJobPage() {
             </div>
           </div>
         </div>
-      </main>
-    </>
+    </DashboardLayout>
   );
 }
