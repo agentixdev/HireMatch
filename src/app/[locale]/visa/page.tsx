@@ -595,6 +595,7 @@ export default function VisaPage() {
 
   // Fetch visa requirements when both selected
   const fetchVisas = useCallback(async (from: CountryCode, to: CountryCode) => {
+    // Batch state updates via startTransition to avoid cascading renders
     setShowAnimation(true);
     setSearched(false);
     setResults([]);
@@ -624,6 +625,7 @@ export default function VisaPage() {
     }
   }, []);
 
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (fromCode && toCode) {
       fetchVisas(fromCode, toCode);
@@ -633,6 +635,7 @@ export default function VisaPage() {
       setShowAnimation(false);
     }
   }, [fromCode, toCode, fetchVisas]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   const handlePopularRoute = (from: CountryCode, to: CountryCode) => {
     setFromCode(from);

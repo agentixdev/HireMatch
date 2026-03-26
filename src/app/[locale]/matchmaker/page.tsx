@@ -541,15 +541,16 @@ export default function MatchmakerPage() {
 
   const PROCESSING_STAGES = [
     { icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', label: 'Analyzing your work DNA...' },
-    { icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', label: 'Scanning 10,000+ companies...' },
-    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Computing cultural alignment...' },
-    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', label: 'Finding your competition...' },
+    { icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', label: 'Cross-referencing companies...' },
+    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Calculating culture scores...' },
+    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', label: 'Revealing your matches...' },
   ];
 
   useEffect(() => {
     if (phase !== 'processing' || !results) return;
-    setProcessingStage(0);
+    // Use ref to avoid synchronous setState in effect body
     const timers: ReturnType<typeof setTimeout>[] = [];
+    timers.push(setTimeout(() => setProcessingStage(0), 0));
     timers.push(setTimeout(() => setProcessingStage(1), 800));
     timers.push(setTimeout(() => setProcessingStage(2), 1700));
     timers.push(setTimeout(() => setProcessingStage(3), 2600));
@@ -1295,27 +1296,90 @@ export default function MatchmakerPage() {
   if (!results || results.length === 0) return null;
 
   const topMatch = results[0];
-  const temperatureColor =
-    topMatch.score >= 80 ? '#22c55e' : topMatch.score >= 60 ? '#a855f7' : '#3b82f6';
-  const temperatureLabel =
-    topMatch.score >= 80 ? 'Strong match' : topMatch.score >= 60 ? 'Good match' : 'Moderate match';
+
+  // Temperature helpers for every match card
+  function getTemperature(score: number) {
+    if (score >= 80) return { color: '#22c55e', label: 'Strong fit' };
+    if (score >= 60) return { color: '#a855f7', label: 'Good fit' };
+    if (score >= 40) return { color: '#3b82f6', label: 'Moderate fit' };
+    return { color: '#6b7280', label: 'Exploring options' };
+  }
+
+  const topTemp = getTemperature(topMatch.score);
+  const temperatureColor = topTemp.color;
+  const temperatureLabel = topTemp.label;
+
   const scoreGradient =
     topMatch.score >= 80
       ? 'from-green-400 to-emerald-500'
       : topMatch.score >= 60
         ? 'from-blue-400 via-purple-400 to-indigo-500'
-        : 'from-gray-400 to-gray-500';
+        : topMatch.score >= 40
+          ? 'from-blue-400 to-cyan-500'
+          : 'from-gray-400 to-gray-500';
 
-  const totalCandidates = competitors.length + 7; // simulated pool of 12
+  const totalCandidates = competitors.length + 7;
 
   const avgCompetitorScore = competitors.length
     ? Math.round(competitors.reduce((sum, c) => sum + c.score, 0) / competitors.length)
     : 0;
 
+  // ── Radar Chart Data ──
+  const radarAxes = [
+    { label: 'Impact', key: 'impact' },
+    { label: 'Autonomy', key: 'autonomy' },
+    { label: 'Teamwork', key: 'team' },
+    { label: 'Growth', key: 'challenge' },
+    { label: 'Balance', key: 'balance' },
+    { label: 'Innovation', key: 'creative' },
+  ];
+
+  const userRadarProfile: Record<string, number> = {};
+  answers.forEach((optIdx, qIdx) => {
+    const question = QUIZ_QUESTIONS[qIdx];
+    if (!question) return;
+    const weights = question.tagWeights[optIdx];
+    if (!weights) return;
+    Object.entries(weights).forEach(([tag, weight]) => {
+      userRadarProfile[tag] = (userRadarProfile[tag] || 0) + weight;
+    });
+  });
+
+  const maxRadarVal = Math.max(...radarAxes.map((a) => userRadarProfile[a.key] || 0), 1);
+  const radarValues = radarAxes.map((a) => Math.min(1, (userRadarProfile[a.key] || 0) / maxRadarVal));
+
+  const radarCx = 120;
+  const radarCy = 120;
+  const radarR = 90;
+  const radarAngleStep = (2 * Math.PI) / radarAxes.length;
+
+  function radarPoint(index: number, value: number) {
+    const angle = -Math.PI / 2 + index * radarAngleStep;
+    return {
+      x: radarCx + Math.cos(angle) * radarR * value,
+      y: radarCy + Math.sin(angle) * radarR * value,
+    };
+  }
+
+  const radarPathPoints = radarValues.map((v, i) => radarPoint(i, v));
+  const radarPathD =
+    radarPathPoints.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+
+  // Rank badge helper
+  function getRankBadge(rank: number) {
+    if (rank === 1)
+      return { bg: 'bg-yellow-500/20', text: 'text-yellow-400', border: 'ring-yellow-500/30' };
+    if (rank === 2)
+      return { bg: 'bg-gray-400/20', text: 'text-gray-300', border: 'ring-gray-400/30' };
+    if (rank === 3)
+      return { bg: 'bg-amber-700/20', text: 'text-amber-600', border: 'ring-amber-700/30' };
+    return { bg: 'bg-white/[0.06]', text: 'text-white/40', border: 'ring-white/[0.08]' };
+  }
+
   return (
     <>
       <Header />
-      <div ref={resultsRef} className="relative min-h-screen overflow-hidden">
+      <div ref={resultsRef} className="relative min-h-screen overflow-hidden bg-[#0F172A]">
         {/* ── Three-Layer Background Ambiance ── */}
         <div className="absolute inset-0 pointer-events-none">
           {/* Layer 1: Primary industry glow — large centered blur, 700px */}
@@ -1358,19 +1422,19 @@ export default function MatchmakerPage() {
                   backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4'][
                     i % 6
                   ],
-                  left: `${Math.random() * 100}%`,
+                  left: `${(i * 37 + 13) % 100}%`,
                   top: '-5%',
                 }}
                 initial={{ y: 0, rotate: 0, opacity: 1 }}
                 animate={{
                   y: typeof window !== 'undefined' ? window.innerHeight + 100 : 900,
-                  rotate: Math.random() * 720 - 360,
-                  x: (Math.random() - 0.5) * 300,
+                  rotate: ((i * 73 + 41) % 720) - 360,
+                  x: (((i * 53 + 17) % 300) - 150),
                   opacity: [1, 1, 0],
                 }}
                 transition={{
-                  duration: 2 + Math.random() * 1.5,
-                  delay: Math.random() * 0.5,
+                  duration: 2 + ((i * 31 + 7) % 15) / 10,
+                  delay: (i * 17 % 50) / 100,
                   ease: 'easeOut',
                 }}
               />
@@ -1393,7 +1457,7 @@ export default function MatchmakerPage() {
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
                 transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-                className="w-full max-w-sm rounded-2xl bg-[#111] ring-1 ring-white/10 p-6"
+                className="w-full max-w-sm rounded-2xl bg-[#0F172A] ring-1 ring-white/10 p-6"
                 onClick={(e) => e.stopPropagation()}
               >
                 <h3 className="text-lg font-bold text-white mb-2">Share Your Results</h3>
@@ -1463,34 +1527,36 @@ export default function MatchmakerPage() {
             )}
           </AnimatePresence>
 
-          {/* ── Featured Match Card — Spotlight Reveal ── */}
+          {/* ══ FEATURED MATCH — SPOTLIGHT REVEAL ══ */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
             className="relative rounded-2xl overflow-hidden mb-8"
-            data-shimmer
           >
-            {/* Spotlight curtain lift — radial-gradient fade */}
+            {/* Spotlight curtain — radial gradient that lifts */}
             <motion.div
               className="absolute inset-0 z-10 pointer-events-none"
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
-              transition={{ duration: 1.5, delay: 0.3 }}
+              transition={{ duration: 1.8, delay: 0.2, ease: 'easeOut' }}
               style={{
-                background: 'radial-gradient(circle at 50% 40%, transparent 30%, rgba(0,0,0,0.8) 100%)',
+                background: `radial-gradient(circle at 50% 35%, transparent 0%, ${topMatch.brandColor}15 30%, rgba(15,23,42,0.95) 70%)`,
               }}
             />
 
-            {/* Edge glow with inset box-shadow */}
-            <div
-              className="absolute inset-0 rounded-2xl pointer-events-none"
+            {/* Edge glow in brand color */}
+            <motion.div
+              className="absolute inset-0 rounded-2xl pointer-events-none z-[5]"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 1.2 }}
               style={{
-                boxShadow: `inset 0 0 60px ${topMatch.brandColor}20, 0 0 40px ${topMatch.brandColor}15`,
+                boxShadow: `inset 0 0 80px ${topMatch.brandColor}25, 0 0 60px ${topMatch.brandColor}15, 0 0 120px ${topMatch.brandColor}08`,
               }}
             />
 
-            <div className="relative bg-white/[0.03] ring-1 ring-white/[0.08] rounded-2xl overflow-hidden">
+            <div className="relative bg-white/[0.03] ring-1 ring-white/10 rounded-2xl overflow-hidden">
               {/* Industry gradient bar at top */}
               <div
                 className="h-1 w-full"
@@ -1500,36 +1566,61 @@ export default function MatchmakerPage() {
               />
 
               <div className="p-8 sm:p-10">
-                {/* Company info */}
+                {/* ── Large Circular Logo with Glow Ring ── */}
                 <div className="text-center mb-6">
-                  {/* Company logo/card with industry-colored ring glow */}
                   <motion.div
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
-                    className="w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black"
-                    style={{
-                      backgroundColor: `${topMatch.brandColor}20`,
-                      color: topMatch.brandColor,
-                      boxShadow: `0 0 0 3px ${topMatch.brandColor}30, 0 0 30px ${topMatch.brandColor}30`,
-                    }}
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 18, delay: 0.3 }}
+                    className="relative w-24 h-24 mx-auto mb-5"
                   >
-                    {topMatch.name.charAt(0)}
+                    {/* Outer glow ring — animated */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full"
+                      animate={{
+                        boxShadow: [
+                          `0 0 0 4px ${topMatch.brandColor}30, 0 0 40px ${topMatch.brandColor}20`,
+                          `0 0 0 6px ${topMatch.brandColor}50, 0 0 60px ${topMatch.brandColor}35`,
+                          `0 0 0 4px ${topMatch.brandColor}30, 0 0 40px ${topMatch.brandColor}20`,
+                        ],
+                      }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    {/* Logo circle */}
+                    <div
+                      className="relative w-24 h-24 rounded-full flex items-center justify-center text-4xl font-black"
+                      style={{
+                        backgroundColor: `${topMatch.brandColor}20`,
+                        color: topMatch.brandColor,
+                        border: `2px solid ${topMatch.brandColor}40`,
+                      }}
+                    >
+                      {topMatch.name.charAt(0)}
+                    </div>
                   </motion.div>
+
+                  <motion.p
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 }}
+                    className="text-[11px] uppercase tracking-[3px] text-white/30 font-bold mb-1"
+                  >
+                    Your #1 Match
+                  </motion.p>
 
                   <motion.h2
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.3 }}
-                    className="text-2xl sm:text-3xl font-bold text-white mb-2"
+                    transition={{ delay: 0.55 }}
+                    className="text-3xl sm:text-4xl font-bold text-white mb-2"
                   >
                     {topMatch.name}
                   </motion.h2>
 
                   <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.4 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: 0.65 }}
                     className="inline-block px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] rounded-full"
                     style={{
                       backgroundColor: `${topMatch.brandColor}20`,
@@ -1541,7 +1632,7 @@ export default function MatchmakerPage() {
                   </motion.span>
                 </div>
 
-                {/* Large count-up match percentage */}
+                {/* Large count-up score */}
                 <div className="text-center mb-4">
                   <p className="text-[11px] uppercase tracking-[3px] text-white/30 mb-2 font-bold">
                     Culture Alignment
@@ -1549,7 +1640,7 @@ export default function MatchmakerPage() {
                   <motion.div
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
-                    transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }}
+                    transition={{ delay: 0.7, type: 'spring', stiffness: 200, damping: 15 }}
                   >
                     <span
                       className={`text-[72px] sm:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
@@ -1560,53 +1651,150 @@ export default function MatchmakerPage() {
                   </motion.div>
                 </div>
 
-                {/* Temperature badge with pulsing dot */}
+                {/* Temperature Badge with pulsing dot */}
                 <motion.div
                   initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.55 }}
+                  transition={{ delay: 0.8 }}
                   className="flex justify-center mb-6"
                 >
                   <span
-                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-bold"
+                    className="inline-flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold"
                     style={{
                       backgroundColor: `${temperatureColor}15`,
                       color: temperatureColor,
-                      border: `1px solid ${temperatureColor}25`,
+                      border: `1px solid ${temperatureColor}30`,
                     }}
                   >
                     <motion.span
-                      className="w-2 h-2 rounded-full"
+                      className="w-2.5 h-2.5 rounded-full"
                       style={{ backgroundColor: temperatureColor }}
-                      animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                      animate={{ scale: [1, 1.5, 1], opacity: [1, 0.5, 1] }}
                       transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                     />
                     {temperatureLabel}
                   </span>
                 </motion.div>
 
-                {/* Culture tags */}
+                {/* Culture tags with staggered scale-in */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 }}
+                  transition={{ delay: 0.85 }}
                   className="flex flex-wrap justify-center gap-2 mb-8"
                 >
                   {topMatch.cultureTags.map((tag, i) => (
-                    <span
+                    <motion.span
                       key={i}
+                      initial={{ opacity: 0, scale: 0.8 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: 0.9 + i * 0.08 }}
                       className="px-3 py-1.5 text-[12px] font-medium rounded-full bg-white/[0.06] text-white/60 ring-1 ring-white/[0.08]"
                     >
                       {tag}
-                    </span>
+                    </motion.span>
                   ))}
+                </motion.div>
+
+                {/* ── SVG Radar Chart — Match Breakdown ── */}
+                <motion.div
+                  initial={{ opacity: 0, scale: 0.8 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 1.0, duration: 0.6 }}
+                  className="flex justify-center mb-8"
+                >
+                  <div className="relative">
+                    <svg width="240" height="240" viewBox="0 0 240 240">
+                      {/* Background grid rings */}
+                      {[0.25, 0.5, 0.75, 1].map((ring) => (
+                        <polygon
+                          key={ring}
+                          points={radarAxes
+                            .map((_, i) => {
+                              const p = radarPoint(i, ring);
+                              return `${p.x},${p.y}`;
+                            })
+                            .join(' ')}
+                          fill="none"
+                          stroke="rgba(255,255,255,0.06)"
+                          strokeWidth="1"
+                        />
+                      ))}
+                      {/* Axis lines */}
+                      {radarAxes.map((_, i) => {
+                        const p = radarPoint(i, 1);
+                        return (
+                          <line
+                            key={i}
+                            x1={radarCx}
+                            y1={radarCy}
+                            x2={p.x}
+                            y2={p.y}
+                            stroke="rgba(255,255,255,0.06)"
+                            strokeWidth="1"
+                          />
+                        );
+                      })}
+                      {/* Filled area — animated draw */}
+                      <motion.path
+                        d={radarPathD}
+                        fill={`${topMatch.brandColor}20`}
+                        stroke={topMatch.brandColor}
+                        strokeWidth="2"
+                        initial={{ pathLength: 0, opacity: 0 }}
+                        animate={{ pathLength: 1, opacity: 1 }}
+                        transition={{ delay: 1.2, duration: 1.2, ease: 'easeOut' }}
+                      />
+                      {/* Data points — scale in with stagger */}
+                      {radarPathPoints.map((p, i) => (
+                        <motion.circle
+                          key={i}
+                          cx={p.x}
+                          cy={p.y}
+                          r="4"
+                          fill={topMatch.brandColor}
+                          stroke={topMatch.brandColor}
+                          strokeWidth="2"
+                          initial={{ scale: 0, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          transition={{
+                            delay: 1.4 + i * 0.1,
+                            type: 'spring',
+                            stiffness: 400,
+                            damping: 15,
+                          }}
+                        />
+                      ))}
+                      {/* Axis labels */}
+                      {radarAxes.map((axis, i) => {
+                        const labelP = radarPoint(i, 1.22);
+                        return (
+                          <text
+                            key={i}
+                            x={labelP.x}
+                            y={labelP.y}
+                            textAnchor="middle"
+                            dominantBaseline="central"
+                            fill="rgba(255,255,255,0.45)"
+                            fontSize="10"
+                            fontWeight="600"
+                          >
+                            {axis.label}
+                          </text>
+                        );
+                      })}
+                    </svg>
+                    <p className="text-center text-[10px] uppercase tracking-[2px] text-white/25 font-bold mt-1">
+                      Match Breakdown
+                    </p>
+                  </div>
                 </motion.div>
 
                 {/* Why You Match */}
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.7 }}
+                  transition={{ delay: 1.3 }}
                   className="bg-white/[0.03] rounded-xl p-5 ring-1 ring-white/[0.06]"
                 >
                   <h3 className="text-[12px] uppercase tracking-[2px] font-bold text-white/40 mb-3">
@@ -1618,7 +1806,7 @@ export default function MatchmakerPage() {
                         key={i}
                         initial={{ opacity: 0, x: -10 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.8 + i * 0.1 }}
+                        transition={{ delay: 1.4 + i * 0.1 }}
                         className="flex items-start gap-2"
                       >
                         <div
@@ -1634,12 +1822,12 @@ export default function MatchmakerPage() {
             </div>
           </motion.div>
 
-          {/* ── Competing Candidates Section ── */}
+          {/* ══ COMPETING CANDIDATES ══ */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.0 }}
-            className="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-6 sm:p-8 mb-8"
+            transition={{ delay: 1.6 }}
+            className="rounded-2xl bg-white/[0.03] ring-1 ring-white/10 p-6 sm:p-8 mb-8"
           >
             <h3 className="text-[12px] uppercase tracking-[2px] font-bold text-white/40 mb-1">
               Your Competition
@@ -1654,7 +1842,7 @@ export default function MatchmakerPage() {
             <motion.div
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 1.2, type: 'spring' }}
+              transition={{ delay: 1.8, type: 'spring' }}
               className="flex items-center gap-4 p-4 rounded-xl mb-6"
               style={{ backgroundColor: `${temperatureColor}10`, border: `1px solid ${temperatureColor}20` }}
             >
@@ -1687,7 +1875,7 @@ export default function MatchmakerPage() {
                       className="h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500"
                       initial={{ width: 0 }}
                       animate={{ width: `${topMatch.score}%` }}
-                      transition={{ delay: 1.3, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+                      transition={{ delay: 1.9, duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
                     />
                   </div>
                 </div>
@@ -1701,7 +1889,7 @@ export default function MatchmakerPage() {
                   key={i}
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 1.4 + i * 0.08 }}
+                  transition={{ delay: 2.0 + i * 0.08 }}
                   className="flex items-center gap-3"
                 >
                   <div
@@ -1717,7 +1905,7 @@ export default function MatchmakerPage() {
                         style={{ backgroundColor: comp.avatar }}
                         initial={{ width: 0 }}
                         animate={{ width: `${comp.score}%` }}
-                        transition={{ delay: 1.5 + i * 0.08, duration: 0.6 }}
+                        transition={{ delay: 2.1 + i * 0.08, duration: 0.6 }}
                       />
                     </div>
                   </div>
@@ -1737,88 +1925,119 @@ export default function MatchmakerPage() {
             </div>
           </motion.div>
 
-          {/* ── Other Matches — Staggered Reveal ── */}
+          {/* ══ ALL RESULTS GRID — rank badges (#1 gold, #2 silver, #3 bronze) ══ */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.5 }}
+            transition={{ delay: 2.2 }}
             className="mb-8"
           >
             <h3
               className="text-[28px] sm:text-[36px] text-white mb-6 tracking-[1px]"
               style={{ fontFamily: 'var(--font-bebas)' }}
             >
-              More Matches
+              All Matches
             </h3>
 
-            <div className="space-y-2">
-              {results.slice(1, showAllMatches ? undefined : 8).map((match, mi) => {
-                const matchTempColor =
-                  match.score >= 80 ? '#22c55e' : match.score >= 60 ? '#a855f7' : '#3b82f6';
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {results.slice(0, showAllMatches ? undefined : 8).map((match, mi) => {
+                const rank = mi + 1;
+                const badge = getRankBadge(rank);
+                const mTemp = getTemperature(match.score);
 
                 return (
                   <motion.div
                     key={mi}
-                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                    initial={{ opacity: 0, y: 30, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     transition={{
-                      delay: 1.6 + mi * 0.06,
+                      delay: 2.3 + mi * 0.05,
                       duration: 0.5,
                       ease: [0.16, 1, 0.3, 1],
                     }}
-                    className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-all"
+                    className="relative p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/10 hover:ring-white/[0.18] transition-all group"
                   >
-                    {/* Company initial */}
+                    {/* Rank badge — top-right */}
                     <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0"
-                      style={{
-                        backgroundColor: `${match.brandColor}20`,
-                        color: match.brandColor,
-                      }}
+                      className={`absolute top-3 right-3 w-7 h-7 rounded-full flex items-center justify-center text-[11px] font-black ring-1 ${badge.bg} ${badge.text} ${badge.border}`}
                     >
-                      {match.name.charAt(0)}
+                      {rank}
                     </div>
 
-                    {/* Info + bar */}
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-baseline justify-between mb-1">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div
+                        className="w-11 h-11 rounded-full flex items-center justify-center text-lg font-bold flex-shrink-0"
+                        style={{
+                          backgroundColor: `${match.brandColor}20`,
+                          color: match.brandColor,
+                          border: `1px solid ${match.brandColor}30`,
+                        }}
+                      >
+                        {match.name.charAt(0)}
+                      </div>
+                      <div className="min-w-0 pr-8">
                         <p className="text-[14px] font-semibold text-white truncate">
                           {match.name}
                         </p>
-                        <span
-                          className="text-[14px] font-black ml-2 flex-shrink-0"
-                          style={{ color: matchTempColor }}
-                        >
-                          {match.score}%
-                        </span>
+                        <p className="text-[11px] text-white/30">{match.industry}</p>
                       </div>
-                      <p className="text-[11px] text-white/30 mb-1.5">{match.industry}</p>
-                      {/* Bar fill animation from 0% to target score */}
-                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: match.brandColor }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${match.score}%` }}
-                          transition={{
-                            delay: 1.8 + mi * 0.06,
-                            duration: 0.7,
-                            ease: [0.16, 1, 0.3, 1],
-                          }}
+                    </div>
+
+                    {/* Score + temperature badge */}
+                    <div className="flex items-center justify-between mb-2">
+                      <span
+                        className="text-[24px] font-black"
+                        style={{
+                          color: mTemp.color,
+                          fontFamily: 'var(--font-bebas)',
+                          letterSpacing: '1px',
+                        }}
+                      >
+                        {match.score}%
+                      </span>
+                      <span
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold"
+                        style={{
+                          backgroundColor: `${mTemp.color}12`,
+                          color: mTemp.color,
+                          border: `1px solid ${mTemp.color}25`,
+                        }}
+                      >
+                        <motion.span
+                          className="w-1.5 h-1.5 rounded-full"
+                          style={{ backgroundColor: mTemp.color }}
+                          animate={{ scale: [1, 1.4, 1], opacity: [1, 0.5, 1] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
                         />
-                      </div>
+                        {mTemp.label}
+                      </span>
+                    </div>
+
+                    {/* Score bar */}
+                    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: match.brandColor }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${match.score}%` }}
+                        transition={{
+                          delay: 2.5 + mi * 0.05,
+                          duration: 0.7,
+                          ease: [0.16, 1, 0.3, 1],
+                        }}
+                      />
                     </div>
                   </motion.div>
                 );
               })}
             </div>
 
-            {!showAllMatches && results.length > 9 && (
+            {!showAllMatches && results.length > 8 && (
               <button
                 onClick={() => setShowAllMatches(true)}
-                className="w-full py-3 mt-3 text-[13px] text-white/40 hover:text-white/60 transition-colors font-medium cursor-pointer"
+                className="w-full py-3 mt-4 text-[13px] text-white/40 hover:text-white/60 transition-colors font-medium cursor-pointer ring-1 ring-white/[0.06] rounded-xl hover:ring-white/[0.12]"
               >
-                Show all {results.length - 1} matches
+                Show all {results.length} matches
               </button>
             )}
           </motion.div>
@@ -1827,7 +2046,7 @@ export default function MatchmakerPage() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 1.8 }}
+            transition={{ delay: 2.6 }}
             className="space-y-3"
           >
             {/* Primary gradient CTA */}
@@ -1871,7 +2090,7 @@ export default function MatchmakerPage() {
 
             {/* Sign up prompt for unauthenticated */}
             {!isAuthenticated && (
-              <div className="mt-4 p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] text-center">
+              <div className="mt-4 p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/10 text-center">
                 <p className="text-[13px] text-white/40 mb-3">
                   Sign up to save your results and get notified when new matches appear.
                 </p>

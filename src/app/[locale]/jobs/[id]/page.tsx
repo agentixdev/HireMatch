@@ -78,7 +78,7 @@ export default async function JobDetailPage({
   // Increment view count (fire-and-forget)
   supabase.from('jobs').update({ views_count: job.views_count + 1 }).eq('id', id).then(() => {}, () => {});
 
-  // Fetch similar jobs (same industry or overlapping skills, max 4)
+  // Fetch similar jobs (same industry or same company, max 4)
   const { data: similarRaw } = await supabase
     .from('jobs')
     .select('*, recruiter:recruiters(company_name, company_logo_url)')
@@ -95,7 +95,7 @@ export default async function JobDetailPage({
     };
   }) as (Job & { recruiter?: Pick<Recruiter, 'company_name' | 'company_logo_url'> })[];
 
-  // Build structured data
+  // Build structured data (JobPosting schema)
   const jobPostingLd = {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',

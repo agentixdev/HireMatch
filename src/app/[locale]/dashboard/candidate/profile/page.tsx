@@ -6,7 +6,7 @@ import { createClient } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
 import AvatarUpload from '@/components/AvatarUpload';
 import { motion, AnimatePresence } from 'framer-motion';
-import type { Candidate, CountryCode } from '@/types';
+import type { Candidate, CountryCode, Education, WorkExperience } from '@/types';
 
 /* ─── Constants ─── */
 
@@ -200,6 +200,15 @@ export default function EditProfilePage() {
   const [availableFrom, setAvailableFrom] = useState('');
   const [openToRelocation, setOpenToRelocation] = useState(false);
 
+  // CV-parsed fields
+  const [experienceYears, setExperienceYears] = useState(0);
+  const [education, setEducation] = useState<Education[]>([]);
+  const [workHistory, setWorkHistory] = useState<WorkExperience[]>([]);
+  const [certifications, setCertifications] = useState<string[]>([]);
+  const [languages, setLanguages] = useState<string[]>([]);
+  const [newCertification, setNewCertification] = useState('');
+  const [newLanguage, setNewLanguage] = useState('');
+
   // CV upload
   const [cvUrl, setCvUrl] = useState('');
   const [cvParsedAt, setCvParsedAt] = useState('');
@@ -241,6 +250,11 @@ export default function EditProfilePage() {
         if (p.headline) setHeadline(p.headline);
         if (p.bio) setBio(p.bio);
         if (p.skills?.length) setSkills(p.skills);
+        if (p.experience_years) setExperienceYears(p.experience_years);
+        if (p.education?.length) setEducation(p.education);
+        if (p.work_history?.length) setWorkHistory(p.work_history);
+        if (p.certifications?.length) setCertifications(p.certifications);
+        if (p.languages?.length) setLanguages(p.languages);
       }
       if (data.cv_url) setCvUrl(data.cv_url);
       if (data.photo_url && !photoUrl) setPhotoUrl(data.photo_url);
@@ -298,6 +312,11 @@ export default function EditProfilePage() {
       setNoticePeriod(raw.notice_period as string || '');
       setAvailableFrom(raw.available_from as string || '');
       setOpenToRelocation(raw.open_to_relocation as boolean || false);
+      setExperienceYears(c.experience_years || 0);
+      setEducation(c.education || []);
+      setWorkHistory(c.work_history || []);
+      setCertifications(c.certifications || []);
+      setLanguages(c.languages || []);
       setLoading(false);
     }
     load();
@@ -342,6 +361,11 @@ export default function EditProfilePage() {
         notice_period: noticePeriod || null,
         available_from: availableFrom || null,
         open_to_relocation: openToRelocation,
+        experience_years: experienceYears,
+        education,
+        work_history: workHistory,
+        certifications,
+        languages,
         match_tags: skills.map(s => s.toLowerCase()),
         updated_at: new Date().toISOString(),
       })
@@ -374,6 +398,11 @@ export default function EditProfilePage() {
     if (availableNow || noticePeriod) s += 5;
     if (salaryMin || salaryMax) s += 5;
     if (isPublic) s += 5;
+    if (experienceYears > 0) s += 5;
+    if (education.length > 0) s += 5;
+    if (workHistory.length > 0) s += 5;
+    if (certifications.length > 0) s += 3;
+    if (languages.length > 0) s += 2;
     return Math.min(s, 100);
   })();
 
@@ -630,6 +659,275 @@ export default function EditProfilePage() {
                       + {s}
                     </motion.button>
                   ))}
+                </div>
+              </div>
+            </div>
+          </ProfileSection>
+
+          {/* Section: Experience & Work History */}
+          <ProfileSection
+            title="Experience & Work History"
+            icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z" /></svg>}
+            description={`${experienceYears} years experience, ${workHistory.length} role${workHistory.length !== 1 ? 's' : ''}`}
+            temperature="warm"
+            badge={workHistory.length === 0 ? <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-yellow-500/15 text-yellow-400 rounded">Add roles</span> : undefined}
+          >
+            <div className="space-y-5">
+              {/* Experience years */}
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">Years of Experience</label>
+                <div className="flex items-center gap-3">
+                  <motion.button whileTap={{ scale: 0.9 }}
+                    onClick={() => setExperienceYears(Math.max(0, experienceYears - 1))}
+                    className="w-9 h-9 rounded-lg bg-white/5 ring-1 ring-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all text-lg font-bold">-</motion.button>
+                  <motion.span
+                    key={experienceYears}
+                    initial={{ scale: 1.3, color: '#60a5fa' }}
+                    animate={{ scale: 1, color: '#ffffff' }}
+                    transition={springTransition}
+                    className="text-2xl font-bold text-white w-12 text-center"
+                  >{experienceYears}</motion.span>
+                  <motion.button whileTap={{ scale: 0.9 }}
+                    onClick={() => setExperienceYears(experienceYears + 1)}
+                    className="w-9 h-9 rounded-lg bg-white/5 ring-1 ring-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-all text-lg font-bold">+</motion.button>
+                  <span className="text-xs text-white/40 ml-1">years</span>
+                </div>
+              </div>
+
+              {/* Work history entries */}
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-3 uppercase tracking-wider">Work History</label>
+                <div className="space-y-3">
+                  <AnimatePresence>
+                    {workHistory.map((entry, idx) => (
+                      <motion.div
+                        key={`work-${idx}`}
+                        layout
+                        initial={{ opacity: 0, x: idx % 2 === 0 ? -20 : 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={springTransition}
+                        className="p-4 bg-white/[0.03] rounded-lg ring-1 ring-white/[0.08] space-y-3"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Company</label>
+                              <input type="text" value={entry.company}
+                                onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], company: e.target.value }; setWorkHistory(n); }}
+                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Job Title</label>
+                              <input type="text" value={entry.title}
+                                onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], title: e.target.value }; setWorkHistory(n); }}
+                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                            </div>
+                          </div>
+                          <motion.button whileTap={{ scale: 0.9 }}
+                            onClick={() => setWorkHistory(workHistory.filter((_, i) => i !== idx))}
+                            className="ml-2 mt-4 p-1.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                          </motion.button>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Start Date</label>
+                            <input type="month" value={entry.start_date}
+                              onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], start_date: e.target.value }; setWorkHistory(n); }}
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">End Date</label>
+                            <input type="month" value={entry.end_date || ''} disabled={entry.is_current}
+                              onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], end_date: e.target.value }; setWorkHistory(n); }}
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all disabled:opacity-30" />
+                          </div>
+                          <div className="flex items-end pb-1">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                              <input type="checkbox" checked={entry.is_current}
+                                onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], is_current: e.target.checked, end_date: e.target.checked ? undefined : n[idx].end_date }; setWorkHistory(n); }}
+                                className="w-4 h-4 rounded bg-white/5 border-white/20 text-blue-500 focus:ring-blue-500/50" />
+                              <span className="text-xs text-white/50">Present</span>
+                            </label>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Description</label>
+                          <textarea value={entry.description || ''} rows={2}
+                            onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], description: e.target.value }; setWorkHistory(n); }}
+                            placeholder="Key achievements and responsibilities..."
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none resize-none transition-all" />
+                        </div>
+                        {/* Skills pills for this role */}
+                        {entry.skills?.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5">
+                            {entry.skills.map((sk) => (
+                              <span key={sk} className="px-2 py-0.5 text-[10px] bg-indigo-500/10 text-indigo-400 rounded-full ring-1 ring-indigo-500/20">{sk}</span>
+                            ))}
+                          </div>
+                        )}
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <motion.button whileTap={{ scale: 0.97 }}
+                  onClick={() => setWorkHistory([...workHistory, { company: '', title: '', start_date: '', is_current: false, skills: [] }])}
+                  className="mt-3 w-full py-2.5 text-sm text-blue-400 ring-1 ring-blue-500/20 rounded-lg hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                  Add Experience
+                </motion.button>
+              </div>
+            </div>
+          </ProfileSection>
+
+          {/* Section: Education */}
+          <ProfileSection
+            title="Education"
+            icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.26 10.147a60.436 60.436 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5" /></svg>}
+            description={`${education.length} degree${education.length !== 1 ? 's' : ''} added`}
+            temperature="cool"
+            badge={education.length === 0 ? <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider bg-yellow-500/15 text-yellow-400 rounded">Add education</span> : undefined}
+          >
+            <div className="space-y-3">
+              <AnimatePresence>
+                {education.map((entry, idx) => (
+                  <motion.div
+                    key={`edu-${idx}`}
+                    layout
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={springTransition}
+                    className="p-4 bg-white/[0.03] rounded-lg ring-1 ring-white/[0.08] space-y-3"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Institution</label>
+                          <input type="text" value={entry.institution}
+                            onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], institution: e.target.value }; setEducation(n); }}
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Degree</label>
+                          <input type="text" value={entry.degree}
+                            onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], degree: e.target.value }; setEducation(n); }}
+                            placeholder="BS, MS, PhD..."
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Field of Study</label>
+                          <input type="text" value={entry.field}
+                            onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], field: e.target.value }; setEducation(n); }}
+                            placeholder="Computer Science"
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                        </div>
+                      </div>
+                      <motion.button whileTap={{ scale: 0.9 }}
+                        onClick={() => setEducation(education.filter((_, i) => i !== idx))}
+                        className="ml-2 mt-4 p-1.5 text-red-400/60 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" /></svg>
+                      </motion.button>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Start Year</label>
+                        <input type="number" value={entry.start_year || ''}
+                          onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], start_year: parseInt(e.target.value) || 0 }; setEducation(n); }}
+                          placeholder="2018"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">End Year</label>
+                        <input type="number" value={entry.end_year || ''}
+                          onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], end_year: parseInt(e.target.value) || undefined }; setEducation(n); }}
+                          placeholder="2022"
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <motion.button whileTap={{ scale: 0.97 }}
+                onClick={() => setEducation([...education, { institution: '', degree: '', field: '', start_year: 0 }])}
+                className="w-full py-2.5 text-sm text-blue-400 ring-1 ring-blue-500/20 rounded-lg hover:bg-blue-500/5 transition-all flex items-center justify-center gap-2">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
+                Add Education
+              </motion.button>
+            </div>
+          </ProfileSection>
+
+          {/* Section: Certifications & Languages */}
+          <ProfileSection
+            title="Certifications & Languages"
+            icon={<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M10.5 21l5.25-11.25L21 21m-9-3h7.5M3 5.621a48.474 48.474 0 016-.371m0 0c1.12 0 2.233.038 3.334.114M9 5.25V3m3.334 2.364C11.176 10.658 7.69 15.08 3 17.502m9.334-12.138c.896.061 1.785.147 2.666.257m-4.589 8.495a18.023 18.023 0 01-3.827-5.802" /></svg>}
+            description={`${certifications.length} cert${certifications.length !== 1 ? 's' : ''}, ${languages.length} language${languages.length !== 1 ? 's' : ''}`}
+          >
+            <div className="space-y-5">
+              {/* Certifications */}
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">Certifications</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <AnimatePresence>
+                    {certifications.map((cert) => (
+                      <motion.span
+                        key={cert}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={springTransition}
+                        className="px-3 py-1.5 bg-amber-500/10 text-amber-400 text-sm rounded-full flex items-center gap-1.5 ring-1 ring-amber-500/20"
+                      >
+                        {cert}
+                        <button onClick={() => setCertifications(certifications.filter(c => c !== cert))}
+                          className="text-amber-500/60 hover:text-amber-300 transition-colors">&times;</button>
+                      </motion.span>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={newCertification} onChange={(e) => setNewCertification(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = newCertification.trim(); if (t && !certifications.includes(t)) { setCertifications([...certifications, t]); setNewCertification(''); } } }}
+                    placeholder="AWS Solutions Architect, PMP..."
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 text-sm focus:ring-2 focus:ring-amber-500/50 outline-none transition-all" />
+                  <motion.button whileTap={{ scale: 0.95 }}
+                    onClick={() => { const t = newCertification.trim(); if (t && !certifications.includes(t)) { setCertifications([...certifications, t]); setNewCertification(''); } }}
+                    className="px-4 py-2 bg-gradient-to-r from-amber-600 to-orange-600 text-white rounded-lg text-sm font-medium shadow-lg shadow-amber-500/20">Add</motion.button>
+                </div>
+              </div>
+
+              {/* Languages */}
+              <div>
+                <label className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">Languages</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  <AnimatePresence>
+                    {languages.map((lang) => (
+                      <motion.span
+                        key={lang}
+                        layout
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={{ opacity: 0, scale: 0.8 }}
+                        transition={springTransition}
+                        className="px-3 py-1.5 bg-emerald-500/10 text-emerald-400 text-sm rounded-full flex items-center gap-1.5 ring-1 ring-emerald-500/20"
+                      >
+                        {lang}
+                        <button onClick={() => setLanguages(languages.filter(l => l !== lang))}
+                          className="text-emerald-500/60 hover:text-emerald-300 transition-colors">&times;</button>
+                      </motion.span>
+                    ))}
+                  </AnimatePresence>
+                </div>
+                <div className="flex gap-2">
+                  <input type="text" value={newLanguage} onChange={(e) => setNewLanguage(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); const t = newLanguage.trim(); if (t && !languages.includes(t)) { setLanguages([...languages, t]); setNewLanguage(''); } } }}
+                    placeholder="English, Spanish, Mandarin..."
+                    className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 text-sm focus:ring-2 focus:ring-emerald-500/50 outline-none transition-all" />
+                  <motion.button whileTap={{ scale: 0.95 }}
+                    onClick={() => { const t = newLanguage.trim(); if (t && !languages.includes(t)) { setLanguages([...languages, t]); setNewLanguage(''); } }}
+                    className="px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-sm font-medium shadow-lg shadow-emerald-500/20">Add</motion.button>
                 </div>
               </div>
             </div>

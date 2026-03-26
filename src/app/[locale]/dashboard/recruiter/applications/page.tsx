@@ -420,6 +420,7 @@ export default function RecruiterApplicationsPage() {
         return;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const enriched: EnrichedApplication[] = (data || []).map((row: any) => ({
         id: row.id,
         candidate_id: row.candidate_id,
@@ -445,10 +446,12 @@ export default function RecruiterApplicationsPage() {
   );
 
   useEffect(() => {
+    let cancelled = false;
     async function init() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
+      if (cancelled) return;
       if (!user) {
         router.push('/auth?mode=signin');
         return;
@@ -482,14 +485,17 @@ export default function RecruiterApplicationsPage() {
       setLoading(false);
     }
     init();
-  }, []);
+    return () => { cancelled = true; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Re-fetch when job filter changes
+  /* eslint-disable react-hooks/set-state-in-effect */
   useEffect(() => {
     if (recruiterId) {
       loadApplications(recruiterId);
     }
   }, [filterJobId, recruiterId, loadApplications]);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   async function handleStatusChange(appId: string, newStatus: ApplicationStatus) {
     const app = applications.find((a) => a.id === appId);

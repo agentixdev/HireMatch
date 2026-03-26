@@ -100,7 +100,7 @@ function ConfettiBurst({ active }: { active: boolean }) {
   const particles = Array.from({ length: 12 }, (_, i) => {
     const angle = (i / 12) * 360;
     const rad = (angle * Math.PI) / 180;
-    const dist = 18 + Math.random() * 12;
+    const dist = 18 + ((i * 7 + 3) % 12);
     const x = Math.cos(rad) * dist;
     const y = Math.sin(rad) * dist;
     const colors = ['#22c55e', '#4ade80', '#86efac', '#a3e635', '#34d399'];

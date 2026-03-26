@@ -1,26 +1,26 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, useScroll, useTransform, useSpring, useInView } from 'framer-motion';
+import { motion, AnimatePresence, useSpring, useInView } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
-import type { Job, Recruiter, Candidate, MatchBreakdown } from '@/types';
+import type { Job, Recruiter, MatchBreakdown } from '@/types';
 import confetti from 'canvas-confetti';
 
 /* ================================================================
    INDUSTRY THEMING — maps industry to accent colors
    ================================================================ */
 const industryColors: Record<string, { accent: string; bg: string; border: string; ring: string; hex: string }> = {
-  Technology:    { accent: 'text-blue-400',   bg: 'bg-blue-500/10',   border: 'border-blue-500/50',   ring: 'ring-blue-500/30',   hex: '#3b82f6' },
+  Technology:    { accent: 'text-blue-400',    bg: 'bg-blue-500/10',    border: 'border-blue-500/50',    ring: 'ring-blue-500/30',    hex: '#3b82f6' },
   Finance:       { accent: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/50', ring: 'ring-emerald-500/30', hex: '#10b981' },
-  Healthcare:    { accent: 'text-red-400',    bg: 'bg-red-500/10',    border: 'border-red-500/50',    ring: 'ring-red-500/30',    hex: '#ef4444' },
-  Education:     { accent: 'text-amber-400',  bg: 'bg-amber-500/10',  border: 'border-amber-500/50',  ring: 'ring-amber-500/30',  hex: '#f59e0b' },
-  Engineering:   { accent: 'text-orange-400', bg: 'bg-orange-500/10', border: 'border-orange-500/50', ring: 'ring-orange-500/30', hex: '#f97316' },
-  Marketing:     { accent: 'text-pink-400',   bg: 'bg-pink-500/10',   border: 'border-pink-500/50',   ring: 'ring-pink-500/30',   hex: '#ec4899' },
-  Design:        { accent: 'text-purple-400', bg: 'bg-purple-500/10', border: 'border-purple-500/50', ring: 'ring-purple-500/30', hex: '#a855f7' },
-  Sales:         { accent: 'text-cyan-400',   bg: 'bg-cyan-500/10',   border: 'border-cyan-500/50',   ring: 'ring-cyan-500/30',   hex: '#06b6d4' },
-  Legal:         { accent: 'text-slate-400',  bg: 'bg-slate-500/10',  border: 'border-slate-500/50',  ring: 'ring-slate-500/30',  hex: '#64748b' },
-  default:       { accent: 'text-indigo-400', bg: 'bg-indigo-500/10', border: 'border-indigo-500/50', ring: 'ring-indigo-500/30', hex: '#6366f1' },
+  Healthcare:    { accent: 'text-red-400',     bg: 'bg-red-500/10',     border: 'border-red-500/50',     ring: 'ring-red-500/30',     hex: '#ef4444' },
+  Education:     { accent: 'text-amber-400',   bg: 'bg-amber-500/10',   border: 'border-amber-500/50',   ring: 'ring-amber-500/30',   hex: '#f59e0b' },
+  Engineering:   { accent: 'text-orange-400',  bg: 'bg-orange-500/10',  border: 'border-orange-500/50',  ring: 'ring-orange-500/30',  hex: '#f97316' },
+  Marketing:     { accent: 'text-pink-400',    bg: 'bg-pink-500/10',    border: 'border-pink-500/50',    ring: 'ring-pink-500/30',    hex: '#ec4899' },
+  Design:        { accent: 'text-purple-400',  bg: 'bg-purple-500/10',  border: 'border-purple-500/50',  ring: 'ring-purple-500/30',  hex: '#a855f7' },
+  Sales:         { accent: 'text-cyan-400',    bg: 'bg-cyan-500/10',    border: 'border-cyan-500/50',    ring: 'ring-cyan-500/30',    hex: '#06b6d4' },
+  Legal:         { accent: 'text-slate-400',   bg: 'bg-slate-500/10',   border: 'border-slate-500/50',   ring: 'ring-slate-500/30',   hex: '#64748b' },
+  default:       { accent: 'text-indigo-400',  bg: 'bg-indigo-500/10',  border: 'border-indigo-500/50',  ring: 'ring-indigo-500/30',  hex: '#6366f1' },
 };
 
 function getIndustryTheme(industry: string) {
@@ -45,21 +45,21 @@ const jobTypeBadge: Record<string, { bg: string; text: string; label: string }> 
 };
 
 /* ================================================================
-   FRAMER MOTION VARIANTS
+   FRAMER MOTION VARIANTS (WHB-clone)
    ================================================================ */
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
 const fadeOnly = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.35, ease: 'easeOut' as const } },
+  show: { opacity: 1, transition: { duration: 0.3, ease: 'easeOut' as const } },
 };
 
 const stagger = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { staggerChildren: 0.08, delayChildren: 0.15 } },
+  show: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.1 } },
 };
 
 const scaleIn = {
@@ -95,7 +95,7 @@ function AnimatedNumber({ value, prefix = '', suffix = '', className }: {
 }
 
 /* ================================================================
-   STAT CIRCLE — animated scale entrance
+   STAT CIRCLE — animated scale entrance (WHB clone)
    ================================================================ */
 function StatCircle({ label, children, delay = 0 }: {
   label: string;
@@ -124,17 +124,18 @@ function StatCircle({ label, children, delay = 0 }: {
 }
 
 /* ================================================================
-   REQUIREMENT CARD — slides in from alternating sides
+   REQUIREMENT CARD — slides in from alternating sides (WHB PolicyCard clone)
    ================================================================ */
-function RequirementCard({ text, index, variant = 'required' }: {
+function RequirementCard({ text, index, variant = 'required', mobile }: {
   text: string;
   index: number;
   variant?: 'required' | 'nice';
+  mobile?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isInView = useInView(ref, { once: true, margin: '-30px' });
   const fromLeft = index % 2 === 0;
-  const offset = 24;
+  const offset = mobile ? 16 : 24;
 
   const colors = variant === 'required'
     ? 'bg-white/[0.04] border-l-2 border-l-blue-500/60 border border-white/[0.06]'
@@ -156,10 +157,10 @@ function RequirementCard({ text, index, variant = 'required' }: {
       initial={{ opacity: 0, x: fromLeft ? -offset : offset }}
       animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: fromLeft ? -offset : offset }}
       transition={{ duration: 0.4, delay: index * 0.06, ease: 'easeOut' }}
-      className={`flex gap-3 items-start p-3.5 rounded-lg ${colors}`}
+      className={`flex gap-3 items-start ${mobile ? 'p-3' : 'p-3.5'} rounded-lg ${colors}`}
     >
       {icon}
-      <span className="text-[14px] leading-relaxed text-white/75">{text}</span>
+      <span className={`leading-relaxed text-white/75 ${mobile ? 'text-[13px]' : 'text-[14px]'}`}>{text}</span>
     </motion.div>
   );
 }
@@ -169,7 +170,7 @@ function RequirementCard({ text, index, variant = 'required' }: {
    ================================================================ */
 function SkillTag({ skill, hasSkill, index }: {
   skill: string;
-  hasSkill: boolean | null; // null = not logged in as candidate
+  hasSkill: boolean | null;
   index: number;
 }) {
   return (
@@ -264,7 +265,9 @@ function SimilarJobCard({ job, locale }: { job: Job & { recruiter?: Pick<Recruit
     <motion.a
       href={`/${locale}/jobs/${job.id}`}
       variants={fadeUp}
-      className="block p-4 rounded-xl bg-white/[0.03] border border-white/[0.06] hover:bg-white/[0.06] hover:border-white/[0.12] transition-all group"
+      className="block p-4 rounded-xl bg-[#0F172A] ring-1 ring-white/10 hover:bg-white/[0.06] hover:ring-white/20 transition-all group"
+      whileHover={{ y: -2 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
     >
       <div className="flex items-start gap-3">
         {job.recruiter?.company_logo_url ? (
@@ -294,7 +297,188 @@ function SimilarJobCard({ job, locale }: { job: Job & { recruiter?: Pick<Recruit
 }
 
 /* ================================================================
-   MAIN CLIENT COMPONENT
+   DETAIL APPLY BUTTON — WHB VoteButton "detail" variant wrapper
+   ================================================================ */
+function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
+  jobId: string;
+  recruiterId: string;
+  candidateId: string | null;
+  theme: ReturnType<typeof getIndustryTheme>;
+}) {
+  const router = useRouter();
+  const supabase = createClient();
+  const [applied, setApplied] = useState(false);
+  const [applying, setApplying] = useState(false);
+  const [applySuccess, setApplySuccess] = useState(false);
+
+  // Check existing application
+  useEffect(() => {
+    if (!candidateId) return;
+    async function check() {
+      const { data: app } = await supabase
+        .from('applications')
+        .select('id')
+        .eq('candidate_id', candidateId!)
+        .eq('job_id', jobId)
+        .single();
+      if (app) setApplied(true);
+    }
+    check();
+  }, [candidateId, jobId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleApply = useCallback(async () => {
+    if (!candidateId) {
+      router.push('/auth?mode=signin');
+      return;
+    }
+
+    setApplying(true);
+    const { error } = await supabase
+      .from('applications')
+      .insert({
+        candidate_id: candidateId,
+        job_id: jobId,
+        recruiter_id: recruiterId,
+        status: 'applied',
+        status_history: [{ status: 'applied', changed_at: new Date().toISOString(), changed_by: candidateId }],
+      });
+
+    if (!error) {
+      setApplied(true);
+      setApplySuccess(true);
+
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.7 },
+        colors: [theme.hex, '#ffffff', '#6366f1'],
+      });
+
+      supabase.rpc('increment_applications', { job_id: jobId }).then(() => {}, () => {});
+      setTimeout(() => setApplySuccess(false), 3000);
+    }
+    setApplying(false);
+  }, [candidateId, jobId, recruiterId, router, supabase, theme.hex]);
+
+  return (
+    <motion.button
+      onClick={handleApply}
+      disabled={applied || applying}
+      whileHover={!applied ? { scale: 1.015 } : undefined}
+      whileTap={!applied ? { scale: 0.985 } : undefined}
+      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+      className={`w-full py-4 lg:py-5 rounded-xl font-semibold text-lg lg:text-xl transition-all industry-glow ${
+        applied
+          ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
+          : applying
+          ? 'bg-white/10 text-white/50 cursor-wait'
+          : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-indigo-500/25 cursor-pointer'
+      }`}
+    >
+      <AnimatePresence mode="wait">
+        {applied ? (
+          <motion.span
+            key="applied"
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="flex items-center justify-center gap-2"
+          >
+            <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            {applySuccess ? 'Application Sent!' : 'Applied'}
+          </motion.span>
+        ) : applying ? (
+          <motion.span key="applying" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            Applying...
+          </motion.span>
+        ) : (
+          <motion.span key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            {candidateId ? 'Apply Now' : 'Sign In to Apply'}
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
+  );
+}
+
+/* ================================================================
+   SHARE MENU — LinkedIn, Email, Copy Link (WHB clone)
+   ================================================================ */
+function ShareMenu({ job, recruiter, locale }: { job: Job; recruiter: Recruiter; locale: string }) {
+  const [shareOpen, setShareOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const jobUrl = `https://www.hirematch.com/${locale}/jobs/${job.id}`;
+  const shareBlurb = `${job.title} at ${recruiter.company_name} — ${job.industry} | ${job.work_mode}`;
+
+  const linkedinShareUrl = `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(jobUrl)}`;
+  const emailSubject = `Check out this role: ${job.title} at ${recruiter.company_name}`;
+  const emailBody = `I found this job listing on HireMatch and thought you'd be interested:\n\n${job.title} at ${recruiter.company_name}\n${job.industry} | ${job.work_mode} | ${job.city || 'Remote'}\n\n${jobUrl}`;
+  const emailShareUrl = `mailto:?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`;
+  const twitterShareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(shareBlurb)}&url=${encodeURIComponent(jobUrl)}`;
+
+  const handleCopyLink = async () => {
+    await navigator.clipboard.writeText(jobUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setShareOpen(!shareOpen)}
+        className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 cursor-pointer industry-glow"
+      >
+        <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+        </svg>
+        <span className="text-[12px] font-medium text-white/45">Share</span>
+      </button>
+
+      <AnimatePresence>
+        {shareOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="absolute bottom-full left-0 right-0 mb-2 rounded-xl p-1.5 ring-1 ring-white/10 z-50"
+            role="menu"
+            aria-label="Share options"
+            style={{ background: 'rgba(23,23,23,0.95)', backdropFilter: 'blur(20px)' }}
+          >
+            <a href={linkedinShareUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
+              <svg className="w-4 h-4 text-blue-400" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" /></svg>
+              <span className="text-[12px] text-white/70">LinkedIn</span>
+            </a>
+            <a href={twitterShareUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
+              <svg className="w-4 h-4 text-sky-400" viewBox="0 0 24 24" fill="currentColor"><path d="M22.46 6c-.77.35-1.6.58-2.46.69.88-.53 1.56-1.37 1.88-2.38-.83.5-1.75.85-2.72 1.05C18.37 4.5 17.26 4 16 4c-2.35 0-4.27 1.92-4.27 4.29 0 .34.04.67.11.98C8.28 9.09 5.11 7.38 3 4.79c-.37.63-.58 1.37-.58 2.15 0 1.49.75 2.81 1.91 3.56-.71 0-1.37-.2-1.95-.5v.03c0 2.08 1.48 3.82 3.44 4.21a4.22 4.22 0 0 1-1.93.07 4.28 4.28 0 0 0 4 2.98 8.521 8.521 0 0 1-5.33 1.84c-.34 0-.68-.02-1.02-.06C3.44 20.29 5.7 21 8.12 21 16 21 20.33 14.46 20.33 8.79c0-.19 0-.37-.01-.56.84-.6 1.56-1.36 2.14-2.23z" /></svg>
+              <span className="text-[12px] text-white/70">Post on X</span>
+            </a>
+            <div className="h-px bg-white/5 mx-2 my-1" />
+            <a href={emailShareUrl} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors">
+              <svg className="w-4 h-4 text-amber-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              </svg>
+              <span className="text-[12px] text-white/70">Email</span>
+            </a>
+            <div className="h-px bg-white/5 mx-2 my-1" />
+            <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+              <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              <span className="text-[12px] text-white/70">{copied ? 'Copied!' : 'Copy link'}</span>
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ================================================================
+   MAIN CLIENT COMPONENT — WHB CANDIDATE DETAIL CLONE LAYOUT
    ================================================================ */
 interface JobDetailClientProps {
   job: Job;
@@ -304,18 +488,14 @@ interface JobDetailClientProps {
 }
 
 export default function JobDetailClient({ job, recruiter, similarJobs, locale }: JobDetailClientProps) {
-  const router = useRouter();
   const supabase = createClient();
   const theme = getIndustryTheme(recruiter.industry || job.industry);
 
-  // Candidate state (for match score + apply)
+  // Candidate state (for skill matching + apply)
   const [candidateId, setCandidateId] = useState<string | null>(null);
   const [candidateSkills, setCandidateSkills] = useState<string[]>([]);
   const [matchScore, setMatchScore] = useState<number | null>(null);
   const [matchBreakdown, setMatchBreakdown] = useState<MatchBreakdown | null>(null);
-  const [applied, setApplied] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const [applySuccess, setApplySuccess] = useState(false);
 
   // Check if user is a logged-in candidate
   useEffect(() => {
@@ -332,19 +512,6 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
       if (cand) {
         setCandidateId(cand.id);
         setCandidateSkills(cand.skills || []);
-
-        // Check existing application
-        const { data: app } = await supabase
-          .from('applications')
-          .select('id, match_score, match_explanation')
-          .eq('candidate_id', cand.id)
-          .eq('job_id', job.id)
-          .single();
-
-        if (app) {
-          setApplied(true);
-          if (app.match_score) setMatchScore(app.match_score);
-        }
 
         // Check for existing match
         const { data: match } = await supabase
@@ -363,46 +530,9 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
     check();
   }, [job.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Apply handler with confetti
-  const handleApply = useCallback(async () => {
-    if (!candidateId) {
-      router.push(`/${locale}/auth?mode=signin`);
-      return;
-    }
-
-    setApplying(true);
-    const { error } = await supabase
-      .from('applications')
-      .insert({
-        candidate_id: candidateId,
-        job_id: job.id,
-        recruiter_id: job.recruiter_id,
-        status: 'applied',
-        status_history: [{ status: 'applied', changed_at: new Date().toISOString(), changed_by: candidateId }],
-      });
-
-    if (!error) {
-      setApplied(true);
-      setApplySuccess(true);
-
-      // Fire confetti
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.7 },
-        colors: [theme.hex, '#ffffff', '#6366f1'],
-      });
-
-      // Increment application count (fire-and-forget)
-      supabase.rpc('increment_applications', { job_id: job.id }).then(() => {}, () => {});
-
-      setTimeout(() => setApplySuccess(false), 3000);
-    }
-    setApplying(false);
-  }, [candidateId, job.id, job.recruiter_id, locale, router, supabase, theme.hex]);
-
   // Computed values
-  const daysPosted = Math.max(1, Math.floor((Date.now() - new Date(job.created_at).getTime()) / 86400000));
+  const [now] = useState(() => Date.now());
+  const daysPosted = Math.max(1, Math.floor((now - new Date(job.created_at).getTime()) / 86400000));
   const formatSalary = (n: number) => {
     if (n >= 1000) return `${Math.round(n / 1000)}k`;
     return n.toString();
@@ -415,6 +545,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
     : null;
   const wmBadge = workModeBadge[job.work_mode] || workModeBadge.onsite;
   const jtBadge = jobTypeBadge[job.job_type] || jobTypeBadge['full-time'];
+  const candidateSkillsLower = candidateSkills.map(s => s.toLowerCase());
 
   // Match temperature background
   const tempBg = matchScore != null
@@ -424,20 +555,15 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
       : 'from-red-900/10 via-transparent to-transparent'
     : '';
 
-  // Hero parallax
-  const heroRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress: heroScroll } = useScroll({ target: heroRef, offset: ['start end', 'end start'] });
-  const heroY = useTransform(heroScroll, [0, 1], ['-3%', '3%']);
-
-  // Skill matching
-  const candidateSkillsLower = candidateSkills.map(s => s.toLowerCase());
+  // Suppress unused-var warnings for variants used in JSX
+  void fadeUp;
 
   return (
     <div
       className="min-h-screen"
       style={{ '--industry-color': theme.hex, '--industry-glow': `${theme.hex}40` } as React.CSSProperties}
     >
-      {/* Shimmer animation */}
+      {/* Shimmer + glow CSS */}
       <style>{`
         @keyframes title-shimmer {
           0% { background-position: -200% center; }
@@ -451,100 +577,113 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
           -webkit-text-fill-color: transparent;
           animation: title-shimmer 4s ease-in-out infinite;
         }
+        .industry-glow {
+          transition: box-shadow 0.3s ease;
+        }
         .industry-glow:hover {
           box-shadow: 0 0 20px var(--industry-glow), 0 0 40px color-mix(in srgb, var(--industry-color) 10%, transparent);
         }
       `}</style>
 
-      {/* ====== MOBILE LAYOUT ====== */}
+      {/* ================================================================
+         MOBILE LAYOUT (lg:hidden) — WHB-clone vertical stack
+         ================================================================ */}
       <div className="lg:hidden">
-        {/* Hero section with company logo */}
+        {/* Hero — company logo + title + meta pills */}
         <motion.div
-          ref={heroRef}
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.4 }}
           className={`relative pt-6 pb-8 px-5 bg-gradient-to-b ${tempBg || 'from-white/[0.02] via-transparent to-transparent'}`}
         >
-          <motion.div style={{ y: heroY }} className="relative z-10">
-            {/* Company logo + industry badge */}
-            <div className="flex items-start gap-4 mb-4">
-              {recruiter.company_logo_url ? (
-                <motion.img
-                  src={recruiter.company_logo_url}
-                  alt={recruiter.company_name}
-                  className="w-16 h-16 rounded-xl object-cover ring-2 ring-white/10"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                />
-              ) : (
-                <motion.div
-                  className="w-16 h-16 rounded-xl bg-white/[0.06] flex items-center justify-center text-2xl font-bold text-white/30 ring-2 ring-white/10"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ type: 'spring', stiffness: 200, damping: 15 }}
-                >
-                  {recruiter.company_name?.charAt(0)}
-                </motion.div>
-              )}
-              <div className="flex-1 min-w-0">
-                <p className="text-sm text-white/60 truncate">{recruiter.company_name}</p>
-                <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <span className={`px-2.5 py-0.5 rounded-full ${theme.bg} border ${theme.border} ${theme.accent} text-[10px] font-bold uppercase tracking-wide`}>
-                    {recruiter.industry || job.industry}
-                  </span>
-                  {recruiter.company_size && (
-                    <span className="text-[11px] text-white/40">{recruiter.company_size} employees</span>
-                  )}
-                </div>
+          {/* Company logo + industry badge */}
+          <div className="flex items-start gap-4 mb-4">
+            {recruiter.company_logo_url ? (
+              <motion.img
+                src={recruiter.company_logo_url}
+                alt={recruiter.company_name}
+                className="w-16 h-16 rounded-xl object-cover ring-2 ring-white/10"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              />
+            ) : (
+              <motion.div
+                className="w-16 h-16 rounded-xl bg-white/[0.06] flex items-center justify-center text-2xl font-bold text-white/30 ring-2 ring-white/10"
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                transition={{ type: 'spring', stiffness: 200, damping: 15 }}
+              >
+                {recruiter.company_name?.charAt(0)}
+              </motion.div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white/60 truncate">{recruiter.company_name}</p>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <span className={`px-2.5 py-0.5 rounded-full ${theme.bg} border ${theme.border} ${theme.accent} text-[10px] font-bold uppercase tracking-wide`}>
+                  {recruiter.industry || job.industry}
+                </span>
+                {recruiter.company_size && (
+                  <span className="text-[11px] text-white/40">{recruiter.company_size} employees</span>
+                )}
               </div>
             </div>
+          </div>
 
-            {/* Job title */}
-            <motion.h1
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15, duration: 0.4 }}
-              className="text-[26px] font-bold tracking-tight leading-tight title-shimmer"
-            >
-              {job.title}
-            </motion.h1>
+          {/* Job title — shimmer */}
+          <motion.h1
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.4 }}
+            className="text-[26px] font-bold tracking-tight leading-tight title-shimmer"
+          >
+            {job.title}
+          </motion.h1>
 
-            {/* Quick facts badges */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.25 }}
-              className="flex flex-wrap gap-2 mt-3"
-            >
-              <span className={`px-2.5 py-1 rounded-full ${wmBadge.bg} ${wmBadge.text} text-[11px] font-semibold`}>
-                {wmBadge.label}
+          {/* Meta pills row */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.25 }}
+            className="flex flex-wrap gap-2 mt-3"
+          >
+            <span className={`px-2.5 py-1 rounded-full ${wmBadge.bg} ${wmBadge.text} text-[11px] font-semibold`}>
+              {wmBadge.label}
+            </span>
+            <span className={`px-2.5 py-1 rounded-full ${jtBadge.bg} ${jtBadge.text} text-[11px] font-semibold`}>
+              {jtBadge.label}
+            </span>
+            {salaryLabel && (
+              <span className="px-2.5 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-[11px] font-semibold">
+                {salaryLabel}
               </span>
-              <span className={`px-2.5 py-1 rounded-full ${jtBadge.bg} ${jtBadge.text} text-[11px] font-semibold`}>
-                {jtBadge.label}
+            )}
+            {job.visa_sponsorship && (
+              <span className="px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-[11px] font-semibold">
+                Visa Sponsored
               </span>
-              {job.visa_sponsorship && (
-                <span className="px-2.5 py-1 rounded-full bg-green-500/15 text-green-400 text-[11px] font-semibold">
-                  Visa Sponsored
-                </span>
-              )}
-              {job.city && (
-                <span className="px-2.5 py-1 rounded-full bg-white/5 text-white/60 text-[11px]">
-                  {job.city}, {job.country.toUpperCase()}
-                </span>
-              )}
-            </motion.div>
+            )}
+            {expLabel && (
+              <span className="px-2.5 py-1 rounded-full bg-blue-500/15 text-blue-400 text-[11px] font-semibold">
+                {expLabel} experience
+              </span>
+            )}
+            {job.city && (
+              <span className="px-2.5 py-1 rounded-full bg-white/5 text-white/60 text-[11px]">
+                {job.city}, {job.country.toUpperCase()}
+              </span>
+            )}
           </motion.div>
         </motion.div>
 
-        {/* Stats row */}
+        {/* Mobile body — stagger children */}
         <motion.div
-          className="px-5 pb-6"
+          className="px-5 pb-8"
           variants={stagger}
           initial="hidden"
           animate="show"
         >
+          {/* Stats row */}
           <motion.div variants={fadeOnly} className="flex items-center justify-around mb-6">
             {salaryLabel && (
               <StatCircle label="Salary" delay={0}>
@@ -553,11 +692,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
             )}
             {expLabel && (
               <StatCircle label="Experience" delay={0.1}>
-                <AnimatedNumber
-                  value={job.experience_min || 0}
-                  suffix={job.experience_max ? `-${job.experience_max} yr` : '+ yr'}
-                  className="text-sm font-bold text-blue-400"
-                />
+                <span className="text-sm font-bold text-blue-400">{expLabel}</span>
               </StatCircle>
             )}
             <StatCircle label="Applications" delay={0.2}>
@@ -577,7 +712,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6"
               >
-                <div className="p-4 rounded-xl bg-white/[0.03] border border-white/[0.08]">
+                <div className="p-4 rounded-xl bg-[#0F172A] ring-1 ring-white/10">
                   <p className="text-[10px] uppercase font-bold text-white/50 tracking-wider mb-3 text-center">
                     Your Match Score
                   </p>
@@ -586,7 +721,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
                     {matchBreakdown && (
                       <>
                         <MatchScoreRing score={matchBreakdown.skills_score} label="Skills" size={64} />
-                        <MatchScoreRing score={matchBreakdown.experience_score} label="Experience" size={64} />
+                        <MatchScoreRing score={matchBreakdown.experience_score} label="Exp" size={64} />
                         <MatchScoreRing score={matchBreakdown.culture_score} label="Culture" size={64} />
                       </>
                     )}
@@ -610,7 +745,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               <p className="text-[11px] uppercase font-semibold text-white/50 tracking-wider mb-3">Requirements</p>
               <div className="space-y-2">
                 {job.requirements.map((req, i) => (
-                  <RequirementCard key={i} text={req} index={i} variant="required" />
+                  <RequirementCard key={i} text={req} index={i} variant="required" mobile />
                 ))}
               </div>
             </motion.div>
@@ -622,7 +757,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               <p className="text-[11px] uppercase font-semibold text-white/50 tracking-wider mb-3">Nice to Have</p>
               <div className="space-y-2">
                 {job.nice_to_haves.map((nice, i) => (
-                  <RequirementCard key={i} text={nice} index={i} variant="nice" />
+                  <RequirementCard key={i} text={nice} index={i} variant="nice" mobile />
                 ))}
               </div>
             </motion.div>
@@ -651,52 +786,28 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
             </motion.div>
           )}
 
-          {/* Apply Button — full width, spring bounce */}
+          {/* Apply Button — full width, WHB VoteButton detail variant */}
           <motion.div variants={fadeOnly} className="mb-6">
-            <motion.button
-              onClick={handleApply}
-              disabled={applied || applying}
-              whileHover={!applied ? { scale: 1.02 } : undefined}
-              whileTap={!applied ? { scale: 0.97 } : undefined}
-              transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-              className={`w-full py-4 rounded-xl font-semibold text-lg transition-all industry-glow ${
-                applied
-                  ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
-                  : applying
-                  ? 'bg-white/10 text-white/50 cursor-wait'
-                  : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white hover:shadow-lg hover:shadow-indigo-500/20 cursor-pointer'
-              }`}
-            >
-              <AnimatePresence mode="wait">
-                {applied ? (
-                  <motion.span
-                    key="applied"
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="flex items-center justify-center gap-2"
-                  >
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    {applySuccess ? 'Application Sent!' : 'Applied'}
-                  </motion.span>
-                ) : applying ? (
-                  <motion.span key="applying" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    Applying...
-                  </motion.span>
-                ) : (
-                  <motion.span key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    {candidateId ? 'Apply Now' : 'Sign In to Apply'}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
+            <DetailApplyButton
+              jobId={job.id}
+              recruiterId={job.recruiter_id}
+              candidateId={candidateId}
+              theme={theme}
+            />
           </motion.div>
+
+          {/* Share menu */}
+          <motion.div variants={fadeOnly} className="mb-6">
+            <ShareMenu job={job} recruiter={recruiter} locale={locale} />
+          </motion.div>
+
+          {/* Divider */}
+          <motion.div variants={fadeOnly} className="h-px bg-white/5 my-5" />
 
           {/* Company info card (mobile) */}
           <motion.div
             variants={fadeOnly}
-            className="p-5 rounded-xl bg-white/[0.03] border border-white/[0.06] mb-6"
+            className="p-5 rounded-xl bg-[#0F172A] ring-1 ring-white/10 mb-6"
           >
             <h3 className="text-sm font-semibold text-white mb-3">About {recruiter.company_name}</h3>
             {recruiter.bio && (
@@ -743,76 +854,191 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               </div>
             )}
           </motion.div>
+
+          {/* Similar Jobs — mobile */}
+          {similarJobs.length > 0 && (
+            <motion.div variants={fadeOnly}>
+              <h2 className="text-base font-semibold text-white mb-4">Similar Jobs</h2>
+              <motion.div
+                className="grid grid-cols-1 sm:grid-cols-2 gap-3"
+                variants={stagger}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+              >
+                {similarJobs.map((sj) => (
+                  <SimilarJobCard key={sj.id} job={sj} locale={locale} />
+                ))}
+              </motion.div>
+            </motion.div>
+          )}
         </motion.div>
       </div>
 
-      {/* ====== DESKTOP LAYOUT ====== */}
-      <div className="hidden lg:block max-w-6xl mx-auto px-6 py-10">
-        {/* Header card */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className={`relative rounded-2xl p-8 bg-[#0F172A]/80 backdrop-blur-sm ring-1 ${theme.ring} overflow-hidden`}
-        >
-          {/* Temperature gradient overlay */}
-          {tempBg && <div className={`absolute inset-0 bg-gradient-to-br ${tempBg} pointer-events-none`} />}
+      {/* ================================================================
+         DESKTOP LAYOUT (hidden lg:block) — WHB-clone: Left Sidebar + Right Content
+         ================================================================ */}
+      <div className="hidden lg:block max-w-7xl mx-auto px-6 py-10">
+        <div className="flex gap-8 items-start">
 
-          <div className="relative z-10 flex items-start gap-6">
-            {/* Company logo */}
-            {recruiter.company_logo_url ? (
-              <motion.img
-                src={recruiter.company_logo_url}
-                alt={recruiter.company_name}
-                className={`w-20 h-20 rounded-xl object-cover ring-2 ${theme.ring}`}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-              />
-            ) : (
-              <motion.div
-                className={`w-20 h-20 rounded-xl bg-white/[0.06] flex items-center justify-center text-3xl font-bold text-white/30 ring-2 ${theme.ring}`}
-                initial={{ scale: 0.8, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
-              >
-                {recruiter.company_name?.charAt(0)}
-              </motion.div>
-            )}
+          {/* ── LEFT SIDEBAR (sticky, ~380px) ── */}
+          <motion.aside
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.5 }}
+            className="w-[380px] shrink-0 sticky top-6"
+          >
+            <div className="p-6 rounded-xl bg-[#0F172A] ring-1 ring-white/10 space-y-5">
+              {/* Company logo (large) */}
+              <div className="flex flex-col items-center text-center">
+                {recruiter.company_logo_url ? (
+                  <motion.img
+                    src={recruiter.company_logo_url}
+                    alt={recruiter.company_name}
+                    className={`w-24 h-24 rounded-2xl object-cover ring-2 ${theme.ring}`}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                  />
+                ) : (
+                  <motion.div
+                    className={`w-24 h-24 rounded-2xl bg-white/[0.06] flex items-center justify-center text-4xl font-bold text-white/30 ring-2 ${theme.ring}`}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.1 }}
+                  >
+                    {recruiter.company_name?.charAt(0)}
+                  </motion.div>
+                )}
 
-            <div className="flex-1 min-w-0">
-              {/* Company name + industry badge */}
-              <div className="flex items-center gap-3 mb-1">
-                <p className="text-lg text-white/60">{recruiter.company_name}</p>
-                <span className={`px-3 py-0.5 rounded-full ${theme.bg} border ${theme.border} ${theme.accent} text-[11px] font-bold uppercase tracking-wide`}>
+                {/* Company name + industry badge */}
+                <h2 className="text-lg font-semibold text-white mt-3">{recruiter.company_name}</h2>
+                <span className={`mt-1.5 px-3 py-0.5 rounded-full ${theme.bg} border ${theme.border} ${theme.accent} text-[11px] font-bold uppercase tracking-wide`}>
                   {recruiter.industry || job.industry}
                 </span>
-                {recruiter.company_size && (
-                  <span className="text-[12px] text-white/30">{recruiter.company_size} employees</span>
-                )}
               </div>
 
-              {/* Job title — shimmer */}
-              <h1 className="text-[36px] font-bold tracking-tight leading-tight title-shimmer mb-3">
+              {/* About Company quick facts */}
+              <div>
+                <p className="text-[10px] uppercase font-bold text-white/40 tracking-wider mb-3">About Company</p>
+                {recruiter.bio && (
+                  <p className="text-[13px] text-white/60 leading-relaxed mb-4">{recruiter.bio}</p>
+                )}
+                <div className="space-y-2.5 text-sm">
+                  {recruiter.company_size && (
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Size</span>
+                      <span className="text-white/80">{recruiter.company_size} employees</span>
+                    </div>
+                  )}
+                  {(recruiter.city || recruiter.country) && (
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Location</span>
+                      <span className="text-white/80">{recruiter.city ? `${recruiter.city}, ` : ''}{recruiter.country?.toUpperCase()}</span>
+                    </div>
+                  )}
+                  {recruiter.industry && (
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Industry</span>
+                      <span className={theme.accent}>{recruiter.industry}</span>
+                    </div>
+                  )}
+                  {recruiter.company_website && (
+                    <div className="flex justify-between">
+                      <span className="text-white/40">Website</span>
+                      <a href={recruiter.company_website} target="_blank" rel="noopener noreferrer" className={`${theme.accent} hover:underline`}>
+                        {recruiter.company_website.replace(/^https?:\/\//, '').replace(/\/$/, '')}
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Culture tags (purple pills) */}
+              {recruiter.culture_tags && recruiter.culture_tags.length > 0 && (
+                <div className="pt-4 border-t border-white/[0.06]">
+                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider">Culture</span>
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {recruiter.culture_tags.map((tag) => (
+                      <span key={tag} className="px-2.5 py-0.5 bg-purple-500/10 text-purple-400 text-[11px] font-medium rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Job metadata */}
+              <div className="pt-4 border-t border-white/[0.06] space-y-1.5 text-[12px]">
+                <div className="flex justify-between">
+                  <span className="text-white/40">Posted</span>
+                  <span className="text-white/60">{new Date(job.created_at).toLocaleDateString()}</span>
+                </div>
+                {job.expires_at && (
+                  <div className="flex justify-between">
+                    <span className="text-white/40">Expires</span>
+                    <span className="text-white/60">{new Date(job.expires_at).toLocaleDateString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-white/40">Views</span>
+                  <span className="text-white/60">{job.views_count.toLocaleString()}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-white/40">Applications</span>
+                  <span className="text-white/60">{job.applications_count.toLocaleString()}</span>
+                </div>
+              </div>
+
+              {/* Contact Recruiter button (placeholder) */}
+              <button className="w-full py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors text-sm font-medium text-white/50 cursor-pointer industry-glow">
+                Contact Recruiter
+              </button>
+            </div>
+          </motion.aside>
+
+          {/* ── RIGHT CONTENT (flex-1) ── */}
+          <div className="flex-1 min-w-0 space-y-6">
+            {/* Job title (h1, large bold white) */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5 }}
+            >
+              <h1 className="text-[36px] font-bold tracking-tight leading-tight title-shimmer mb-4">
                 {job.title}
               </h1>
 
-              {/* Quick facts */}
+              {/* Meta pills row */}
               <div className="flex flex-wrap gap-2.5">
+                {job.city && (
+                  <span className="px-3 py-1 rounded-full bg-white/5 text-white/60 text-[12px] flex items-center gap-1.5">
+                    <svg className="w-3.5 h-3.5 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    {job.city}, {job.country.toUpperCase()}
+                  </span>
+                )}
                 <span className={`px-3 py-1 rounded-full ${wmBadge.bg} ${wmBadge.text} text-[12px] font-semibold`}>
                   {wmBadge.label}
                 </span>
                 <span className={`px-3 py-1 rounded-full ${jtBadge.bg} ${jtBadge.text} text-[12px] font-semibold`}>
                   {jtBadge.label}
                 </span>
+                {salaryLabel && (
+                  <span className="px-3 py-1 rounded-full bg-emerald-500/15 text-emerald-400 text-[12px] font-semibold">
+                    {salaryLabel}
+                  </span>
+                )}
                 {job.visa_sponsorship && (
                   <span className="px-3 py-1 rounded-full bg-green-500/15 text-green-400 text-[12px] font-semibold">
                     Visa Sponsored
                   </span>
                 )}
-                {job.city && (
-                  <span className="px-3 py-1 rounded-full bg-white/5 text-white/60 text-[12px]">
-                    {job.city}, {job.country.toUpperCase()}
+                {expLabel && (
+                  <span className="px-3 py-1 rounded-full bg-blue-500/15 text-blue-400 text-[12px] font-semibold">
+                    {expLabel} experience
                   </span>
                 )}
                 {job.education_level && (
@@ -821,39 +1047,33 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
                   </span>
                 )}
               </div>
-            </div>
-          </div>
+            </motion.div>
 
-          {/* Stats row */}
-          <motion.div
-            className="relative z-10 flex items-center justify-center gap-12 mt-8 pt-6 border-t border-white/[0.06]"
-            variants={stagger}
-            initial="hidden"
-            animate="show"
-          >
-            {salaryLabel && (
-              <StatCircle label="Salary" delay={0}>
-                <span className="text-[13px] font-bold text-emerald-400 text-center leading-tight">{salaryLabel}</span>
+            {/* Stats row */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className={`flex items-center justify-center gap-12 p-6 rounded-xl bg-[#0F172A] ring-1 ${theme.ring}`}
+            >
+              {salaryLabel && (
+                <StatCircle label="Salary" delay={0}>
+                  <span className="text-[13px] font-bold text-emerald-400 text-center leading-tight">{salaryLabel}</span>
+                </StatCircle>
+              )}
+              {expLabel && (
+                <StatCircle label="Experience" delay={0.1}>
+                  <span className="text-sm font-bold text-blue-400">{expLabel}</span>
+                </StatCircle>
+              )}
+              <StatCircle label="Applications" delay={0.2}>
+                <AnimatedNumber value={job.applications_count} className="text-sm font-bold text-purple-400" />
               </StatCircle>
-            )}
-            {expLabel && (
-              <StatCircle label="Experience" delay={0.1}>
-                <span className="text-sm font-bold text-blue-400">{expLabel}</span>
+              <StatCircle label="Days Active" delay={0.3}>
+                <AnimatedNumber value={daysPosted} className="text-sm font-bold text-amber-400" />
               </StatCircle>
-            )}
-            <StatCircle label="Applications" delay={0.2}>
-              <AnimatedNumber value={job.applications_count} className="text-sm font-bold text-purple-400" />
-            </StatCircle>
-            <StatCircle label="Days Active" delay={0.3}>
-              <AnimatedNumber value={daysPosted} className="text-sm font-bold text-amber-400" />
-            </StatCircle>
-          </motion.div>
-        </motion.div>
+            </motion.div>
 
-        {/* Main content grid */}
-        <div className="grid grid-cols-3 gap-6 mt-8">
-          {/* Left column — 2/3 */}
-          <div className="col-span-2 space-y-6">
             {/* Match Score (if candidate) */}
             <AnimatePresence>
               {matchScore != null && (
@@ -861,7 +1081,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="p-6 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10"
+                  className="p-6 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
                 >
                   <p className="text-[11px] uppercase font-bold text-white/50 tracking-wider mb-4">Your Match Score</p>
                   <div className="flex items-center gap-8">
@@ -880,13 +1100,13 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               )}
             </AnimatePresence>
 
-            {/* Description */}
+            {/* About This Role — bio card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="p-8 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10"
+              className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
             >
               <h2 className="text-lg font-semibold text-white mb-4">About This Role</h2>
               <div className={`text-[15px] leading-relaxed text-white/70 whitespace-pre-wrap border-l-2 ${theme.border} pl-5`}>
@@ -894,14 +1114,14 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               </div>
             </motion.div>
 
-            {/* Requirements — slide-in cards */}
+            {/* Requirements card — items with checkmark icons, blue left border */}
             {job.requirements.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
-                className="p-8 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10"
+                className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Requirements</h2>
                 <div className="space-y-2.5">
@@ -912,14 +1132,14 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               </motion.div>
             )}
 
-            {/* Nice-to-Haves */}
+            {/* Nice to Have card — green left border */}
             {job.nice_to_haves.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
-                className="p-8 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10"
+                className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Nice to Have</h2>
                 <div className="space-y-2.5">
@@ -930,14 +1150,14 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               </motion.div>
             )}
 
-            {/* Skills Required */}
+            {/* Required Skills tags section */}
             {job.skills_required.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5 }}
-                className="p-8 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10"
+                className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Required Skills</h2>
                 {candidateId && (
@@ -964,173 +1184,57 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               </motion.div>
             )}
 
-            {/* Apply Button — full width */}
+            {/* Apply Now button — full-width, gradient, WHB vote button detail variant */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
             >
-              <motion.button
-                onClick={handleApply}
-                disabled={applied || applying}
-                whileHover={!applied ? { scale: 1.015 } : undefined}
-                whileTap={!applied ? { scale: 0.985 } : undefined}
-                transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-                className={`w-full py-5 rounded-xl font-semibold text-xl transition-all industry-glow ${
-                  applied
-                    ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
-                    : applying
-                    ? 'bg-white/10 text-white/50 cursor-wait'
-                    : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-indigo-500/25 cursor-pointer'
-                }`}
-              >
-                <AnimatePresence mode="wait">
-                  {applied ? (
-                    <motion.span
-                      key="applied-d"
-                      initial={{ scale: 0.8, opacity: 0 }}
-                      animate={{ scale: 1, opacity: 1 }}
-                      className="flex items-center justify-center gap-2"
-                    >
-                      <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                      </svg>
-                      {applySuccess ? 'Application Sent!' : 'Applied'}
-                    </motion.span>
-                  ) : applying ? (
-                    <motion.span key="applying-d" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      Applying...
-                    </motion.span>
-                  ) : (
-                    <motion.span key="apply-d" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                      {candidateId ? 'Apply Now' : 'Sign In to Apply'}
-                    </motion.span>
-                  )}
-                </AnimatePresence>
-              </motion.button>
+              <DetailApplyButton
+                jobId={job.id}
+                recruiterId={job.recruiter_id}
+                candidateId={candidateId}
+                theme={theme}
+              />
             </motion.div>
-          </div>
 
-          {/* Right column — sidebar */}
-          <div className="space-y-6">
-            {/* Company info card */}
+            {/* Share menu */}
             <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="p-6 rounded-xl bg-[#0F172A]/80 ring-1 ring-white/10 sticky top-6"
-            >
-              <h3 className="font-semibold text-white mb-3">About {recruiter.company_name}</h3>
-              {recruiter.bio && (
-                <p className="text-[13px] text-white/60 leading-relaxed mb-4">{recruiter.bio}</p>
-              )}
-              <div className="space-y-2.5 text-sm">
-                {recruiter.industry && (
-                  <div className="flex justify-between">
-                    <span className="text-white/40">Industry</span>
-                    <span className={theme.accent}>{recruiter.industry}</span>
-                  </div>
-                )}
-                {recruiter.company_size && (
-                  <div className="flex justify-between">
-                    <span className="text-white/40">Size</span>
-                    <span className="text-white/80">{recruiter.company_size} employees</span>
-                  </div>
-                )}
-                {(recruiter.city || recruiter.country) && (
-                  <div className="flex justify-between">
-                    <span className="text-white/40">Location</span>
-                    <span className="text-white/80">{recruiter.city ? `${recruiter.city}, ` : ''}{recruiter.country?.toUpperCase()}</span>
-                  </div>
-                )}
-                {recruiter.company_website && (
-                  <div className="flex justify-between">
-                    <span className="text-white/40">Website</span>
-                    <a href={recruiter.company_website} target="_blank" rel="noopener noreferrer" className={`${theme.accent} hover:underline`}>
-                      Visit
-                    </a>
-                  </div>
-                )}
-              </div>
-
-              {/* Culture tags */}
-              {recruiter.culture_tags && recruiter.culture_tags.length > 0 && (
-                <div className="mt-4 pt-4 border-t border-white/[0.06]">
-                  <span className="text-[10px] uppercase font-bold text-white/40 tracking-wider">Culture</span>
-                  <div className="flex flex-wrap gap-1.5 mt-2">
-                    {recruiter.culture_tags.map((tag) => (
-                      <span key={tag} className="px-2.5 py-0.5 bg-purple-500/10 text-purple-400 text-[11px] font-medium rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Job posted date + expiry */}
-              <div className="mt-4 pt-4 border-t border-white/[0.06] space-y-1.5 text-[12px]">
-                <div className="flex justify-between">
-                  <span className="text-white/40">Posted</span>
-                  <span className="text-white/60">{new Date(job.created_at).toLocaleDateString()}</span>
-                </div>
-                {job.expires_at && (
-                  <div className="flex justify-between">
-                    <span className="text-white/40">Expires</span>
-                    <span className="text-white/60">{new Date(job.expires_at).toLocaleDateString()}</span>
-                  </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="text-white/40">Views</span>
-                  <span className="text-white/60">{job.views_count.toLocaleString()}</span>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        </div>
-
-        {/* Similar Jobs — 4-card grid */}
-        {similarJobs.length > 0 && (
-          <motion.div
-            className="mt-12"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
-          >
-            <h2 className="text-lg font-semibold text-white mb-5">Similar Jobs</h2>
-            <motion.div
-              className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
-              variants={stagger}
-              initial="hidden"
-              whileInView="show"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
+              transition={{ duration: 0.5 }}
             >
-              {similarJobs.map((sj) => (
-                <SimilarJobCard key={sj.id} job={sj} locale={locale} />
-              ))}
+              <ShareMenu job={job} recruiter={recruiter} locale={locale} />
             </motion.div>
-          </motion.div>
-        )}
-      </div>
 
-      {/* Similar Jobs — mobile (after mobile layout) */}
-      {similarJobs.length > 0 && (
-        <div className="lg:hidden px-5 pb-8">
-          <h2 className="text-base font-semibold text-white mb-4">Similar Jobs</h2>
-          <motion.div
-            className="grid grid-cols-1 sm:grid-cols-2 gap-3"
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-          >
-            {similarJobs.map((sj) => (
-              <SimilarJobCard key={sj.id} job={sj} locale={locale} />
-            ))}
-          </motion.div>
+            {/* Related Jobs grid (4 cards) */}
+            {similarJobs.length > 0 && (
+              <motion.div
+                className="mt-6"
+                initial={{ opacity: 0 }}
+                whileInView={{ opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.5 }}
+              >
+                <h2 className="text-lg font-semibold text-white mb-5">Similar Jobs</h2>
+                <motion.div
+                  className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4"
+                  variants={{ ...stagger, show: { ...stagger.show, transition: { staggerChildren: 0.05 } } }}
+                  initial="hidden"
+                  whileInView="show"
+                  viewport={{ once: true }}
+                >
+                  {similarJobs.map((sj) => (
+                    <SimilarJobCard key={sj.id} job={sj} locale={locale} />
+                  ))}
+                </motion.div>
+              </motion.div>
+            )}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
