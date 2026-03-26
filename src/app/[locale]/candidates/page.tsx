@@ -32,7 +32,7 @@ export default async function CandidatesPage({
   // Build data query
   let query = supabase
     .from('candidates')
-    .select('id, full_name, headline, photo_url, skills, experience_years, country, city, remote_preference, visa_status, open_to_work, created_at')
+    .select('id, full_name, headline, photo_url, skills, experience_years, country, city, remote_preference, visa_status, open_to_work, available_now, created_at')
     .eq('is_public', true)
     .order('created_at', { ascending: false });
 

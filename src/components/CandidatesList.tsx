@@ -164,6 +164,7 @@ export default function CandidatesList({
                 city: candidate.city,
                 is_public: candidate.is_public,
                 visa_status: candidate.visa_status,
+                available_now: candidate.available_now,
               }}
               priority={idx < 8}
             />

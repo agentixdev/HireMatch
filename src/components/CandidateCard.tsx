@@ -281,6 +281,16 @@ export default function CandidateCard({ candidate, priority }: CandidateCardProp
               {candidate.headline}
             </p>
           )}
+          {/* Experience + location line */}
+          <div className="flex items-center gap-1.5 mt-1 text-[10px] text-white/40">
+            {candidate.experience_years != null && candidate.experience_years > 0 && (
+              <span>{candidate.experience_years}yr exp</span>
+            )}
+            {candidate.experience_years != null && candidate.experience_years > 0 && candidate.city && (
+              <span>&middot;</span>
+            )}
+            {candidate.city && <span className="truncate">{candidate.city}</span>}
+          </div>
           {/* Skills as small tags */}
           {candidate.skills.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-1.5">

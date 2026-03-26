@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase';
 
 interface AvatarUploadProps {
@@ -22,6 +22,11 @@ export default function AvatarUpload({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
   const [preview, setPreview] = useState<string | undefined>(currentUrl);
+
+  // Sync preview when currentUrl prop changes (e.g. after CV photo extraction)
+  useEffect(() => {
+    if (currentUrl) setPreview(currentUrl);
+  }, [currentUrl]);
 
   const borderRadius = shape === 'circle' ? '9999px' : '12px';
 
