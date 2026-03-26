@@ -45,6 +45,10 @@ export interface Candidate {
   cv_url?: string;            // uploaded CV file in Supabase Storage
   cv_parsed_at?: string;
   is_public: boolean;         // opt-in to public profile
+  available_now?: boolean;
+  notice_period?: string;     // "immediate", "2 weeks", "1 month", etc.
+  available_from?: string;    // ISO date
+  open_to_relocation?: boolean;
   created_at: string;
   updated_at: string;
 }

@@ -509,6 +509,8 @@ export default function MatchmakerPage() {
   const [showConfetti, setShowConfetti] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [savedToProfile, setSavedToProfile] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareCopied, setShareCopied] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -659,17 +661,9 @@ export default function MatchmakerPage() {
     setDisplayScore(0);
     setShowAllMatches(false);
     setShowConfetti(false);
+    setShowShareModal(false);
+    setShareCopied(false);
   }, []);
-
-  const handleShare = useCallback(() => {
-    if (!results) return;
-    const text = `I'm a ${results[0].score}% match with ${results[0].name} on HireMatch! Take the quiz and find your company match.`;
-    if (navigator.share) {
-      navigator.share({ title: 'My HireMatch Results', text, url: window.location.href });
-    } else {
-      navigator.clipboard.writeText(text);
-    }
-  }, [results]);
 
   const slideVariants = {
     enter: (dir: number) => ({ x: dir > 0 ? 200 : -200, opacity: 0 }),
@@ -1303,6 +1297,8 @@ export default function MatchmakerPage() {
   const topMatch = results[0];
   const temperatureColor =
     topMatch.score >= 80 ? '#22c55e' : topMatch.score >= 60 ? '#a855f7' : '#3b82f6';
+  const temperatureLabel =
+    topMatch.score >= 80 ? 'Strong match' : topMatch.score >= 60 ? 'Good match' : 'Moderate match';
   const scoreGradient =
     topMatch.score >= 80
       ? 'from-green-400 to-emerald-500'
@@ -1310,22 +1306,7 @@ export default function MatchmakerPage() {
         ? 'from-blue-400 via-purple-400 to-indigo-500'
         : 'from-gray-400 to-gray-500';
 
-  // Group remaining matches by industry
-  const industryGroups = useMemo(() => {
-    const groups: Record<string, CompanyMatch[]> = {};
-    const allCompanies = COMPANIES;
-    results.slice(1).forEach((match) => {
-      const company = allCompanies.find((c) => c.name === match.name);
-      const group = company?.industryGroup || 'Other';
-      if (!groups[group]) groups[group] = [];
-      groups[group].push(match);
-    });
-    // Sort each group by score, limit to top 3
-    Object.keys(groups).forEach((key) => {
-      groups[key] = groups[key].sort((a, b) => b.score - a.score).slice(0, 3);
-    });
-    return groups;
-  }, [results]);
+  const totalCandidates = competitors.length + 7; // simulated pool of 12
 
   const avgCompetitorScore = competitors.length
     ? Math.round(competitors.reduce((sum, c) => sum + c.score, 0) / competitors.length)
@@ -1335,21 +1316,34 @@ export default function MatchmakerPage() {
     <>
       <Header />
       <div ref={resultsRef} className="relative min-h-screen overflow-hidden">
-        {/* Temperature ambient background */}
+        {/* ── Three-Layer Background Ambiance ── */}
         <div className="absolute inset-0 pointer-events-none">
+          {/* Layer 1: Primary industry glow — large centered blur, 700px */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 1.5 }}
-            className="absolute top-20 left-1/3 w-[600px] h-[600px] rounded-full blur-[100px]"
-            style={{ backgroundColor: `${topMatch.brandColor}12` }}
+            className="absolute top-20 left-1/2 -translate-x-1/2 rounded-full blur-[160px]"
+            style={{
+              width: 700,
+              height: 700,
+              backgroundColor: `${topMatch.brandColor}14`,
+            }}
           />
+          {/* Layer 2: Secondary temperature glow that shifts color based on score */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5, duration: 1.5 }}
             className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full blur-[100px]"
-            style={{ backgroundColor: `${temperatureColor}08` }}
+            style={{ backgroundColor: `${temperatureColor}10` }}
+          />
+          {/* Layer 3: Breathing industry orb on the left, scale pulse 1→1.2→1 over 5s */}
+          <motion.div
+            className="absolute top-1/3 -left-20 w-[300px] h-[300px] rounded-full blur-[80px]"
+            style={{ backgroundColor: `${topMatch.brandColor}18` }}
+            animate={{ scale: [1, 1.2, 1], opacity: [0.4, 0.7, 0.4] }}
+            transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
           />
         </div>
 
@@ -1369,7 +1363,7 @@ export default function MatchmakerPage() {
                 }}
                 initial={{ y: 0, rotate: 0, opacity: 1 }}
                 animate={{
-                  y: window.innerHeight + 100,
+                  y: typeof window !== 'undefined' ? window.innerHeight + 100 : 900,
                   rotate: Math.random() * 720 - 360,
                   x: (Math.random() - 0.5) * 300,
                   opacity: [1, 1, 0],
@@ -1383,6 +1377,76 @@ export default function MatchmakerPage() {
             ))}
           </div>
         )}
+
+        {/* ── Share Modal ── */}
+        <AnimatePresence>
+          {showShareModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+              onClick={() => setShowShareModal(false)}
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                className="w-full max-w-sm rounded-2xl bg-[#111] ring-1 ring-white/10 p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-bold text-white mb-2">Share Your Results</h3>
+                <p className="text-[13px] text-white/50 mb-5">
+                  Challenge your friends to beat your {topMatch.score}% match with {topMatch.name}!
+                </p>
+
+                <div className="space-y-2 mb-5">
+                  {/* Twitter/X */}
+                  <a
+                    href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(`I'm a ${topMatch.score}% match with ${topMatch.name} on HireMatch! Can you beat my score?`)}&url=${typeof window !== 'undefined' ? encodeURIComponent(window.location.href) : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] hover:bg-white/[0.08] transition-colors text-white/70 hover:text-white text-[14px] font-medium"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" /></svg>
+                    Share on X
+                  </a>
+                  {/* LinkedIn */}
+                  <a
+                    href={`https://www.linkedin.com/sharing/share-offsite/?url=${typeof window !== 'undefined' ? encodeURIComponent(window.location.href) : ''}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 w-full p-3 rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] hover:bg-white/[0.08] transition-colors text-white/70 hover:text-white text-[14px] font-medium"
+                  >
+                    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" /></svg>
+                    Share on LinkedIn
+                  </a>
+                </div>
+
+                {/* Copy link */}
+                <button
+                  onClick={() => {
+                    const text = `I'm a ${topMatch.score}% match with ${topMatch.name} on HireMatch! Take the quiz: ${typeof window !== 'undefined' ? window.location.href : ''}`;
+                    navigator.clipboard.writeText(text);
+                    setShareCopied(true);
+                    setTimeout(() => setShareCopied(false), 2000);
+                  }}
+                  className="w-full py-3 rounded-xl bg-white/[0.05] ring-1 ring-white/[0.08] text-[13px] text-white/60 hover:text-white transition-colors font-medium"
+                >
+                  {shareCopied ? 'Copied!' : 'Copy Link'}
+                </button>
+
+                <button
+                  onClick={() => setShowShareModal(false)}
+                  className="w-full mt-3 py-2 text-[12px] text-white/30 hover:text-white/50 transition-colors"
+                >
+                  Close
+                </button>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="relative px-4 pt-4 pb-20 max-w-3xl mx-auto">
           {/* Saved to profile notification */}
@@ -1399,7 +1463,7 @@ export default function MatchmakerPage() {
             )}
           </AnimatePresence>
 
-          {/* ── Featured Match Card ── */}
+          {/* ── Featured Match Card — Spotlight Reveal ── */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -1407,18 +1471,18 @@ export default function MatchmakerPage() {
             className="relative rounded-2xl overflow-hidden mb-8"
             data-shimmer
           >
-            {/* Spotlight overlay that fades out */}
+            {/* Spotlight curtain lift — radial-gradient fade */}
             <motion.div
               className="absolute inset-0 z-10 pointer-events-none"
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
               transition={{ duration: 1.5, delay: 0.3 }}
               style={{
-                background: `radial-gradient(circle at 50% 40%, transparent 30%, rgba(0,0,0,0.8) 100%)`,
+                background: 'radial-gradient(circle at 50% 40%, transparent 30%, rgba(0,0,0,0.8) 100%)',
               }}
             />
 
-            {/* Edge glow */}
+            {/* Edge glow with inset box-shadow */}
             <div
               className="absolute inset-0 rounded-2xl pointer-events-none"
               style={{
@@ -1426,112 +1490,147 @@ export default function MatchmakerPage() {
               }}
             />
 
-            <div className="relative bg-white/[0.03] ring-1 ring-white/[0.08] rounded-2xl p-8 sm:p-10">
-              {/* Company info */}
-              <div className="text-center mb-6">
-                {/* Company logo placeholder */}
+            <div className="relative bg-white/[0.03] ring-1 ring-white/[0.08] rounded-2xl overflow-hidden">
+              {/* Industry gradient bar at top */}
+              <div
+                className="h-1 w-full"
+                style={{
+                  background: `linear-gradient(90deg, ${topMatch.brandColor}00, ${topMatch.brandColor}, ${topMatch.brandColor}00)`,
+                }}
+              />
+
+              <div className="p-8 sm:p-10">
+                {/* Company info */}
+                <div className="text-center mb-6">
+                  {/* Company logo/card with industry-colored ring glow */}
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
+                    className="w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black"
+                    style={{
+                      backgroundColor: `${topMatch.brandColor}20`,
+                      color: topMatch.brandColor,
+                      boxShadow: `0 0 0 3px ${topMatch.brandColor}30, 0 0 30px ${topMatch.brandColor}30`,
+                    }}
+                  >
+                    {topMatch.name.charAt(0)}
+                  </motion.div>
+
+                  <motion.h2
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="text-2xl sm:text-3xl font-bold text-white mb-2"
+                  >
+                    {topMatch.name}
+                  </motion.h2>
+
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.4 }}
+                    className="inline-block px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] rounded-full"
+                    style={{
+                      backgroundColor: `${topMatch.brandColor}20`,
+                      color: topMatch.brandColor,
+                      border: `1px solid ${topMatch.brandColor}30`,
+                    }}
+                  >
+                    {topMatch.industry}
+                  </motion.span>
+                </div>
+
+                {/* Large count-up match percentage */}
+                <div className="text-center mb-4">
+                  <p className="text-[11px] uppercase tracking-[3px] text-white/30 mb-2 font-bold">
+                    Culture Alignment
+                  </p>
+                  <motion.div
+                    initial={{ scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }}
+                  >
+                    <span
+                      className={`text-[72px] sm:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
+                      style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '2px' }}
+                    >
+                      {displayScore}%
+                    </span>
+                  </motion.div>
+                </div>
+
+                {/* Temperature badge with pulsing dot */}
                 <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20, delay: 0.2 }}
-                  className="w-20 h-20 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl font-black"
-                  style={{
-                    backgroundColor: `${topMatch.brandColor}20`,
-                    color: topMatch.brandColor,
-                    boxShadow: `0 0 30px ${topMatch.brandColor}30`,
-                  }}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.55 }}
+                  className="flex justify-center mb-6"
                 >
-                  {topMatch.name.charAt(0)}
+                  <span
+                    className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-[12px] font-bold"
+                    style={{
+                      backgroundColor: `${temperatureColor}15`,
+                      color: temperatureColor,
+                      border: `1px solid ${temperatureColor}25`,
+                    }}
+                  >
+                    <motion.span
+                      className="w-2 h-2 rounded-full"
+                      style={{ backgroundColor: temperatureColor }}
+                      animate={{ scale: [1, 1.4, 1], opacity: [1, 0.6, 1] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    {temperatureLabel}
+                  </span>
                 </motion.div>
 
-                <motion.h2
+                {/* Culture tags */}
+                <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-2xl sm:text-3xl font-bold text-white mb-2"
+                  transition={{ delay: 0.6 }}
+                  className="flex flex-wrap justify-center gap-2 mb-8"
                 >
-                  {topMatch.name}
-                </motion.h2>
+                  {topMatch.cultureTags.map((tag, i) => (
+                    <span
+                      key={i}
+                      className="px-3 py-1.5 text-[12px] font-medium rounded-full bg-white/[0.06] text-white/60 ring-1 ring-white/[0.08]"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </motion.div>
 
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="inline-block px-3 py-1 text-[11px] font-bold uppercase tracking-[2px] rounded-full"
-                  style={{
-                    backgroundColor: `${topMatch.brandColor}20`,
-                    color: topMatch.brandColor,
-                    border: `1px solid ${topMatch.brandColor}30`,
-                  }}
-                >
-                  {topMatch.industry}
-                </motion.span>
-              </div>
-
-              {/* Match percentage */}
-              <div className="text-center mb-6">
-                <p className="text-[11px] uppercase tracking-[3px] text-white/30 mb-2 font-bold">
-                  Culture Alignment
-                </p>
+                {/* Why You Match */}
                 <motion.div
-                  initial={{ scale: 0.5, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  transition={{ delay: 0.4, type: 'spring', stiffness: 200, damping: 15 }}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.7 }}
+                  className="bg-white/[0.03] rounded-xl p-5 ring-1 ring-white/[0.06]"
                 >
-                  <span
-                    className={`text-[72px] sm:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
-                    style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '2px' }}
-                  >
-                    {displayScore}%
-                  </span>
+                  <h3 className="text-[12px] uppercase tracking-[2px] font-bold text-white/40 mb-3">
+                    Why You Match
+                  </h3>
+                  <div className="space-y-2">
+                    {topMatch.whyMatch.map((reason, i) => (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.8 + i * 0.1 }}
+                        className="flex items-start gap-2"
+                      >
+                        <div
+                          className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
+                          style={{ backgroundColor: topMatch.brandColor }}
+                        />
+                        <span className="text-[13px] text-white/60">{reason}</span>
+                      </motion.div>
+                    ))}
+                  </div>
                 </motion.div>
               </div>
-
-              {/* Culture tags */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-                className="flex flex-wrap justify-center gap-2 mb-8"
-              >
-                {topMatch.cultureTags.map((tag, i) => (
-                  <span
-                    key={i}
-                    className="px-3 py-1.5 text-[12px] font-medium rounded-full bg-white/[0.06] text-white/60 ring-1 ring-white/[0.08]"
-                  >
-                    {tag}
-                  </span>
-                ))}
-              </motion.div>
-
-              {/* Why You Match */}
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-                className="bg-white/[0.03] rounded-xl p-5 ring-1 ring-white/[0.06]"
-              >
-                <h3 className="text-[12px] uppercase tracking-[2px] font-bold text-white/40 mb-3">
-                  Why You Match
-                </h3>
-                <div className="space-y-2">
-                  {topMatch.whyMatch.map((reason, i) => (
-                    <motion.div
-                      key={i}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.8 + i * 0.1 }}
-                      className="flex items-start gap-2"
-                    >
-                      <div
-                        className="w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0"
-                        style={{ backgroundColor: topMatch.brandColor }}
-                      />
-                      <span className="text-[13px] text-white/60">{reason}</span>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
             </div>
           </motion.div>
 
@@ -1547,7 +1646,7 @@ export default function MatchmakerPage() {
             </h3>
             <p className="text-[14px] text-white/60 mb-6">
               You&apos;re up against{' '}
-              <span className="text-white font-semibold">{competitors.length + 1} other candidates</span>{' '}
+              <span className="text-white font-semibold">{totalCandidates} candidates</span>{' '}
               for roles at {topMatch.name}
             </p>
 
@@ -1567,7 +1666,7 @@ export default function MatchmakerPage() {
               </div>
               <div>
                 <p className="text-white font-semibold text-[15px]">
-                  You rank #{userRank} out of {competitors.length + 1} candidates
+                  You rank #{userRank} of {totalCandidates} candidates
                 </p>
                 <p className="text-white/40 text-[12px]">
                   Your score: {topMatch.score}% | Average: {avgCompetitorScore}%
@@ -1575,7 +1674,7 @@ export default function MatchmakerPage() {
               </div>
             </motion.div>
 
-            {/* Competitor avatars */}
+            {/* Competitor score bars */}
             <div className="space-y-2 mb-6">
               {/* User's bar */}
               <div className="flex items-center gap-3">
@@ -1638,7 +1737,7 @@ export default function MatchmakerPage() {
             </div>
           </motion.div>
 
-          {/* ── More Matches — Grouped by Industry ── */}
+          {/* ── Other Matches — Staggered Reveal ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1652,69 +1751,74 @@ export default function MatchmakerPage() {
               More Matches
             </h3>
 
-            {Object.entries(industryGroups).map(([group, matches], gi) => (
-              <motion.div
-                key={group}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 1.6 + gi * 0.1 }}
-                className="mb-6"
-              >
-                <h4 className="text-[11px] uppercase tracking-[2px] font-bold text-white/30 mb-3">
-                  {group}
-                </h4>
-                <div className="space-y-2">
-                  {matches.map((match, mi) => {
-                    const matchScoreGradient =
-                      match.score >= 80
-                        ? 'from-green-400 to-emerald-500'
-                        : match.score >= 60
-                          ? 'from-blue-400 to-indigo-500'
-                          : 'from-gray-400 to-gray-500';
+            <div className="space-y-2">
+              {results.slice(1, showAllMatches ? undefined : 8).map((match, mi) => {
+                const matchTempColor =
+                  match.score >= 80 ? '#22c55e' : match.score >= 60 ? '#a855f7' : '#3b82f6';
 
-                    return (
-                      <div
-                        key={mi}
-                        className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-all"
-                      >
-                        {/* Company initial */}
-                        <div
-                          className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0"
-                          style={{
-                            backgroundColor: `${match.brandColor}20`,
-                            color: match.brandColor,
-                          }}
-                        >
-                          {match.name.charAt(0)}
-                        </div>
+                return (
+                  <motion.div
+                    key={mi}
+                    initial={{ opacity: 0, y: 40, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    transition={{
+                      delay: 1.6 + mi * 0.06,
+                      duration: 0.5,
+                      ease: [0.16, 1, 0.3, 1],
+                    }}
+                    className="flex items-center gap-4 p-4 rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] hover:ring-white/[0.12] transition-all"
+                  >
+                    {/* Company initial */}
+                    <div
+                      className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0"
+                      style={{
+                        backgroundColor: `${match.brandColor}20`,
+                        color: match.brandColor,
+                      }}
+                    >
+                      {match.name.charAt(0)}
+                    </div>
 
-                        {/* Info */}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-[14px] font-semibold text-white truncate">
-                            {match.name}
-                          </p>
-                          <p className="text-[11px] text-white/30">{match.industry}</p>
-                        </div>
-
-                        {/* Score */}
+                    {/* Info + bar */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between mb-1">
+                        <p className="text-[14px] font-semibold text-white truncate">
+                          {match.name}
+                        </p>
                         <span
-                          className={`text-[18px] font-black bg-gradient-to-r ${matchScoreGradient} bg-clip-text text-transparent`}
+                          className="text-[14px] font-black ml-2 flex-shrink-0"
+                          style={{ color: matchTempColor }}
                         >
                           {match.score}%
                         </span>
                       </div>
-                    );
-                  })}
-                </div>
-              </motion.div>
-            ))}
+                      <p className="text-[11px] text-white/30 mb-1.5">{match.industry}</p>
+                      {/* Bar fill animation from 0% to target score */}
+                      <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                        <motion.div
+                          className="h-full rounded-full"
+                          style={{ backgroundColor: match.brandColor }}
+                          initial={{ width: 0 }}
+                          animate={{ width: `${match.score}%` }}
+                          transition={{
+                            delay: 1.8 + mi * 0.06,
+                            duration: 0.7,
+                            ease: [0.16, 1, 0.3, 1],
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </div>
 
-            {!showAllMatches && results.length > 6 && (
+            {!showAllMatches && results.length > 9 && (
               <button
                 onClick={() => setShowAllMatches(true)}
-                className="w-full py-3 text-[13px] text-white/40 hover:text-white/60 transition-colors font-medium"
+                className="w-full py-3 mt-3 text-[13px] text-white/40 hover:text-white/60 transition-colors font-medium cursor-pointer"
               >
-                Show all {results.length} matches
+                Show all {results.length - 1} matches
               </button>
             )}
           </motion.div>
@@ -1726,26 +1830,26 @@ export default function MatchmakerPage() {
             transition={{ delay: 1.8 }}
             className="space-y-3"
           >
-            {/* Primary CTA */}
+            {/* Primary gradient CTA */}
             <button
               onClick={() => router.push('/jobs')}
-              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold text-[15px] rounded-xl shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-shadow"
+              className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold text-[15px] rounded-xl shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-shadow cursor-pointer"
             >
               Apply to Top Match
             </button>
 
-            {/* Secondary */}
+            {/* View All Matched Jobs */}
             <button
               onClick={() => router.push('/jobs')}
-              className="w-full py-3.5 bg-white/[0.05] ring-1 ring-white/[0.1] text-white/70 hover:text-white font-medium text-[14px] rounded-xl transition-colors"
+              className="w-full py-3.5 bg-white/[0.05] ring-1 ring-white/[0.1] text-white/70 hover:text-white font-medium text-[14px] rounded-xl transition-colors cursor-pointer"
             >
               View All Matched Jobs
             </button>
 
-            {/* Share */}
+            {/* Share Results — opens viral share modal */}
             <button
-              onClick={handleShare}
-              className="w-full py-3.5 bg-white/[0.03] ring-1 ring-white/[0.06] text-white/50 hover:text-white/70 font-medium text-[14px] rounded-xl transition-colors flex items-center justify-center gap-2"
+              onClick={() => setShowShareModal(true)}
+              className="w-full py-3.5 bg-white/[0.03] ring-1 ring-white/[0.06] text-white/50 hover:text-white/70 font-medium text-[14px] rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path
@@ -1757,10 +1861,10 @@ export default function MatchmakerPage() {
               Share Results
             </button>
 
-            {/* Retake */}
+            {/* Retake Quiz */}
             <button
               onClick={handleRetake}
-              className="w-full py-3 text-white/30 hover:text-white/50 text-[13px] transition-colors"
+              className="w-full py-3 text-white/30 hover:text-white/50 text-[13px] transition-colors cursor-pointer"
             >
               Retake Quiz
             </button>
@@ -1773,7 +1877,7 @@ export default function MatchmakerPage() {
                 </p>
                 <button
                   onClick={() => router.push('/auth?mode=signup&role=candidate')}
-                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium text-[13px] rounded-lg"
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium text-[13px] rounded-lg cursor-pointer"
                 >
                   Create Free Account
                 </button>
