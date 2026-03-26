@@ -22,6 +22,7 @@ export default function AuthPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -29,6 +30,27 @@ export default function AuthPage() {
     const r = searchParams.get('role') as Role;
     if (m) setMode(m);
     if (r) setRole(r);
+
+    // Handle callback errors
+    if (searchParams.get('error') === 'callback_failed') {
+      setError('Email confirmation failed. Please try signing in or resend the confirmation email.');
+    }
+
+    // Handle PKCE code exchange (if redirected here with ?code=)
+    const code = searchParams.get('code');
+    if (code) {
+      supabase.auth.exchangeCodeForSession(code).then(({ error: exchangeError }) => {
+        if (exchangeError) {
+          setError('Email confirmation link expired or invalid. Please sign in or request a new one.');
+        } else {
+          // Successfully confirmed — redirect to dashboard
+          supabase.auth.getUser().then(({ data: { user } }) => {
+            const userRole = user?.user_metadata?.role;
+            router.push(userRole === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate');
+          });
+        }
+      });
+    }
   }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -44,11 +66,13 @@ export default function AuthPage() {
           return;
         }
 
+        const redirectTo = `${window.location.origin}/api/auth/callback`;
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: { role, full_name: fullName },
+            emailRedirectTo: redirectTo,
           },
         });
 
@@ -59,6 +83,13 @@ export default function AuthPage() {
         }
 
         if (data.user) {
+          // If email confirmation is required and user isn't confirmed yet
+          if (!data.session) {
+            setSuccess('Check your email! Click the confirmation link to activate your account.');
+            setLoading(false);
+            return;
+          }
+
           // Create profile record
           await supabase.from('profiles').insert({
             user_id: data.user.id,
@@ -127,6 +158,27 @@ export default function AuthPage() {
             {error && (
               <div className="mb-4 p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
+              </div>
+            )}
+
+            {success && (
+              <div className="mb-4 p-4 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-center">
+                <p className="text-green-400 font-medium text-sm">{success}</p>
+                <button
+                  onClick={async () => {
+                    if (!email) return;
+                    const { error: resendErr } = await supabase.auth.resend({
+                      type: 'signup',
+                      email,
+                      options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
+                    });
+                    if (resendErr) setError(resendErr.message);
+                    else setSuccess('Confirmation email resent! Check your inbox.');
+                  }}
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
+                >
+                  Resend confirmation email
+                </button>
               </div>
             )}
 

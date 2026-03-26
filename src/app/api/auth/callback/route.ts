@@ -27,6 +27,46 @@ export async function GET(request: NextRequest) {
 
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
+      // Get user to check role and ensure profile exists
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const role = user.user_metadata?.role || 'candidate';
+        const fullName = user.user_metadata?.full_name || '';
+
+        // Ensure profile record exists
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .single();
+
+        if (!existingProfile) {
+          await supabase.from('profiles').insert({ user_id: user.id, role });
+
+          // Create role-specific record
+          if (role === 'candidate') {
+            await supabase.from('candidates').insert({
+              user_id: user.id,
+              full_name: fullName,
+              email: user.email,
+              country: 'us',
+            });
+            return NextResponse.redirect(`${origin}/dashboard/candidate/onboarding`);
+          } else {
+            await supabase.from('recruiters').insert({
+              user_id: user.id,
+              company_name: '',
+              country: 'us',
+            });
+            return NextResponse.redirect(`${origin}/dashboard/recruiter/onboarding`);
+          }
+        }
+
+        // Profile exists — redirect to appropriate dashboard
+        const redirectPath = role === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate';
+        return NextResponse.redirect(`${origin}${next === '/' ? redirectPath : next}`);
+      }
+
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
