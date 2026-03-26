@@ -117,15 +117,15 @@ export default function AuthPage() {
   return (
     <>
       <Header />
-      <main className="flex-1 flex items-center justify-center bg-gray-50 py-12 px-4">
+      <main className="flex-1 flex items-center justify-center bg-transparent py-12 px-4">
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-            <h1 className="text-2xl font-bold text-gray-900 text-center mb-6">
+          <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-8">
+            <h1 className="text-2xl font-bold text-white text-center mb-6">
               {mode === 'signin' ? t('signInTitle') : t('signUpTitle')}
             </h1>
 
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="mb-4 p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             )}
@@ -135,7 +135,7 @@ export default function AuthPage() {
                 <>
                   {/* Role Selection */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                    <label className="block text-sm font-medium text-white/70 mb-2">
                       {t('selectRole')}
                     </label>
                     <div className="grid grid-cols-2 gap-3">
@@ -144,8 +144,8 @@ export default function AuthPage() {
                         onClick={() => setRole('candidate')}
                         className={`p-3 rounded-lg border-2 text-center transition-all ${
                           role === 'candidate'
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
+                            : 'border-white/10 text-white/50 hover:border-white/20'
                         }`}
                       >
                         <div className="text-2xl mb-1">👤</div>
@@ -156,8 +156,8 @@ export default function AuthPage() {
                         onClick={() => setRole('recruiter')}
                         className={`p-3 rounded-lg border-2 text-center transition-all ${
                           role === 'recruiter'
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            ? 'border-blue-500/50 bg-blue-500/10 text-blue-400'
+                            : 'border-white/10 text-white/50 hover:border-white/20'
                         }`}
                       >
                         <div className="text-2xl mb-1">🏢</div>
@@ -168,7 +168,7 @@ export default function AuthPage() {
 
                   {/* Full Name */}
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium text-white/70 mb-1">
                       Full Name
                     </label>
                     <input
@@ -176,7 +176,7 @@ export default function AuthPage() {
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
                       required
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
                       placeholder="John Doe"
                     />
                   </div>
@@ -185,7 +185,7 @@ export default function AuthPage() {
 
               {/* Email */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   {t('email')}
                 </label>
                 <input
@@ -193,14 +193,14 @@ export default function AuthPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
                   placeholder="you@example.com"
                 />
               </div>
 
               {/* Password */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-white/70 mb-1">
                   {t('password')}
                 </label>
                 <input
@@ -209,13 +209,13 @@ export default function AuthPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   minLength={8}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
                 />
               </div>
 
               {mode === 'signup' && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium text-white/70 mb-1">
                     {t('confirmPassword')}
                   </label>
                   <input
@@ -224,7 +224,7 @@ export default function AuthPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     minLength={8}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
                   />
                 </div>
               )}
@@ -232,19 +232,19 @@ export default function AuthPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Loading...' : mode === 'signin' ? t('signInTitle') : t('signUpTitle')}
               </button>
             </form>
 
-            <div className="mt-6 text-center text-sm text-gray-600">
+            <div className="mt-6 text-center text-sm text-white/50">
               {mode === 'signin' ? (
                 <>
                   {t('noAccount')}{' '}
                   <button
                     onClick={() => setMode('signup')}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-blue-400 hover:text-blue-300 font-medium"
                   >
                     {t('signUpTitle')}
                   </button>
@@ -254,7 +254,7 @@ export default function AuthPage() {
                   {t('hasAccount')}{' '}
                   <button
                     onClick={() => setMode('signin')}
-                    className="text-blue-600 hover:text-blue-700 font-medium"
+                    className="text-blue-400 hover:text-blue-300 font-medium"
                   >
                     {t('signInTitle')}
                   </button>

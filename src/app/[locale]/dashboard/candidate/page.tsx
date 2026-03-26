@@ -55,46 +55,46 @@ export default function CandidateDashboard() {
   if (loading) return <div className="flex-1 flex items-center justify-center">Loading...</div>;
 
   const statusColors: Record<string, string> = {
-    applied: 'bg-blue-100 text-blue-700',
-    reviewed: 'bg-yellow-100 text-yellow-700',
-    shortlisted: 'bg-purple-100 text-purple-700',
-    interview_scheduled: 'bg-indigo-100 text-indigo-700',
-    interview_completed: 'bg-indigo-100 text-indigo-700',
-    offer_extended: 'bg-green-100 text-green-700',
-    offer_accepted: 'bg-green-100 text-green-700',
-    hired: 'bg-emerald-100 text-emerald-800',
-    rejected: 'bg-red-100 text-red-700',
-    withdrawn: 'bg-gray-100 text-gray-700',
+    applied: 'bg-blue-500/20 text-blue-400',
+    reviewed: 'bg-yellow-500/20 text-yellow-400',
+    shortlisted: 'bg-purple-500/20 text-purple-400',
+    interview_scheduled: 'bg-indigo-500/20 text-indigo-400',
+    interview_completed: 'bg-indigo-500/20 text-indigo-400',
+    offer_extended: 'bg-green-500/20 text-green-400',
+    offer_accepted: 'bg-green-500/20 text-green-400',
+    hired: 'bg-emerald-500/20 text-emerald-400',
+    rejected: 'bg-red-500/20 text-red-400',
+    withdrawn: 'bg-white/5 text-white/70',
   };
 
   return (
     <>
       <Header />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-transparent">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {/* Profile Summary */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+          <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 mb-8">
             <div className="flex items-start gap-6">
               {candidate?.photo_url ? (
                 <img src={candidate.photo_url} alt="" className="w-20 h-20 rounded-full object-cover" />
               ) : (
-                <div className="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600">
+                <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl font-bold text-blue-400">
                   {candidate?.full_name?.charAt(0)}
                 </div>
               )}
               <div className="flex-1">
-                <h1 className="text-2xl font-bold text-gray-900">{candidate?.full_name}</h1>
+                <h1 className="text-2xl font-bold text-white">{candidate?.full_name}</h1>
                 {candidate?.headline && (
-                  <p className="text-gray-600 mt-1">{candidate.headline}</p>
+                  <p className="text-white/60 mt-1">{candidate.headline}</p>
                 )}
                 <div className="flex flex-wrap gap-2 mt-3">
                   {candidate?.skills?.slice(0, 8).map((skill) => (
-                    <span key={skill} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full">
+                    <span key={skill} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm rounded-full">
                       {skill}
                     </span>
                   ))}
                   {(candidate?.skills?.length || 0) > 8 && (
-                    <span className="px-3 py-1 bg-gray-50 text-gray-500 text-sm rounded-full">
+                    <span className="px-3 py-1 bg-transparent text-white/50 text-sm rounded-full">
                       +{(candidate?.skills?.length || 0) - 8} more
                     </span>
                   )}
@@ -102,7 +102,7 @@ export default function CandidateDashboard() {
               </div>
               <button
                 onClick={() => router.push('/dashboard/candidate/profile')}
-                className="px-4 py-2 text-sm font-medium text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50"
+                className="px-4 py-2 text-sm font-medium text-blue-400 border border-blue-500/30 rounded-lg hover:bg-blue-500/5"
               >
                 {t('editProfile')}
               </button>
@@ -111,54 +111,54 @@ export default function CandidateDashboard() {
 
           {/* Stats */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="text-3xl font-bold text-blue-600">{applications.length}</div>
-              <div className="text-sm text-gray-500 mt-1">{t('myApplications')}</div>
+            <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6">
+              <div className="text-3xl font-bold text-blue-400">{applications.length}</div>
+              <div className="text-sm text-white/50 mt-1">{t('myApplications')}</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="text-3xl font-bold text-purple-600">{matchCount}</div>
-              <div className="text-sm text-gray-500 mt-1">{t('matchedJobs')}</div>
+            <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6">
+              <div className="text-3xl font-bold text-purple-400">{matchCount}</div>
+              <div className="text-sm text-white/50 mt-1">{t('matchedJobs')}</div>
             </div>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-              <div className="text-3xl font-bold text-green-600">
+            <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6">
+              <div className="text-3xl font-bold text-green-400">
                 {applications.filter(a => ['shortlisted', 'interview_scheduled', 'interview_completed', 'offer_extended'].includes(a.status)).length}
               </div>
-              <div className="text-sm text-gray-500 mt-1">In Progress</div>
+              <div className="text-sm text-white/50 mt-1">In Progress</div>
             </div>
           </div>
 
           {/* Applications */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">{t('myApplications')}</h2>
+          <div className="bg-[#0F172A] rounded-xl ring-1 ring-white/10">
+            <div className="px-6 py-4 border-b border-white/[0.06]">
+              <h2 className="text-lg font-semibold text-white">{t('myApplications')}</h2>
             </div>
             {applications.length === 0 ? (
-              <div className="p-12 text-center text-gray-500">
+              <div className="p-12 text-center text-white/50">
                 <p className="text-lg">No applications yet</p>
                 <button
                   onClick={() => router.push('/jobs')}
-                  className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                  className="mt-4 px-6 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20"
                 >
                   Browse Jobs
                 </button>
               </div>
             ) : (
-              <div className="divide-y divide-gray-100">
+              <div className="divide-y divide-white/[0.04]">
                 {applications.map((app) => (
-                  <div key={app.id} className="px-6 py-4 flex items-center justify-between hover:bg-gray-50">
+                  <div key={app.id} className="px-6 py-4 flex items-center justify-between hover:bg-transparent">
                     <div>
-                      <div className="font-medium text-gray-900">{app.job?.title || 'Job'}</div>
-                      <div className="text-sm text-gray-500 mt-1">
+                      <div className="font-medium text-white">{app.job?.title || 'Job'}</div>
+                      <div className="text-sm text-white/50 mt-1">
                         Applied {new Date(app.created_at).toLocaleDateString()}
                       </div>
                     </div>
                     <div className="flex items-center gap-3">
                       {app.match_score && (
-                        <span className="text-sm font-medium text-blue-600">
+                        <span className="text-sm font-medium text-blue-400">
                           {app.match_score}% match
                         </span>
                       )}
-                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusColors[app.status] || 'bg-gray-100 text-gray-700'}`}>
+                      <span className={`px-3 py-1 text-xs font-medium rounded-full ${statusColors[app.status] || 'bg-white/5 text-white/70'}`}>
                         {app.status.replace(/_/g, ' ')}
                       </span>
                     </div>

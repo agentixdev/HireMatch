@@ -191,40 +191,40 @@ export default function CandidateOnboarding() {
   return (
     <>
       <Header />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-transparent">
         <div className="max-w-3xl mx-auto px-4 py-12">
           {/* Progress */}
           <div className="flex items-center justify-center gap-2 mb-12">
             {['upload', 'review', 'details', 'done'].map((s, i) => (
               <div key={s} className="flex items-center gap-2">
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  step === s ? 'bg-blue-600 text-white' :
+                  step === s ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white' :
                   ['upload', 'review', 'details', 'done'].indexOf(step) > i ? 'bg-green-500 text-white' :
-                  'bg-gray-200 text-gray-500'
+                  'bg-white/10 text-white/50'
                 }`}>
                   {['upload', 'review', 'details', 'done'].indexOf(step) > i ? '✓' : i + 1}
                 </div>
-                {i < 3 && <div className="w-12 h-0.5 bg-gray-200" />}
+                {i < 3 && <div className="w-12 h-0.5 bg-white/10" />}
               </div>
             ))}
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700">
+            <div className="mb-6 p-4 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400">
               {error}
             </div>
           )}
 
           {/* Step 1: Upload CV */}
           {step === 'upload' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900 text-center">Upload Your CV</h2>
-              <p className="text-gray-600 text-center mt-2">
+            <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white text-center">Upload Your CV</h2>
+              <p className="text-white/60 text-center mt-2">
                 Our AI will parse your resume and create your profile automatically.
               </p>
 
               <div
-                className="mt-8 border-2 border-dashed border-gray-300 rounded-xl p-12 text-center hover:border-blue-400 transition-colors cursor-pointer"
+                className="mt-8 border-2 border-dashed border-white/10 rounded-xl p-12 text-center hover:border-blue-400 transition-colors cursor-pointer"
                 onDrop={handleDrop}
                 onDragOver={(e) => e.preventDefault()}
                 onClick={() => document.getElementById('cv-input')?.click()}
@@ -232,15 +232,15 @@ export default function CandidateOnboarding() {
                 {uploading ? (
                   <div className="space-y-4">
                     <div className="w-12 h-12 mx-auto border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-                    <p className="text-blue-600 font-medium">Parsing your CV with AI...</p>
+                    <p className="text-blue-400 font-medium">Parsing your CV with AI...</p>
                   </div>
                 ) : (
                   <>
                     <div className="text-5xl mb-4">📄</div>
-                    <p className="text-lg font-medium text-gray-700">
+                    <p className="text-lg font-medium text-white/70">
                       Drag & drop your CV here, or click to browse
                     </p>
-                    <p className="text-sm text-gray-500 mt-2">PDF, DOCX, or TXT (max 10MB)</p>
+                    <p className="text-sm text-white/50 mt-2">PDF, DOCX, or TXT (max 10MB)</p>
                   </>
                 )}
                 <input
@@ -258,7 +258,7 @@ export default function CandidateOnboarding() {
               <div className="mt-6 text-center">
                 <button
                   onClick={handleSkipUpload}
-                  className="text-sm text-gray-500 hover:text-gray-700"
+                  className="text-sm text-white/50 hover:text-white/70"
                 >
                   Skip — I&apos;ll fill in my profile manually
                 </button>
@@ -268,51 +268,51 @@ export default function CandidateOnboarding() {
 
           {/* Step 2: Review AI-parsed data */}
           {step === 'review' && parsed && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900">Review Your Profile</h2>
-              <p className="text-gray-600 mt-2">
+            <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white">Review Your Profile</h2>
+              <p className="text-white/60 mt-2">
                 Our AI extracted this from your CV. Edit anything that needs correction.
               </p>
 
               <div className="mt-8 space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Full Name</label>
                   <input
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Professional Headline</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Professional Headline</label>
                   <input
                     type="text"
                     value={headline}
                     onChange={(e) => setHeadline(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="Senior React Developer | 8 years experience"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Bio</label>
                   <textarea
                     value={bio}
                     onChange={(e) => setBio(e.target.value)}
                     rows={3}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Skills</label>
                   <div className="flex flex-wrap gap-2 mb-3">
                     {skills.map((skill) => (
-                      <span key={skill} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full flex items-center gap-1">
+                      <span key={skill} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm rounded-full flex items-center gap-1">
                         {skill}
-                        <button onClick={() => removeSkill(skill)} className="text-blue-400 hover:text-blue-600 ml-1">&times;</button>
+                        <button onClick={() => removeSkill(skill)} className="text-blue-500 hover:text-blue-300 ml-1">&times;</button>
                       </span>
                     ))}
                   </div>
@@ -323,9 +323,9 @@ export default function CandidateOnboarding() {
                       onChange={(e) => setNewSkill(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
                       placeholder="Add a skill..."
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
+                      className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none text-sm"
                     />
-                    <button onClick={addSkill} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                    <button onClick={addSkill} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm hover:bg-blue-700">
                       Add
                     </button>
                   </div>
@@ -333,13 +333,13 @@ export default function CandidateOnboarding() {
 
                 {parsed.work_history.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Work Experience</label>
+                    <label className="block text-sm font-medium text-white/70 mb-2">Work Experience</label>
                     <div className="space-y-3">
                       {parsed.work_history.map((job, i) => (
-                        <div key={i} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="font-medium text-gray-900">{job.title}</div>
-                          <div className="text-sm text-gray-600">{job.company} · {job.start_date} — {job.is_current ? 'Present' : job.end_date}</div>
-                          {job.description && <div className="text-sm text-gray-500 mt-1">{job.description}</div>}
+                        <div key={i} className="p-4 bg-white/[0.04] rounded-lg">
+                          <div className="font-medium text-white">{job.title}</div>
+                          <div className="text-sm text-white/60">{job.company} · {job.start_date} — {job.is_current ? 'Present' : job.end_date}</div>
+                          {job.description && <div className="text-sm text-white/50 mt-1">{job.description}</div>}
                         </div>
                       ))}
                     </div>
@@ -348,12 +348,12 @@ export default function CandidateOnboarding() {
 
                 {parsed.education.length > 0 && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Education</label>
+                    <label className="block text-sm font-medium text-white/70 mb-2">Education</label>
                     <div className="space-y-3">
                       {parsed.education.map((edu, i) => (
-                        <div key={i} className="p-4 bg-gray-50 rounded-lg">
-                          <div className="font-medium text-gray-900">{edu.degree} in {edu.field}</div>
-                          <div className="text-sm text-gray-600">{edu.institution} · {edu.start_year} — {edu.end_year || 'Present'}</div>
+                        <div key={i} className="p-4 bg-white/[0.04] rounded-lg">
+                          <div className="font-medium text-white">{edu.degree} in {edu.field}</div>
+                          <div className="text-sm text-white/60">{edu.institution} · {edu.start_year} — {edu.end_year || 'Present'}</div>
                         </div>
                       ))}
                     </div>
@@ -362,10 +362,10 @@ export default function CandidateOnboarding() {
               </div>
 
               <div className="mt-8 flex justify-end gap-3">
-                <button onClick={() => setStep('upload')} className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <button onClick={() => setStep('upload')} className="px-6 py-2.5 text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5">
                   Re-upload
                 </button>
-                <button onClick={() => setStep('details')} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+                <button onClick={() => setStep('details')} className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20">
                   Looks Good — Continue
                 </button>
               </div>
@@ -374,38 +374,38 @@ export default function CandidateOnboarding() {
 
           {/* Step 3: Additional Details */}
           {step === 'details' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-8">
-              <h2 className="text-2xl font-bold text-gray-900">A Few More Details</h2>
-              <p className="text-gray-600 mt-2">Help us find better matches for you.</p>
+            <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-8">
+              <h2 className="text-2xl font-bold text-white">A Few More Details</h2>
+              <p className="text-white/60 mt-2">Help us find better matches for you.</p>
 
               <div className="mt-8 space-y-6">
                 {!parsed && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                      <label className="block text-sm font-medium text-white/70 mb-1">Full Name</label>
                       <input
                         type="text"
                         value={fullName}
                         onChange={(e) => setFullName(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Professional Headline</label>
+                      <label className="block text-sm font-medium text-white/70 mb-1">Professional Headline</label>
                       <input
                         type="text"
                         value={headline}
                         onChange={(e) => setHeadline(e.target.value)}
-                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+                      <label className="block text-sm font-medium text-white/70 mb-2">Skills</label>
                       <div className="flex flex-wrap gap-2 mb-3">
                         {skills.map((skill) => (
-                          <span key={skill} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full flex items-center gap-1">
+                          <span key={skill} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm rounded-full flex items-center gap-1">
                             {skill}
-                            <button onClick={() => removeSkill(skill)} className="text-blue-400 hover:text-blue-600 ml-1">&times;</button>
+                            <button onClick={() => removeSkill(skill)} className="text-blue-500 hover:text-blue-300 ml-1">&times;</button>
                           </span>
                         ))}
                       </div>
@@ -416,9 +416,9 @@ export default function CandidateOnboarding() {
                           onChange={(e) => setNewSkill(e.target.value)}
                           onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
                           placeholder="Add a skill..."
-                          className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm"
+                          className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 text-sm"
                         />
-                        <button onClick={addSkill} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700">
+                        <button onClick={addSkill} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm hover:bg-blue-700">
                           Add
                         </button>
                       </div>
@@ -427,11 +427,11 @@ export default function CandidateOnboarding() {
                 )}
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Country</label>
                   <select
                     value={country}
                     onChange={(e) => setCountry(e.target.value as CountryCode)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
                     {COUNTRIES.map((c) => (
                       <option key={c.code} value={c.code}>{c.flag} {c.name}</option>
@@ -440,18 +440,18 @@ export default function CandidateOnboarding() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">City</label>
                   <input
                     type="text"
                     value={city}
                     onChange={(e) => setCity(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                     placeholder="San Francisco"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Work Preference</label>
+                  <label className="block text-sm font-medium text-white/70 mb-2">Work Preference</label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {(['remote', 'hybrid', 'onsite', 'any'] as const).map((pref) => (
                       <button
@@ -460,8 +460,8 @@ export default function CandidateOnboarding() {
                         onClick={() => setRemotePreference(pref)}
                         className={`p-3 rounded-lg border-2 text-center text-sm font-medium transition-all capitalize ${
                           remotePreference === pref
-                            ? 'border-blue-600 bg-blue-50 text-blue-700'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            ? 'border-blue-600 bg-blue-500/10 text-blue-400'
+                            : 'border-white/[0.06] text-white/60 hover:border-white/10'
                         }`}
                       >
                         {pref}
@@ -471,11 +471,11 @@ export default function CandidateOnboarding() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Visa / Work Authorization</label>
+                  <label className="block text-sm font-medium text-white/70 mb-1">Visa / Work Authorization</label>
                   <select
                     value={visaStatus}
                     onChange={(e) => setVisaStatus(e.target.value)}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                   >
                     <option value="">Select...</option>
                     <option value="citizen">Citizen</option>
@@ -487,13 +487,13 @@ export default function CandidateOnboarding() {
               </div>
 
               <div className="mt-8 flex justify-end gap-3">
-                <button onClick={() => setStep(parsed ? 'review' : 'upload')} className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                <button onClick={() => setStep(parsed ? 'review' : 'upload')} className="px-6 py-2.5 text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5">
                   Back
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving || !fullName}
-                  className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50"
                 >
                   {saving ? 'Saving...' : 'Complete Profile'}
                 </button>
@@ -503,10 +503,10 @@ export default function CandidateOnboarding() {
 
           {/* Step 4: Done */}
           {step === 'done' && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
+            <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-12 text-center">
               <div className="text-6xl mb-6">🎉</div>
-              <h2 className="text-2xl font-bold text-gray-900">Profile Created!</h2>
-              <p className="text-gray-600 mt-2">
+              <h2 className="text-2xl font-bold text-white">Profile Created!</h2>
+              <p className="text-white/60 mt-2">
                 Redirecting to your dashboard...
               </p>
             </div>

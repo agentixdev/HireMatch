@@ -128,79 +128,79 @@ export default function EditProfilePage() {
   return (
     <>
       <Header />
-      <main className="flex-1 bg-gray-50">
+      <main className="flex-1 bg-transparent">
         <div className="max-w-3xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Edit Profile</h1>
+            <h1 className="text-2xl font-bold text-white">Edit Profile</h1>
             <button
               onClick={() => router.push('/dashboard/candidate')}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-white/60 hover:text-white"
             >
               Back to Dashboard
             </button>
           </div>
 
-          {error && <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>}
-          {success && <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">Profile saved!</div>}
+          {error && <div className="mb-4 p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">{error}</div>}
+          {success && <div className="mb-4 p-3 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-green-400 text-sm">Profile saved!</div>}
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 space-y-6">
+          <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 space-y-6">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Full Name</label>
                 <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Headline</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Headline</label>
                 <input type="text" value={headline} onChange={(e) => setHeadline(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" />
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Bio</label>
+              <label className="block text-sm font-medium text-white/70 mb-1">Bio</label>
               <textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3}
-                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:ring-2 focus:ring-blue-500 outline-none resize-none" />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Skills</label>
+              <label className="block text-sm font-medium text-white/70 mb-2">Skills</label>
               <div className="flex flex-wrap gap-2 mb-3">
                 {skills.map((skill) => (
-                  <span key={skill} className="px-3 py-1 bg-blue-50 text-blue-700 text-sm rounded-full flex items-center gap-1">
+                  <span key={skill} className="px-3 py-1 bg-blue-500/10 text-blue-400 text-sm rounded-full flex items-center gap-1">
                     {skill}
-                    <button onClick={() => setSkills(skills.filter(s => s !== skill))} className="text-blue-400 hover:text-blue-600">&times;</button>
+                    <button onClick={() => setSkills(skills.filter(s => s !== skill))} className="text-blue-500 hover:text-blue-300">&times;</button>
                   </span>
                 ))}
               </div>
               <div className="flex gap-2">
                 <input type="text" value={newSkill} onChange={(e) => setNewSkill(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                  placeholder="Add skill..." className="flex-1 px-4 py-2 border border-gray-300 rounded-lg text-sm" />
-                <button onClick={addSkill} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm">Add</button>
+                  placeholder="Add skill..." className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 text-sm" />
+                <button onClick={addSkill} className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm">Add</button>
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Country</label>
                 <select value={country} onChange={(e) => setCountry(e.target.value as CountryCode)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500">
                   {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">City</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">City</label>
                 <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" />
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500" />
               </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Work Preference</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Work Preference</label>
                 <select value={remotePreference} onChange={(e) => setRemotePreference(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500">
                   <option value="any">Any</option>
                   <option value="remote">Remote</option>
                   <option value="hybrid">Hybrid</option>
@@ -208,9 +208,9 @@ export default function EditProfilePage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Visa Status</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Visa Status</label>
                 <select value={visaStatus} onChange={(e) => setVisaStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg">
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500">
                   <option value="">Select...</option>
                   <option value="citizen">Citizen</option>
                   <option value="permanent_resident">Permanent Resident</option>
@@ -222,32 +222,32 @@ export default function EditProfilePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Min Salary Expectation</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Min Salary Expectation</label>
                 <input type="number" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="50000" />
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500" placeholder="50000" />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Max Salary Expectation</label>
+                <label className="block text-sm font-medium text-white/70 mb-1">Max Salary Expectation</label>
                 <input type="number" value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-lg" placeholder="80000" />
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500" placeholder="80000" />
               </div>
             </div>
 
             <div className="flex items-center gap-3">
               <input type="checkbox" id="isPublic" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)}
-                className="w-4 h-4 text-blue-600 rounded border-gray-300" />
-              <label htmlFor="isPublic" className="text-sm text-gray-700">
+                className="w-4 h-4 text-blue-400 rounded border-white/10" />
+              <label htmlFor="isPublic" className="text-sm text-white/70">
                 Make my profile visible to recruiters
               </label>
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
               <button onClick={() => router.push('/dashboard/candidate')}
-                className="px-6 py-2.5 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50">
+                className="px-6 py-2.5 text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5">
                 Cancel
               </button>
               <button onClick={handleSave} disabled={saving}
-                className="px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50">
                 {saving ? 'Saving...' : 'Save Profile'}
               </button>
             </div>
