@@ -269,6 +269,7 @@ export default function CandidateOnboarding() {
       setBio(p.bio || '');
       setSkills(p.skills || []);
       if (p.experience_years) setExperienceYears(String(p.experience_years));
+      if (data.photo_url) setPhotoUrl(data.photo_url);
 
       // Brief pause to show all green checks before advancing
       await new Promise((r) => setTimeout(r, 500));

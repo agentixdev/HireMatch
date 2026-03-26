@@ -243,10 +243,11 @@ export default function EditProfilePage() {
         if (p.skills?.length) setSkills(p.skills);
       }
       if (data.cv_url) setCvUrl(data.cv_url);
+      if (data.photo_url && !photoUrl) setPhotoUrl(data.photo_url);
       setCvParsedAt(new Date().toISOString());
       setCvProcessingStage(stages.length - 1);
       await new Promise((r) => setTimeout(r, 400));
-      setCvSuccess('CV parsed successfully! Review the updated fields below.');
+      setCvSuccess(data.photo_url ? 'CV parsed + photo extracted! Review below.' : 'CV parsed successfully! Review the updated fields below.');
     } catch {
       setCvError('CV upload failed. Please try again.');
     } finally {
