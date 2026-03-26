@@ -2,46 +2,152 @@ import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
 import { parseCVWithAI } from '@/lib/gemini';
+import zlib from 'zlib';
 
 export const maxDuration = 60;
 
+type ImageResult = { data: Buffer; mimeType: string };
+
 /**
- * Extract the first embedded JPEG or PNG image from a PDF buffer.
- * Scans for JPEG (FFD8) and PNG (89504E47) signatures in the binary data.
+ * Scan a buffer for all JPEG and PNG images by binary signatures.
+ * Returns all found images sorted by size (largest first).
  */
-function extractPhotoFromPDF(buffer: Buffer): { data: Buffer; mimeType: string } | null {
-  // Look for JPEG signature (FF D8 FF)
-  for (let i = 0; i < buffer.length - 3; i++) {
-    if (buffer[i] === 0xFF && buffer[i + 1] === 0xD8 && buffer[i + 2] === 0xFF) {
-      // Found JPEG start, find end (FF D9)
-      for (let j = i + 3; j < buffer.length - 1; j++) {
-        if (buffer[j] === 0xFF && buffer[j + 1] === 0xD9) {
-          const imgData = buffer.subarray(i, j + 2);
-          // Only accept images > 2KB (skip tiny thumbnails) and < 5MB
-          if (imgData.length > 2048 && imgData.length < 5 * 1024 * 1024) {
-            return { data: Buffer.from(imgData), mimeType: 'image/jpeg' };
+function scanForImages(buf: Buffer): ImageResult[] {
+  const images: ImageResult[] = [];
+
+  // Scan for JPEG (FF D8 FF ... FF D9)
+  for (let i = 0; i < buf.length - 3; i++) {
+    if (buf[i] === 0xFF && buf[i + 1] === 0xD8 && buf[i + 2] === 0xFF) {
+      // Find the LAST FF D9 (some JPEGs have embedded thumbnails with their own FF D9)
+      let lastEnd = -1;
+      for (let j = i + 3; j < buf.length - 1; j++) {
+        if (buf[j] === 0xFF && buf[j + 1] === 0xD9) {
+          lastEnd = j + 2;
+        }
+      }
+      if (lastEnd > i) {
+        const imgData = buf.subarray(i, lastEnd);
+        // Accept images > 5KB (skip tiny icons/logos) and < 5MB
+        if (imgData.length > 5120 && imgData.length < 5 * 1024 * 1024) {
+          images.push({ data: Buffer.from(imgData), mimeType: 'image/jpeg' });
+        }
+        i = lastEnd - 1; // Skip past this image
+      }
+    }
+  }
+
+  // Scan for PNG (89 50 4E 47 ... IEND)
+  for (let i = 0; i < buf.length - 8; i++) {
+    if (buf[i] === 0x89 && buf[i + 1] === 0x50 && buf[i + 2] === 0x4E && buf[i + 3] === 0x47) {
+      for (let j = i + 8; j < buf.length - 8; j++) {
+        if (buf[j] === 0x49 && buf[j + 1] === 0x45 && buf[j + 2] === 0x4E && buf[j + 3] === 0x44) {
+          const imgData = buf.subarray(i, j + 8);
+          if (imgData.length > 5120 && imgData.length < 5 * 1024 * 1024) {
+            images.push({ data: Buffer.from(imgData), mimeType: 'image/png' });
           }
+          i = j + 7;
+          break;
         }
       }
     }
   }
 
-  // Look for PNG signature (89 50 4E 47)
-  for (let i = 0; i < buffer.length - 8; i++) {
-    if (buffer[i] === 0x89 && buffer[i + 1] === 0x50 && buffer[i + 2] === 0x4E && buffer[i + 3] === 0x47) {
-      // Found PNG start, find IEND chunk
-      for (let j = i + 8; j < buffer.length - 8; j++) {
-        if (buffer[j] === 0x49 && buffer[j + 1] === 0x45 && buffer[j + 2] === 0x4E && buffer[j + 3] === 0x44) {
-          const imgData = buffer.subarray(i, j + 8); // include IEND + CRC
-          if (imgData.length > 2048 && imgData.length < 5 * 1024 * 1024) {
-            return { data: Buffer.from(imgData), mimeType: 'image/png' };
-          }
-        }
+  // Sort largest first — profile photos are usually the biggest image in a CV
+  images.sort((a, b) => b.data.length - a.data.length);
+  return images;
+}
+
+/**
+ * Extract the best profile photo from a PDF.
+ * Strategy 1: Direct binary scan (works for uncompressed/DCTDecode images)
+ * Strategy 2: Decompress FlateDecode streams, then scan (compressed images)
+ */
+function extractPhotoFromPDF(buffer: Buffer): ImageResult | null {
+  // Strategy 1: Direct scan on raw buffer
+  const directImages = scanForImages(buffer);
+  if (directImages.length > 0) return directImages[0];
+
+  // Strategy 2: Find PDF streams, decompress with zlib, scan inside
+  const allDecompressed: Buffer[] = [];
+  const streamMarker = Buffer.from('stream');
+  const endMarker = Buffer.from('endstream');
+  let searchFrom = 0;
+
+  while (searchFrom < buffer.length) {
+    const streamIdx = buffer.indexOf(streamMarker, searchFrom);
+    if (streamIdx === -1) break;
+
+    // Stream data starts after 'stream\r\n' or 'stream\n'
+    let dataStart = streamIdx + streamMarker.length;
+    if (buffer[dataStart] === 0x0D) dataStart++; // skip \r
+    if (buffer[dataStart] === 0x0A) dataStart++; // skip \n
+
+    const endIdx = buffer.indexOf(endMarker, dataStart);
+    if (endIdx === -1) break;
+
+    const streamData = buffer.subarray(dataStart, endIdx);
+    searchFrom = endIdx + endMarker.length;
+
+    if (streamData.length < 100) continue;
+
+    // Try zlib inflate (FlateDecode)
+    try {
+      const decompressed = zlib.inflateSync(streamData);
+      if (decompressed.length > 5120) {
+        allDecompressed.push(decompressed);
       }
+    } catch {
+      // Not zlib compressed — might be raw DCTDecode, already found in Strategy 1
     }
+  }
+
+  // Scan decompressed streams for images
+  for (const dec of allDecompressed) {
+    const imgs = scanForImages(dec);
+    if (imgs.length > 0) return imgs[0];
   }
 
   return null;
+}
+
+/**
+ * Extract the best profile photo from a DOCX file.
+ * DOCX is a ZIP archive with images in word/media/ directory.
+ */
+function extractPhotoFromDOCX(buffer: Buffer): ImageResult | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const AdmZip = require('adm-zip');
+    const zip = new AdmZip(buffer);
+    const entries = zip.getEntries();
+
+    const images: ImageResult[] = [];
+
+    for (const entry of entries) {
+      const name = entry.entryName.toLowerCase();
+      // DOCX stores images in word/media/
+      if (!name.startsWith('word/media/')) continue;
+
+      const ext = name.split('.').pop();
+      let mimeType = '';
+      if (ext === 'jpg' || ext === 'jpeg') mimeType = 'image/jpeg';
+      else if (ext === 'png') mimeType = 'image/png';
+      else continue; // skip EMF, WMF, etc.
+
+      const data = entry.getData();
+      // Skip tiny images (logos, icons)
+      if (data.length > 5120 && data.length < 5 * 1024 * 1024) {
+        images.push({ data: Buffer.from(data), mimeType });
+      }
+    }
+
+    // Return largest image (most likely the profile photo)
+    images.sort((a, b) => b.data.length - a.data.length);
+    return images.length > 0 ? images[0] : null;
+  } catch (err) {
+    console.error('DOCX image extraction error:', err);
+    return null;
+  }
 }
 
 export async function POST(request: Request) {
@@ -111,8 +217,23 @@ export async function POST(request: Request) {
         cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
       }
     } else {
-      // DOCX: strip binary, keep ASCII text
-      cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+      // DOCX: extract text from XML inside the ZIP
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const AdmZip = require('adm-zip');
+        const zip = new AdmZip(buffer);
+        const docEntry = zip.getEntry('word/document.xml');
+        if (docEntry) {
+          const xml = docEntry.getData().toString('utf-8');
+          // Strip XML tags, keep text content
+          cvText = xml.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+        } else {
+          cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+        }
+      } catch {
+        // Fallback: strip binary, keep ASCII text
+        cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+      }
     }
 
     if (cvText.trim().length < 20) {
@@ -131,26 +252,37 @@ export async function POST(request: Request) {
       );
     }
 
-    // Extract photo from PDF and upload as avatar
+    // Extract photo from PDF or DOCX and upload as avatar
     let photoUrl: string | null = null;
+    let photo: ImageResult | null = null;
+
     if (file.type === 'application/pdf') {
-      const photo = extractPhotoFromPDF(buffer);
-      if (photo) {
-        const ext = photo.mimeType === 'image/png' ? 'png' : 'jpg';
-        const photoPath = `${user.id}/cv-photo-${Date.now()}.${ext}`;
-        const { error: photoUploadErr } = await admin.storage
-          .from('avatars')
-          .upload(photoPath, photo.data, {
-            upsert: true,
-            contentType: photo.mimeType,
-          });
-        if (!photoUploadErr) {
-          const { data: photoUrlData } = admin.storage.from('avatars').getPublicUrl(photoPath);
-          photoUrl = photoUrlData.publicUrl;
-        } else {
-          console.error('Photo upload error:', photoUploadErr);
-        }
+      photo = extractPhotoFromPDF(buffer);
+    } else if (
+      file.type === 'application/msword' ||
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    ) {
+      photo = extractPhotoFromDOCX(buffer);
+    }
+
+    if (photo) {
+      console.log(`[parse-cv] Extracted ${photo.mimeType} photo (${(photo.data.length / 1024).toFixed(1)}KB) from ${file.type}`);
+      const ext = photo.mimeType === 'image/png' ? 'png' : 'jpg';
+      const photoPath = `${user.id}/cv-photo-${Date.now()}.${ext}`;
+      const { error: photoUploadErr } = await admin.storage
+        .from('avatars')
+        .upload(photoPath, photo.data, {
+          upsert: true,
+          contentType: photo.mimeType,
+        });
+      if (!photoUploadErr) {
+        const { data: photoUrlData } = admin.storage.from('avatars').getPublicUrl(photoPath);
+        photoUrl = photoUrlData.publicUrl;
+      } else {
+        console.error('Photo upload error:', photoUploadErr);
       }
+    } else {
+      console.log(`[parse-cv] No photo found in ${file.type} document`);
     }
 
     // Update candidate record with service role
@@ -170,17 +302,9 @@ export async function POST(request: Request) {
       updated_at: new Date().toISOString(),
     };
 
-    // Only set photo if we extracted one and candidate doesn't already have one
+    // Always update photo when extracted from new CV upload
     if (photoUrl) {
-      const { data: existing } = await admin
-        .from('candidates')
-        .select('photo_url')
-        .eq('user_id', user.id)
-        .single();
-
-      if (!existing?.photo_url) {
-        updateData.photo_url = photoUrl;
-      }
+      updateData.photo_url = photoUrl;
     }
 
     const { error: updateError } = await admin
