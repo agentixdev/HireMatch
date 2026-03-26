@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -49,6 +49,50 @@ export default function EditProfilePage() {
   const [salaryMax, setSalaryMax] = useState('');
   const [isPublic, setIsPublic] = useState(false);
   const [photoUrl, setPhotoUrl] = useState('');
+  const [cvUrl, setCvUrl] = useState('');
+  const [cvParsedAt, setCvParsedAt] = useState('');
+  const [cvUploading, setCvUploading] = useState(false);
+  const [cvError, setCvError] = useState('');
+  const [cvSuccess, setCvSuccess] = useState('');
+  const cvInputRef = useRef<HTMLInputElement>(null);
+
+  const handleCvUpload = useCallback(async (file: File) => {
+    setCvUploading(true);
+    setCvError('');
+    setCvSuccess('');
+    try {
+      const formData = new FormData();
+      formData.append('cv', file);
+      const res = await fetch('/api/parse-cv', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (!res.ok) {
+        setCvError(data.error || 'Upload failed');
+        setCvUploading(false);
+        return;
+      }
+      // Update local state with parsed data
+      if (data.parsed) {
+        const p = data.parsed;
+        if (p.full_name) setFullName(p.full_name);
+        if (p.headline) setHeadline(p.headline);
+        if (p.bio) setBio(p.bio);
+        if (p.skills?.length) setSkills(p.skills);
+      }
+      if (data.cv_url) setCvUrl(data.cv_url);
+      setCvParsedAt(new Date().toISOString());
+      setCvSuccess('CV uploaded and parsed! Review the updated fields below, then save.');
+    } catch {
+      setCvError('CV upload failed. Please try again.');
+    } finally {
+      setCvUploading(false);
+    }
+  }, []);
+
+  const handleCvDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (file) handleCvUpload(file);
+  }, [handleCvUpload]);
 
   useEffect(() => {
     async function load() {
@@ -77,6 +121,8 @@ export default function EditProfilePage() {
       setSalaryMax(c.salary_expectation_max?.toString() || '');
       setIsPublic(c.is_public);
       setPhotoUrl(c.photo_url || '');
+      setCvUrl((data as Record<string, unknown>).cv_url as string || '');
+      setCvParsedAt((data as Record<string, unknown>).cv_parsed_at as string || '');
       setLoading(false);
     }
     load();
@@ -154,6 +200,60 @@ export default function EditProfilePage() {
                 shape="circle"
                 size={96}
               />
+            </div>
+
+            {/* CV Upload / Re-upload */}
+            <div>
+              <label className="block text-sm font-medium text-white/70 mb-2">Resume / CV</label>
+              {cvError && <div className="mb-2 p-2 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-xs">{cvError}</div>}
+              {cvSuccess && <div className="mb-2 p-2 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-green-400 text-xs">{cvSuccess}</div>}
+
+              {cvUrl && (
+                <div className="mb-3 flex items-center gap-3 p-3 bg-white/[0.03] rounded-lg ring-1 ring-white/[0.06]">
+                  <svg className="w-5 h-5 text-blue-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-white/80 truncate">Current CV uploaded</p>
+                    {cvParsedAt && (
+                      <p className="text-xs text-white/40">Parsed {new Date(cvParsedAt).toLocaleDateString()}</p>
+                    )}
+                  </div>
+                  <a href={cvUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-400 hover:text-blue-300 shrink-0">View</a>
+                </div>
+              )}
+
+              <div
+                className={`border-2 border-dashed rounded-xl p-6 text-center transition-colors cursor-pointer ${cvUploading ? 'border-blue-500/30 bg-blue-500/5' : 'border-white/10 hover:border-blue-400/40 hover:bg-blue-500/[0.02]'}`}
+                onDrop={handleCvDrop}
+                onDragOver={(e) => e.preventDefault()}
+                onClick={() => cvInputRef.current?.click()}
+              >
+                {cvUploading ? (
+                  <div className="flex items-center justify-center gap-3">
+                    <div className="w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                    <span className="text-sm text-blue-400 font-medium">Parsing your CV with AI...</span>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm text-white/60">
+                      {cvUrl ? 'Drop a new CV to update, or click to browse' : 'Drop your CV here, or click to browse'}
+                    </p>
+                    <p className="text-xs text-white/30 mt-1">PDF, DOCX, or TXT (max 10MB)</p>
+                  </>
+                )}
+                <input
+                  ref={cvInputRef}
+                  type="file"
+                  accept=".pdf,.doc,.docx,.txt"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleCvUpload(file);
+                    e.target.value = '';
+                  }}
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
