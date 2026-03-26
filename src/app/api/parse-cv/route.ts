@@ -120,7 +120,16 @@ export async function POST(request: Request) {
     }
 
     // Parse with Gemini AI
-    const parsed = await parseCVWithAI(cvText);
+    let parsed;
+    try {
+      parsed = await parseCVWithAI(cvText);
+    } catch (aiError) {
+      console.error('Gemini AI parse error:', aiError);
+      return NextResponse.json(
+        { error: aiError instanceof Error ? aiError.message : 'AI CV parsing failed' },
+        { status: 500 }
+      );
+    }
 
     // Extract photo from PDF and upload as avatar
     let photoUrl: string | null = null;
