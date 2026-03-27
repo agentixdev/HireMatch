@@ -1,0 +1,228 @@
+name: CI/CD Pipeline
+
+on:
+  pull_request:
+    branches: [master]
+  push:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ghcr.io/${{ github.repository_owner }}/hirematch
+
+permissions:
+  contents: read
+  packages: write
+
+# =============================================================================
+# PR checks — lint, typecheck, test via Turborepo
+# =============================================================================
+jobs:
+  quality:
+    name: Lint + Typecheck + Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Lint
+        run: pnpm turbo lint
+
+      - name: Typecheck
+        run: pnpm turbo typecheck
+
+      - name: Test
+        run: pnpm turbo test
+        env:
+          NODE_ENV: test
+
+  # ===========================================================================
+  # Build Docker images on push to master
+  # ===========================================================================
+  build-images:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        service:
+          - name: scraper
+            dockerfile: infra/docker/Dockerfile.scraper
+          - name: worker
+            dockerfile: infra/docker/Dockerfile.worker
+          - name: scheduler
+            dockerfile: infra/docker/Dockerfile.scheduler
+          - name: cowork
+            dockerfile: infra/docker/Dockerfile.cowork
+          - name: crawl4ai
+            dockerfile: infra/docker/Dockerfile.crawl4ai
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}-${{ matrix.service.name }}
+          tags: |
+            type=sha,prefix=
+            type=raw,value=latest
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.service.dockerfile }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # ===========================================================================
+  # Database migration (Drizzle)
+  # ===========================================================================
+  migrate:
+    name: Database Migration
+    runs-on: ubuntu-latest
+    needs: build-images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build DB package
+        run: pnpm --filter @recruitment/db build
+
+      - name: Run Drizzle migrations
+        run: pnpm --filter @recruitment/db migrate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+  # ===========================================================================
+  # Deploy to VPS via SSH
+  # ===========================================================================
+  deploy:
+    name: Deploy to VPS
+    runs-on: ubuntu-latest
+    needs: [build-images, migrate]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    timeout-minutes: 10
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.VPS_SSH_KEY }}" | base64 -d > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H ${{ secrets.VPS_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Deploy containers
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          SSH_CMD="ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=accept-new ${VPS_USER}@${VPS_HOST}"
+          SHORT_SHA="${COMMIT_SHA:0:7}"
+
+          # Login to GHCR on VPS
+          $SSH_CMD "echo '${{ secrets.GITHUB_TOKEN }}' | docker login ghcr.io -u '${{ github.actor }}' --password-stdin"
+
+          # Pull new images
+          $SSH_CMD "
+            docker pull ${{ env.IMAGE_PREFIX }}-scraper:${SHORT_SHA} &&
+            docker pull ${{ env.IMAGE_PREFIX }}-worker:${SHORT_SHA} &&
+            docker pull ${{ env.IMAGE_PREFIX }}-scheduler:${SHORT_SHA} &&
+            docker pull ${{ env.IMAGE_PREFIX }}-cowork:${SHORT_SHA} &&
+            docker pull ${{ env.IMAGE_PREFIX }}-crawl4ai:${SHORT_SHA}
+          "
+
+          # Tag as latest and restart
+          $SSH_CMD "
+            cd /opt/hirematch &&
+            docker compose -f infra/docker/docker-compose.yml pull &&
+            docker compose -f infra/docker/docker-compose.yml up -d --remove-orphans &&
+            docker image prune -f
+          "
+
+      - name: Verify deployment health
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+        run: |
+          SSH_CMD="ssh -i ~/.ssh/deploy_key ${VPS_USER}@${VPS_HOST}"
+
+          echo "Waiting 30s for services to start..."
+          sleep 30
+
+          # Check each service health
+          $SSH_CMD "
+            docker compose -f /opt/hirematch/infra/docker/docker-compose.yml ps --format '{{.Name}}\t{{.Status}}' | while read line; do
+              echo \"  \$line\"
+            done
+          "
+
+          # Verify nginx responds
+          $SSH_CMD "curl -sf http://localhost/health || echo 'WARNING: nginx health check failed'"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/deploy_key

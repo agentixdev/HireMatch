@@ -1,0 +1,33 @@
+{
+  "name": "@recruitment/db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "drizzle-kit generate",
+    "migrate": "tsx migrate.ts",
+    "seed": "tsx seed.ts",
+    "studio": "drizzle-kit studio",
+    "push": "drizzle-kit push",
+    "check": "drizzle-kit check"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./schema": "./schema/index.ts",
+    "./relations": "./relations.ts"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.2",
+    "drizzle-orm": "^0.45.1",
+    "drizzle-zod": "^0.8.3",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "dotenv": "^17.3.1",
+    "drizzle-kit": "^0.31.10",
+    "postgres": "^3.4.8",
+    "tsx": "^4.0.0",
+    "typescript": "^6.0.2"
+  }
+}

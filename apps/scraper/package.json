@@ -1,0 +1,28 @@
+{
+  "name": "@recruitment/scraper",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "playwright": "^1.48.0",
+    "bullmq": "^5.12.0",
+    "ioredis": "^5.4.0",
+    "pino": "^9.5.0",
+    "@recruitment/db": "workspace:*",
+    "@recruitment/shared": "workspace:*",
+    "@recruitment/queue": "workspace:*",
+    "@recruitment/storage": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}

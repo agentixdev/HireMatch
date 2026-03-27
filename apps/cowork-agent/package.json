@@ -1,0 +1,29 @@
+{
+  "name": "@recruitment/cowork-agent",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "playwright": "^1.52.0",
+    "bullmq": "^5.52.0",
+    "ioredis": "^5.6.1",
+    "pino": "^9.6.0",
+    "minio": "^8.0.0",
+    "@recruitment/queue": "workspace:*",
+    "@recruitment/storage": "workspace:*",
+    "@recruitment/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}

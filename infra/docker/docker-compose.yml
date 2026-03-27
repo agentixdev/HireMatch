@@ -1,0 +1,237 @@
+version: "3.9"
+
+x-node-base: &node-base
+  restart: unless-stopped
+  env_file: .env
+  networks:
+    - recruitment-net
+  logging:
+    driver: json-file
+    options:
+      max-size: "50m"
+      max-file: "5"
+
+services:
+  # ---------------------------------------------------------------------------
+  # Visa / Job-board scraper — Playwright + Chromium headless
+  # ---------------------------------------------------------------------------
+  scraper:
+    <<: *node-base
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.scraper
+    container_name: hire-scraper
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${UPSTASH_REDIS_URL}
+      REDIS_TOKEN: ${UPSTASH_REDIS_TOKEN}
+      BRIGHT_DATA_HOST: ${BRIGHT_DATA_HOST}
+      BRIGHT_DATA_PORT: ${BRIGHT_DATA_PORT}
+      BRIGHT_DATA_USER: ${BRIGHT_DATA_USER}
+      BRIGHT_DATA_PASS: ${BRIGHT_DATA_PASS}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - scraper-data:/app/data
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3100/health',(r)=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Crawl4AI — Python FastAPI service for deep web crawling
+  # ---------------------------------------------------------------------------
+  crawl4ai:
+    <<: *node-base
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.crawl4ai
+    container_name: hire-crawl4ai
+    environment:
+      CRAWL4AI_API_TOKEN: ${CRAWL4AI_API_TOKEN}
+      BRIGHT_DATA_HOST: ${BRIGHT_DATA_HOST}
+      BRIGHT_DATA_PORT: ${BRIGHT_DATA_PORT}
+      BRIGHT_DATA_USER: ${BRIGHT_DATA_USER}
+      BRIGHT_DATA_PASS: ${BRIGHT_DATA_PASS}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    expose:
+      - "8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  # ---------------------------------------------------------------------------
+  # BullMQ worker — processes embed:process and webhook:deliver queues
+  # ---------------------------------------------------------------------------
+  worker:
+    <<: *node-base
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.worker
+    container_name: hire-worker
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${UPSTASH_REDIS_URL}
+      REDIS_TOKEN: ${UPSTASH_REDIS_TOKEN}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      DATABASE_URL: ${DATABASE_URL}
+      WEBHOOK_SECRET: ${WEBHOOK_SECRET}
+      BULL_BOARD_PORT: "3200"
+    depends_on:
+      minio:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:3200:3200"
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3200/health',(r)=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # ---------------------------------------------------------------------------
+  # Scheduler — node-cron that dispatches scrape jobs into BullMQ
+  # ---------------------------------------------------------------------------
+  scheduler:
+    <<: *node-base
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.scheduler
+    container_name: hire-scheduler
+    environment:
+      NODE_ENV: production
+      REDIS_URL: ${UPSTASH_REDIS_URL}
+      REDIS_TOKEN: ${UPSTASH_REDIS_TOKEN}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      CRAWL4AI_URL: http://crawl4ai:8001
+    depends_on:
+      worker:
+        condition: service_healthy
+      crawl4ai:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3300/health',(r)=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # MinIO — S3-compatible object storage for CVs, exports, scraped pages
+  # ---------------------------------------------------------------------------
+  minio:
+    image: minio/minio:RELEASE.2025-02-28T09-55-16Z
+    container_name: hire-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - recruitment-net
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ---------------------------------------------------------------------------
+  # Cowork Agent — Claude Computer Use via Anthropic SDK + Playwright
+  # ---------------------------------------------------------------------------
+  cowork-agent:
+    <<: *node-base
+    build:
+      context: ../../
+      dockerfile: infra/docker/Dockerfile.cowork
+    container_name: hire-cowork-agent
+    environment:
+      NODE_ENV: production
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY}
+      SUPABASE_URL: ${SUPABASE_URL}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY}
+      REDIS_URL: ${UPSTASH_REDIS_URL}
+      REDIS_TOKEN: ${UPSTASH_REDIS_TOKEN}
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+    depends_on:
+      minio:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3400/health',(r)=>{process.exit(r.statusCode===200?0:1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 25s
+
+  # ---------------------------------------------------------------------------
+  # Nginx — reverse proxy, SSL termination, rate limiting, security headers
+  # ---------------------------------------------------------------------------
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: hire-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ../nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../nginx/htpasswd:/etc/nginx/.htpasswd:ro
+      - certbot-etc:/etc/letsencrypt:ro
+      - certbot-var:/var/lib/letsencrypt
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      worker:
+        condition: service_healthy
+    networks:
+      - recruitment-net
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+volumes:
+  minio-data:
+    driver: local
+  scraper-data:
+    driver: local
+  certbot-etc:
+    driver: local
+  certbot-var:
+    driver: local
+  certbot-webroot:
+    driver: local
+
+networks:
+  recruitment-net:
+    driver: bridge
+    name: recruitment-net

@@ -1,0 +1,29 @@
+{
+  "name": "@recruitment/worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.12.0",
+    "ioredis": "^5.4.0",
+    "pino": "^9.5.0",
+    "@google/generative-ai": "^0.21.0",
+    "@recruitment/db": "workspace:*",
+    "@recruitment/embeddings": "workspace:*",
+    "@recruitment/webhooks": "workspace:*",
+    "@recruitment/queue": "workspace:*",
+    "@recruitment/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.6.0"
+  }
+}

@@ -1,0 +1,66 @@
+# =============================================================================
+# Dockerfile.worker — BullMQ consumer for embed:process + webhook:deliver
+# =============================================================================
+
+# -- Stage 1: Dependencies ----------------------------------------------------
+FROM node:22-bookworm-slim AS deps
+
+WORKDIR /app
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml* ./
+COPY tsconfig.base.json turbo.json ./
+
+COPY packages/queue/package.json        packages/queue/package.json
+COPY packages/shared/package.json       packages/shared/package.json
+COPY packages/webhooks/package.json     packages/webhooks/package.json
+COPY packages/embeddings/package.json   packages/embeddings/package.json
+COPY packages/storage/package.json      packages/storage/package.json
+COPY packages/db/package.json           packages/db/package.json
+COPY packages/matching/package.json     packages/matching/package.json
+
+RUN pnpm install --frozen-lockfile --ignore-scripts
+
+# -- Stage 2: Build ------------------------------------------------------------
+FROM deps AS builder
+
+COPY packages/shared/      packages/shared/
+COPY packages/queue/       packages/queue/
+COPY packages/webhooks/    packages/webhooks/
+COPY packages/embeddings/  packages/embeddings/
+COPY packages/storage/     packages/storage/
+COPY packages/db/          packages/db/
+COPY packages/matching/    packages/matching/
+
+RUN pnpm --filter @recruitment/shared build \
+ && pnpm --filter @recruitment/queue build \
+ && pnpm --filter @recruitment/embeddings build \
+ && pnpm --filter @recruitment/storage build \
+ && pnpm --filter @recruitment/webhooks build \
+ && pnpm --filter @recruitment/matching build
+
+# -- Stage 3: Runtime ----------------------------------------------------------
+FROM node:22-bookworm-slim AS runtime
+
+RUN corepack enable && corepack prepare pnpm@9 --activate
+
+WORKDIR /app
+
+COPY --from=builder /app/node_modules        ./node_modules
+COPY --from=builder /app/packages             ./packages
+COPY --from=builder /app/pnpm-workspace.yaml  ./pnpm-workspace.yaml
+COPY --from=builder /app/package.json         ./package.json
+
+# Non-root user
+RUN groupadd -r worker && useradd -r -g worker worker \
+ && chown -R worker:worker /app
+USER worker
+
+ENV NODE_ENV=production
+EXPOSE 3200
+
+HEALTHCHECK --interval=30s --timeout=10s --retries=3 --start-period=15s \
+  CMD node -e "require('http').get('http://localhost:3200/health',(r)=>{process.exit(r.statusCode===200?0:1)})"
+
+CMD ["node", "--enable-source-maps", "packages/queue/dist/worker-entry.js"]
