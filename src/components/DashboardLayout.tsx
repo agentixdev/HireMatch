@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
 import { createClient } from '@/lib/supabase';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardLayoutProps {
   role: 'candidate' | 'recruiter';
@@ -44,14 +45,11 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems = role === 'candidate' ? candidateNav : recruiterNav;
-  // Mobile bottom bar: show max 5 items
   const mobileNavItems = navItems.slice(0, 5);
 
   const isActive = (href: string) => {
-    // Strip locale prefix for comparison (e.g. /en/dashboard/candidate -> /dashboard/candidate)
     const cleanPath = pathname.replace(/^\/[a-z]{2}(?=\/)/, '');
     const cleanHref = href;
-    // Exact match for dashboard home, startsWith for sub-pages
     if (cleanHref === `/dashboard/${role}`) {
       return cleanPath === cleanHref;
     }
@@ -70,53 +68,78 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
   return (
     <div className="flex min-h-screen bg-[#0d0f1a]">
       {/* ---- Desktop Sidebar ---- */}
-      <aside
-        className={`hidden md:flex flex-col fixed top-0 left-0 h-screen bg-[#0a0c16] border-r border-white/[0.06] z-40 transition-all duration-300 ${
-          collapsed ? 'w-16' : 'w-60'
-        }`}
+      <motion.aside
+        className="hidden md:flex flex-col fixed top-0 left-0 h-screen bg-[#0a0c16] border-r border-white/[0.06] z-40"
+        animate={{ width: collapsed ? 64 : 240 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
       >
         {/* Logo + Collapse Toggle */}
         <div className="flex items-center justify-between h-14 px-3 border-b border-white/[0.06]">
-          {!collapsed && (
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                <span className="text-white font-bold text-sm">H</span>
-              </div>
-              <span className="font-bold text-lg text-white">HireMatch</span>
-            </Link>
-          )}
-          <button
+          <AnimatePresence mode="wait">
+            {!collapsed && (
+              <motion.div
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -10 }}
+                transition={{ duration: 0.15 }}
+              >
+                <Link href="/" className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <span className="text-white font-bold text-sm">H</span>
+                  </div>
+                  <span className="font-bold text-lg text-white">HireMatch</span>
+                </Link>
+              </motion.div>
+            )}
+          </AnimatePresence>
+          <motion.button
             onClick={() => setCollapsed(!collapsed)}
             className={`p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors ${
               collapsed ? 'mx-auto' : ''
             }`}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
-            <Icon
-              icon={collapsed ? 'solar:alt-arrow-right-linear' : 'solar:alt-arrow-left-linear'}
-              className="w-5 h-5"
-            />
-          </button>
+            <motion.div
+              animate={{ rotate: collapsed ? 180 : 0 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+            >
+              <Icon icon="solar:alt-arrow-left-linear" className="w-5 h-5" />
+            </motion.div>
+          </motion.button>
         </div>
 
         {/* User Info */}
         <div className={`px-3 py-4 border-b border-white/[0.06] ${collapsed ? 'flex justify-center' : ''}`}>
           <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0">
+            <motion.div
+              className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
+              whileHover={{ scale: 1.1, boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)' }}
+              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+            >
               {initials}
-            </div>
-            {!collapsed && (
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
-                <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                  role === 'recruiter'
-                    ? 'bg-purple-500/20 text-purple-400'
-                    : 'bg-blue-500/20 text-blue-400'
-                }`}>
-                  {role === 'recruiter' ? 'Recruiter' : 'Candidate'}
-                </span>
-              </div>
-            )}
+            </motion.div>
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.div
+                  className="min-w-0"
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -8 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
+                  <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                    role === 'recruiter'
+                      ? 'bg-purple-500/20 text-purple-400'
+                      : 'bg-blue-500/20 text-blue-400'
+                  }`}>
+                    {role === 'recruiter' ? 'Recruiter' : 'Candidate'}
+                  </span>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
 
@@ -128,18 +151,43 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium ${
-                  active
-                    ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
-                    : 'text-white/50 hover:text-white hover:bg-white/5'
-                } ${collapsed ? 'justify-center px-0' : ''}`}
+                className="block"
                 title={collapsed ? item.label : undefined}
               >
-                <Icon
-                  icon={active ? item.iconActive : item.icon}
-                  className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-400' : ''}`}
-                />
-                {!collapsed && <span>{item.label}</span>}
+                <motion.div
+                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium relative ${
+                    active
+                      ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
+                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                  } ${collapsed ? 'justify-center px-0' : ''}`}
+                  whileHover={{ x: collapsed ? 0 : 3, scale: active ? 1 : 1.01 }}
+                  whileTap={{ scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                >
+                  {active && (
+                    <motion.div
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
+                      layoutId="activeIndicator"
+                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                    />
+                  )}
+                  <Icon
+                    icon={active ? item.iconActive : item.icon}
+                    className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-400' : ''}`}
+                  />
+                  <AnimatePresence mode="wait">
+                    {!collapsed && (
+                      <motion.span
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.1 }}
+                      >
+                        {item.label}
+                      </motion.span>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
               </Link>
             );
           })}
@@ -147,24 +195,38 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
 
         {/* Sign Out */}
         <div className="px-2 py-3 border-t border-white/[0.06]">
-          <button
+          <motion.button
             onClick={handleSignOut}
-            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-all ${
+            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors ${
               collapsed ? 'justify-center px-0' : ''
             }`}
+            whileHover={{ x: collapsed ? 0 : 3 }}
+            whileTap={{ scale: 0.97 }}
             title={collapsed ? 'Sign Out' : undefined}
           >
             <Icon icon="solar:logout-2-linear" className="w-5 h-5 flex-shrink-0" />
-            {!collapsed && <span>Sign Out</span>}
-          </button>
+            <AnimatePresence mode="wait">
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  Sign Out
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
-      </aside>
+      </motion.aside>
 
       {/* ---- Main Content ---- */}
-      <div
-        className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
-          collapsed ? 'md:ml-16' : 'md:ml-60'
-        }`}
+      <motion.div
+        className="flex-1 flex flex-col min-h-screen"
+        animate={{ marginLeft: collapsed ? 64 : 240 }}
+        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        style={{ marginLeft: 0 }} // mobile default
       >
         {/* Mobile top bar */}
         <header className="md:hidden sticky top-0 z-40 bg-[#0a0c16]/95 backdrop-blur-md border-b border-white/[0.06]">
@@ -189,7 +251,7 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
         <main className="flex-1 bg-transparent pb-20 md:pb-0">
           {children}
         </main>
-      </div>
+      </motion.div>
 
       {/* ---- Mobile Bottom Tab Bar ---- */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0c16]/95 backdrop-blur-md border-t border-white/[0.06]">
@@ -211,6 +273,13 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                   className="w-5 h-5"
                 />
                 <span className="text-[10px] font-medium truncate">{item.label}</span>
+                {active && (
+                  <motion.div
+                    className="absolute bottom-1 w-4 h-0.5 bg-blue-400 rounded-full"
+                    layoutId="mobileActiveTab"
+                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                  />
+                )}
               </Link>
             );
           })}
