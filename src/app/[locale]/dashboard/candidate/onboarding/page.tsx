@@ -241,19 +241,25 @@ export default function CandidateOnboarding() {
     setError('');
     goTo('resume-processing');
 
-    // Animate processing stages
-    const stagesDone = [false, false, false, false];
-    for (let i = 0; i < PROCESSING_STAGES.length; i++) {
-      await new Promise((r) => setTimeout(r, 600));
-      setProcessingStageIndex(i);
-      stagesDone[i] = true;
-      setStagesCompleted([...stagesDone]);
-    }
+    // Run animation in parallel with API call
+    const animateStages = async () => {
+      const stagesDone = [false, false, false, false];
+      for (let i = 0; i < PROCESSING_STAGES.length; i++) {
+        await new Promise((r) => setTimeout(r, 800));
+        setProcessingStageIndex(i);
+        stagesDone[i] = true;
+        setStagesCompleted([...stagesDone]);
+      }
+    };
+
+    const formData = new FormData();
+    formData.append('cv', file);
 
     try {
-      const formData = new FormData();
-      formData.append('cv', file);
-      const res = await fetch('/api/parse-cv', { method: 'POST', body: formData });
+      const [, res] = await Promise.all([
+        animateStages(),
+        fetch('/api/parse-cv', { method: 'POST', body: formData }),
+      ]);
       const data = await res.json();
 
       if (!res.ok) {
@@ -270,6 +276,11 @@ export default function CandidateOnboarding() {
       setSkills(p.skills || []);
       if (p.experience_years) setExperienceYears(String(p.experience_years));
       if (data.photo_url) setPhotoUrl(data.photo_url);
+
+      // Ensure all stage checkmarks show before advancing
+      const stagesDone = PROCESSING_STAGES.map(() => true);
+      setStagesCompleted(stagesDone);
+      setProcessingStageIndex(PROCESSING_STAGES.length - 1);
 
       // Brief pause to show all green checks before advancing
       await new Promise((r) => setTimeout(r, 500));

@@ -234,17 +234,24 @@ export default function EditProfilePage() {
     setCvSuccess('');
     setCvProcessingStage(0);
 
-    // Animate stages
-    const stages = ['Reading document...', 'Extracting skills...', 'Building profile...', 'Done!'];
-    for (let i = 0; i < stages.length - 1; i++) {
-      await new Promise((r) => setTimeout(r, 600));
-      setCvProcessingStage(i + 1);
-    }
+    // Run animation in parallel with the actual API call
+    const stages = ['Reading document...', 'Extracting skills...', 'Building profile...', 'Almost there...', 'Done!'];
+    const animateStages = async () => {
+      for (let i = 0; i < stages.length - 1; i++) {
+        await new Promise((r) => setTimeout(r, 800));
+        setCvProcessingStage(i + 1);
+      }
+    };
+
+    const formData = new FormData();
+    formData.append('cv', file);
 
     try {
-      const formData = new FormData();
-      formData.append('cv', file);
-      const res = await fetch('/api/parse-cv', { method: 'POST', body: formData });
+      // Start animation AND fetch simultaneously
+      const [, res] = await Promise.all([
+        animateStages(),
+        fetch('/api/parse-cv', { method: 'POST', body: formData }),
+      ]);
       const data = await res.json();
       if (!res.ok) {
         setCvError(data.error || 'Upload failed');
@@ -252,11 +259,14 @@ export default function EditProfilePage() {
         setCvProcessingStage(-1);
         return;
       }
+
+      // Populate from API response (already normalized server-side)
       if (data.parsed) {
         const p = data.parsed;
-        if (p.full_name) setFullName(p.full_name);
-        if (p.headline) setHeadline(p.headline);
-        if (p.bio) setBio(p.bio);
+        // Use != null to accept empty strings, only skip undefined/null
+        if (p.full_name != null && p.full_name !== '') setFullName(p.full_name);
+        if (p.headline != null && p.headline !== '') setHeadline(p.headline);
+        if (p.bio != null && p.bio !== '') setBio(p.bio);
         if (p.skills?.length) setSkills(p.skills);
         if (p.experience_years) setExperienceYears(p.experience_years);
         if (p.education?.length) setEducation(p.education);
@@ -267,6 +277,31 @@ export default function EditProfilePage() {
       if (data.cv_url) setCvUrl(data.cv_url);
       if (data.photo_url) setPhotoUrl(data.photo_url);
       setCvParsedAt(new Date().toISOString());
+
+      // Also re-fetch from DB as canonical source (API already saved there)
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: fresh } = await supabase
+          .from('candidates')
+          .select('full_name, headline, bio, photo_url, skills, experience_years, education, work_history, certifications, languages, cv_url, cv_parsed_at')
+          .eq('user_id', user.id)
+          .single();
+        if (fresh) {
+          if (fresh.full_name) setFullName(fresh.full_name);
+          if (fresh.headline) setHeadline(fresh.headline);
+          if (fresh.bio) setBio(fresh.bio);
+          if (fresh.photo_url) setPhotoUrl(fresh.photo_url);
+          if (fresh.skills?.length) setSkills(fresh.skills);
+          if (fresh.experience_years) setExperienceYears(fresh.experience_years);
+          if (fresh.education?.length) setEducation(fresh.education);
+          if (fresh.work_history?.length) setWorkHistory(fresh.work_history);
+          if (fresh.certifications?.length) setCertifications(fresh.certifications);
+          if (fresh.languages?.length) setLanguages(fresh.languages);
+          if (fresh.cv_url) setCvUrl(fresh.cv_url);
+          if (fresh.cv_parsed_at) setCvParsedAt(fresh.cv_parsed_at);
+        }
+      }
+
       setCvProcessingStage(stages.length - 1);
       await new Promise((r) => setTimeout(r, 400));
 
@@ -276,6 +311,7 @@ export default function EditProfilePage() {
       const filledFields: string[] = [];
       if (data.parsed?.full_name) filledFields.push('name');
       if (data.parsed?.headline) filledFields.push('headline');
+      if (data.parsed?.bio) filledFields.push('bio');
       if (data.parsed?.skills?.length) filledFields.push(`${data.parsed.skills.length} skills`);
       if (data.parsed?.work_history?.length) filledFields.push(`${data.parsed.work_history.length} roles`);
       if (data.parsed?.education?.length) filledFields.push(`${data.parsed.education.length} degrees`);
@@ -294,7 +330,7 @@ export default function EditProfilePage() {
       setCvUploading(false);
       setCvProcessingStage(-1);
     }
-  }, []);
+  }, [supabase]);
 
   const handleCvDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();

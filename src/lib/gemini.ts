@@ -37,17 +37,23 @@ export async function parseCVWithAI(cvText: string): Promise<{
 }> {
   const prompt = `You are an expert CV/resume parser. Extract structured data from this CV text.
 
-Return ONLY valid JSON with this exact structure:
+CRITICAL RULES:
+- "full_name" MUST be the person's full name from the CV. Never leave it empty.
+- "headline" MUST be a professional headline (e.g. "Senior Software Engineer" or "Marketing Manager with 5 years experience"). Derive from their most recent job title if not explicitly stated.
+- "bio" MUST be a 2-3 sentence professional summary. Write one from the CV content if not explicitly present.
+- All fields are REQUIRED — never return empty strings or null for full_name, headline, or bio.
+
+Return ONLY valid JSON with this EXACT structure (use these exact key names):
 {
-  "full_name": "string",
-  "headline": "one-line professional headline",
-  "skills": ["skill1", "skill2", ...],
-  "experience_years": number,
+  "full_name": "The person's full name",
+  "headline": "One-line professional headline",
+  "skills": ["skill1", "skill2"],
+  "experience_years": 0,
   "education": [{"institution": "", "degree": "", "field": "", "start_year": 0, "end_year": 0}],
   "work_history": [{"company": "", "title": "", "description": "", "start_date": "YYYY-MM", "end_date": "YYYY-MM or null", "is_current": false, "skills": []}],
-  "certifications": ["cert1", ...],
-  "languages": ["English", ...],
-  "bio": "2-3 sentence professional summary"
+  "certifications": ["cert1"],
+  "languages": ["English"],
+  "bio": "2-3 sentence professional summary synthesized from the CV"
 }
 
 CV TEXT:
