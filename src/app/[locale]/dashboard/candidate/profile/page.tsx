@@ -7,6 +7,7 @@ import DashboardLayout from '@/components/DashboardLayout';
 import AvatarUpload from '@/components/AvatarUpload';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Candidate, CountryCode, Education, WorkExperience } from '@/types';
+import confetti from 'canvas-confetti';
 
 /* ─── Constants ─── */
 
@@ -305,6 +306,14 @@ export default function EditProfilePage() {
       setCvProcessingStage(stages.length - 1);
       await new Promise((r) => setTimeout(r, 400));
 
+      // Celebration confetti burst
+      confetti({
+        particleCount: 80,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#3b82f6', '#6366f1', '#22c55e', '#eab308'],
+      });
+
       // Auto-open all sections to show populated data
       setCvJustParsed(true);
 
@@ -438,6 +447,8 @@ export default function EditProfilePage() {
     } else {
       setSuccess(true);
       setSaveCount((c) => c + 1);
+      // Subtle celebration on save
+      confetti({ particleCount: 30, spread: 50, origin: { y: 0.8, x: 0.85 }, gravity: 1.2, colors: ['#22c55e', '#3b82f6'] });
       setTimeout(() => setSuccess(false), 3000);
     }
     setSaving(false);
@@ -487,7 +498,7 @@ export default function EditProfilePage() {
   const processingStages = ['Reading document...', 'Extracting skills...', 'Building profile...', 'Done!'];
 
   return (
-    <DashboardLayout role="candidate" userName={candidate?.full_name}>
+    <DashboardLayout role="candidate" userName={fullName || candidate?.full_name}>
       <div className="max-w-3xl mx-auto px-4 py-8">
         {/* Header with completeness */}
         <motion.div
@@ -618,37 +629,61 @@ export default function EditProfilePage() {
                 </div>
               )}
 
-              {/* Processing reveal */}
+              {/* Dramatic processing reveal */}
               {cvUploading && cvProcessingStage >= 0 && (
                 <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="p-4 bg-blue-500/[0.05] ring-1 ring-blue-500/20 rounded-lg"
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={springTransition}
+                  className="relative p-5 bg-gradient-to-br from-blue-500/[0.08] to-indigo-500/[0.04] ring-1 ring-blue-500/30 rounded-xl overflow-hidden"
                 >
-                  <div className="space-y-2">
+                  {/* Animated glow backdrop */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-indigo-500/10 to-blue-500/10"
+                    animate={{ x: ['-100%', '100%'] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                  />
+                  <div className="relative space-y-3">
+                    {/* Progress bar */}
+                    <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full bg-gradient-to-r from-blue-500 to-indigo-500 rounded-full"
+                        initial={{ width: '0%' }}
+                        animate={{ width: `${Math.min(((cvProcessingStage + 1) / processingStages.length) * 100, 100)}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                      />
+                    </div>
                     {processingStages.map((stage, i) => (
                       <motion.div
                         key={stage}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={i <= cvProcessingStage ? { opacity: 1, x: 0 } : { opacity: 0.3, x: 0 }}
-                        transition={{ ...springTransition, delay: i * 0.1 }}
-                        className="flex items-center gap-2"
+                        initial={{ opacity: 0, x: -15 }}
+                        animate={i <= cvProcessingStage ? { opacity: 1, x: 0 } : { opacity: 0.2, x: 0 }}
+                        transition={{ ...springTransition, delay: i * 0.08 }}
+                        className="flex items-center gap-2.5"
                       >
                         {i < cvProcessingStage ? (
                           <motion.span
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
+                            initial={{ scale: 0, rotate: -180 }}
+                            animate={{ scale: 1, rotate: 0 }}
                             transition={{ type: 'spring' as const, stiffness: 500, damping: 15 }}
-                            className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center text-[8px] text-white font-bold"
+                            className="w-5 h-5 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-[9px] text-white font-bold shadow-lg shadow-green-500/30"
                           >&#10003;</motion.span>
                         ) : i === cvProcessingStage ? (
-                          <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 0.8, repeat: Infinity, ease: 'linear' }}
+                            className="w-5 h-5 border-2 border-blue-400 border-t-transparent rounded-full"
+                          />
                         ) : (
-                          <div className="w-4 h-4 rounded-full bg-white/10" />
+                          <div className="w-5 h-5 rounded-full bg-white/[0.06] ring-1 ring-white/[0.08]" />
                         )}
-                        <span className={`text-xs ${i <= cvProcessingStage ? 'text-white/80' : 'text-white/30'}`}>{stage}</span>
+                        <span className={`text-sm font-medium ${
+                          i < cvProcessingStage ? 'text-green-400' :
+                          i === cvProcessingStage ? 'text-blue-400' : 'text-white/20'
+                        }`}>{stage}</span>
                       </motion.div>
                     ))}
+                    <p className="text-[10px] text-white/30 mt-2 text-center">Gemini AI is reading your CV directly...</p>
                   </div>
                 </motion.div>
               )}
