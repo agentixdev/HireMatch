@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale } from '@/i18n/request';
-import crypto from 'crypto';
-
 // ---------------------------------------------------------------------------
 // Security headers applied to ALL responses
 // ---------------------------------------------------------------------------
