@@ -5,17 +5,13 @@
   "packageManager": "npm@10.9.4",
   "scripts": {
     "dev": "next dev",
-    "build": "turbo build",
+    "build": "next build",
     "start": "next start",
-    "lint": "turbo lint",
-    "test": "turbo test",
+    "lint": "next lint",
+    "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "turbo test -- --coverage",
-    "typecheck": "turbo typecheck",
-    "db:generate": "pnpm --filter @recruitment/db generate",
-    "db:migrate": "pnpm --filter @recruitment/db migrate",
-    "db:seed": "pnpm --filter @recruitment/db seed",
-    "db:studio": "pnpm --filter @recruitment/db studio"
+    "test:coverage": "jest --coverage",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
