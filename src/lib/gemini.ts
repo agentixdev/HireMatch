@@ -7,6 +7,14 @@ const model = genAI.getGenerativeModel({
   generationConfig: { responseMimeType: 'application/json' },
 });
 
+/** Clean JSON response from Gemini — strip fences, comments, trailing commas */
+function cleanJson(raw: string): string {
+  return raw
+    .replace(/```json\s*/g, '').replace(/```\s*/g, '')  // strip markdown fences
+    .replace(/\/\/[^\n]*/g, '')                          // strip single-line comments
+    .replace(/,\s*([}\]])/g, '$1');                      // strip trailing commas
+}
+
 /**
  * Parse a CV/resume PDF text into structured candidate data.
  */
@@ -62,13 +70,10 @@ ${cvText}`;
   const result = await model.generateContent(prompt);
   const text = result.response.text();
 
-  // Try direct parse first (responseMimeType: application/json), then regex fallback
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleanJson(text));
   } catch {
-    // Strip markdown fences and retry
-    const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('Gemini CV parse response (no JSON found):', text.slice(0, 500));
       throw new Error('Failed to parse CV: no JSON in response');
@@ -110,10 +115,9 @@ ${jdText}`;
   const result = await model.generateContent(prompt);
   const text = result.response.text();
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleanJson(text));
   } catch {
-    const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('Gemini JD parse response (no JSON found):', text.slice(0, 500));
       throw new Error('Failed to parse JD: no JSON in response');
@@ -158,10 +162,9 @@ Return ONLY valid JSON:
   const result = await model.generateContent(prompt);
   const text = result.response.text();
   try {
-    return JSON.parse(text);
+    return JSON.parse(cleanJson(text));
   } catch {
-    const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    const jsonMatch = stripped.match(/\{[\s\S]*\}/);
+    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
       console.error('Gemini match response (no JSON found):', text.slice(0, 500));
       throw new Error('Failed to compute match');
