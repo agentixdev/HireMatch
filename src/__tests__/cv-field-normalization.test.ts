@@ -45,8 +45,10 @@ jest.mock('@supabase/supabase-js', () => ({
 
 // ── Gemini mock (configurable per test) ─────────────────────
 const mockParseCVWithAI = jest.fn();
+const mockParseCVFromPDF = jest.fn();
 jest.mock('@/lib/gemini', () => ({
   parseCVWithAI: (...args: unknown[]) => mockParseCVWithAI(...args),
+  parseCVFromPDF: (...args: unknown[]) => mockParseCVFromPDF(...args),
 }));
 
 // ── Photo extraction mock ───────────────────────────────────
@@ -314,7 +316,7 @@ describe('CV field normalization', () => {
     });
     mockGetPublicUrl.mockReturnValue({ data: { publicUrl: 'https://storage.example.com/avatar.jpg' } });
 
-    mockParseCVWithAI.mockResolvedValue({
+    mockParseCVFromPDF.mockResolvedValue({
       full_name: 'Photo Person',
       headline: 'Photographer',
       bio: 'I take photos.',
@@ -340,7 +342,7 @@ describe('CV field normalization', () => {
     });
     mockGetPublicUrl.mockReturnValue({ data: { publicUrl: 'https://storage.example.com/avatar.jpg' } });
 
-    mockParseCVWithAI.mockResolvedValue({
+    mockParseCVFromPDF.mockResolvedValue({
       full_name: 'Photo Person',
       headline: 'Dev',
       bio: 'Bio.',

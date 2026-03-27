@@ -65,6 +65,22 @@ jest.mock('@/lib/gemini', () => ({
     languages: ['English'],
     bio: 'A test bio.',
   }),
+  parseCVFromPDF: jest.fn().mockResolvedValue({
+    full_name: 'Test User',
+    headline: 'Software Engineer',
+    skills: ['JavaScript', 'React'],
+    experience_years: 5,
+    education: [],
+    work_history: [],
+    certifications: [],
+    languages: ['English'],
+    bio: 'A test bio.',
+  }),
+}));
+
+jest.mock('@/lib/photo-extraction', () => ({
+  extractPhotoFromPDF: jest.fn().mockReturnValue(null),
+  extractPhotoFromDOCX: jest.fn().mockReturnValue(null),
 }));
 
 jest.mock('pdf-parse', () => jest.fn().mockResolvedValue({ text: 'Parsed PDF text' }), { virtual: true });

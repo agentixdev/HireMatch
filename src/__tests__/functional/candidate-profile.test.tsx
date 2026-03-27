@@ -4,6 +4,8 @@ import userEvent from '@testing-library/user-event';
 
 /* ---- Mocks ---- */
 
+jest.mock('canvas-confetti', () => jest.fn(), { virtual: true });
+
 const mockPush = jest.fn();
 let mockPathname = '/en/dashboard/candidate/profile';
 
