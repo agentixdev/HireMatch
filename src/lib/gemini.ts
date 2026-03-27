@@ -15,6 +15,88 @@ function cleanJson(raw: string): string {
     .replace(/,\s*([}\]])/g, '$1');                      // strip trailing commas
 }
 
+/** Return type for CV parsing */
+export type ParsedCV = {
+  full_name: string;
+  headline: string;
+  skills: string[];
+  experience_years: number;
+  education: Array<{
+    institution: string;
+    degree: string;
+    field: string;
+    start_year: number;
+    end_year?: number;
+  }>;
+  work_history: Array<{
+    company: string;
+    title: string;
+    description: string;
+    start_date: string;
+    end_date?: string;
+    is_current: boolean;
+    skills: string[];
+  }>;
+  certifications: string[];
+  languages: string[];
+  bio: string;
+};
+
+const CV_PARSE_PROMPT = `You are an expert CV/resume parser. Extract structured data from this CV.
+
+CRITICAL RULES:
+- "full_name" MUST be the person's full name from the CV. Never leave it empty.
+- "headline" MUST be a professional headline (e.g. "Senior Software Engineer" or "Marketing Manager with 5 years experience"). Derive from their most recent job title if not explicitly stated.
+- "bio" MUST be a 2-3 sentence professional summary. Write one from the CV content if not explicitly present.
+- All fields are REQUIRED — never return empty strings or null for full_name, headline, or bio.
+
+Return ONLY valid JSON with this EXACT structure (use these exact key names):
+{
+  "full_name": "The person's full name",
+  "headline": "One-line professional headline",
+  "skills": ["skill1", "skill2"],
+  "experience_years": 0,
+  "education": [{"institution": "", "degree": "", "field": "", "start_year": 0, "end_year": 0}],
+  "work_history": [{"company": "", "title": "", "description": "", "start_date": "YYYY-MM", "end_date": "YYYY-MM or null", "is_current": false, "skills": []}],
+  "certifications": ["cert1"],
+  "languages": ["English"],
+  "bio": "2-3 sentence professional summary synthesized from the CV"
+}`;
+
+function parseJsonResponse(text: string): ParsedCV {
+  try {
+    return JSON.parse(cleanJson(text));
+  } catch {
+    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('Gemini CV parse response (no JSON found):', text.slice(0, 500));
+      throw new Error('Failed to parse CV: no JSON in response');
+    }
+    return JSON.parse(jsonMatch[0]);
+  }
+}
+
+/**
+ * Parse a CV/resume from a PDF buffer using Gemini's native multimodal PDF support.
+ * This sends the raw PDF bytes to Gemini, bypassing text extraction entirely.
+ */
+export async function parseCVFromPDF(pdfBuffer: Buffer): Promise<ParsedCV> {
+  const base64Data = pdfBuffer.toString('base64');
+
+  const result = await model.generateContent([
+    {
+      inlineData: {
+        mimeType: 'application/pdf',
+        data: base64Data,
+      },
+    },
+    { text: CV_PARSE_PROMPT },
+  ]);
+
+  const text = result.response.text();
+  return parseJsonResponse(text);
+}
+
 /**
  * Parse a CV/resume PDF text into structured candidate data.
  */
@@ -43,43 +125,9 @@ export async function parseCVWithAI(cvText: string): Promise<{
   languages: string[];
   bio: string;
 }> {
-  const prompt = `You are an expert CV/resume parser. Extract structured data from this CV text.
-
-CRITICAL RULES:
-- "full_name" MUST be the person's full name from the CV. Never leave it empty.
-- "headline" MUST be a professional headline (e.g. "Senior Software Engineer" or "Marketing Manager with 5 years experience"). Derive from their most recent job title if not explicitly stated.
-- "bio" MUST be a 2-3 sentence professional summary. Write one from the CV content if not explicitly present.
-- All fields are REQUIRED — never return empty strings or null for full_name, headline, or bio.
-
-Return ONLY valid JSON with this EXACT structure (use these exact key names):
-{
-  "full_name": "The person's full name",
-  "headline": "One-line professional headline",
-  "skills": ["skill1", "skill2"],
-  "experience_years": 0,
-  "education": [{"institution": "", "degree": "", "field": "", "start_year": 0, "end_year": 0}],
-  "work_history": [{"company": "", "title": "", "description": "", "start_date": "YYYY-MM", "end_date": "YYYY-MM or null", "is_current": false, "skills": []}],
-  "certifications": ["cert1"],
-  "languages": ["English"],
-  "bio": "2-3 sentence professional summary synthesized from the CV"
-}
-
-CV TEXT:
-${cvText}`;
-
-  const result = await model.generateContent(prompt);
+  const result = await model.generateContent(`${CV_PARSE_PROMPT}\n\nCV TEXT:\n${cvText}`);
   const text = result.response.text();
-
-  try {
-    return JSON.parse(cleanJson(text));
-  } catch {
-    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('Gemini CV parse response (no JSON found):', text.slice(0, 500));
-      throw new Error('Failed to parse CV: no JSON in response');
-    }
-    return JSON.parse(jsonMatch[0]);
-  }
+  return parseJsonResponse(text);
 }
 
 /**

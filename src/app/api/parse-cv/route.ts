@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { createClient } from '@supabase/supabase-js';
-import { parseCVWithAI } from '@/lib/gemini';
+import { parseCVWithAI, parseCVFromPDF } from '@/lib/gemini';
 import { extractPhotoFromPDF, extractPhotoFromDOCX, type ImageResult } from '@/lib/photo-extraction';
 
 export const maxDuration = 60;
@@ -57,49 +57,41 @@ export async function POST(request: Request) {
 
     const { data: urlData } = admin.storage.from('documents').getPublicUrl(storagePath);
 
-    // Extract text from file
-    let cvText = '';
-    if (file.type === 'text/plain') {
-      cvText = buffer.toString('utf-8');
-    } else if (file.type === 'application/pdf') {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const pdfParse = require('pdf-parse');
-        const pdfData = await pdfParse(buffer);
-        cvText = pdfData.text;
-      } catch (pdfErr) {
-        console.error('PDF parse fallback:', pdfErr);
-        // Fallback: strip binary
-        cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
-      }
-    } else {
-      // DOCX: extract text from XML inside the ZIP
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const AdmZip = require('adm-zip');
-        const zip = new AdmZip(buffer);
-        const docEntry = zip.getEntry('word/document.xml');
-        if (docEntry) {
-          const xml = docEntry.getData().toString('utf-8');
-          // Strip XML tags, keep text content
-          cvText = xml.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
-        } else {
-          cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
-        }
-      } catch {
-        // Fallback: strip binary, keep ASCII text
-        cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
-      }
-    }
-
-    if (cvText.trim().length < 20) {
-      cvText = `[File: ${file.name}] Unable to extract text. Please try a different format.`;
-    }
-
-    // Parse with Gemini AI
+    // Parse with Gemini AI — use native PDF support for PDFs, text extraction for others
     let parsed;
     try {
-      const raw = await parseCVWithAI(cvText);
+      let raw;
+      if (file.type === 'application/pdf') {
+        // Send PDF directly to Gemini — bypasses broken pdf-parse on serverless
+        console.log(`[parse-cv] Using Gemini native PDF parsing for ${file.name} (${(buffer.length / 1024).toFixed(1)}KB)`);
+        raw = await parseCVFromPDF(buffer);
+      } else {
+        // Extract text for DOCX and TXT files
+        let cvText = '';
+        if (file.type === 'text/plain') {
+          cvText = buffer.toString('utf-8');
+        } else {
+          // DOCX: extract text from XML inside the ZIP
+          try {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const AdmZip = require('adm-zip');
+            const zip = new AdmZip(buffer);
+            const docEntry = zip.getEntry('word/document.xml');
+            if (docEntry) {
+              const xml = docEntry.getData().toString('utf-8');
+              cvText = xml.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ').trim();
+            } else {
+              cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+            }
+          } catch {
+            cvText = buffer.toString('utf-8').replace(/[^\x20-\x7E\n\r\t]/g, ' ').replace(/\s+/g, ' ');
+          }
+        }
+        if (cvText.trim().length < 20) {
+          cvText = `[File: ${file.name}] Unable to extract text. Please try a different format.`;
+        }
+        raw = await parseCVWithAI(cvText);
+      }
       // Normalize field names — Gemini sometimes returns alternate keys
       const r = raw as Record<string, unknown>;
       parsed = {
