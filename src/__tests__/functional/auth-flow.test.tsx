@@ -140,11 +140,14 @@ describe('Auth Flow', () => {
     });
   });
 
-  it('sign-up form calls supabase.auth.signUp with role metadata', async () => {
-    mockSignUp.mockResolvedValue({
-      data: { user: { id: 'new-user' }, session: { access_token: 'tok' } },
-      error: null,
+  it('sign-up form calls custom signup API endpoint', async () => {
+    const originalFetch = global.fetch;
+    const mockFetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ success: true, userId: 'new-user', role: 'candidate' }),
     });
+    global.fetch = mockFetch;
+    mockSignInWithPassword.mockResolvedValue({ error: null });
 
     render(<AuthPage />);
     // Switch to sign-up mode
@@ -163,16 +166,13 @@ describe('Auth Flow', () => {
     await user.click(submitButton);
 
     await waitFor(() => {
-      expect(mockSignUp).toHaveBeenCalledWith(
-        expect.objectContaining({
-          email: 'jane@test.com',
-          password: 'password123',
-          options: expect.objectContaining({
-            data: { role: 'candidate', full_name: 'Jane Doe' },
-          }),
-        })
-      );
+      expect(mockFetch).toHaveBeenCalledWith('/api/auth/signup', expect.objectContaining({
+        method: 'POST',
+        body: JSON.stringify({ email: 'jane@test.com', password: 'password123', fullName: 'Jane Doe', role: 'candidate' }),
+      }));
     });
+
+    global.fetch = originalFetch;
   });
 
   it('role selector shows candidate/recruiter options', async () => {

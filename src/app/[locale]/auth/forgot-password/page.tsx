@@ -2,30 +2,67 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase';
 import Header from '@/components/Header';
 
 export default function ForgotPasswordPage() {
-  const supabase = createClient();
   const [email, setEmail] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [step, setStep] = useState<'email' | 'reset' | 'done'>('email');
   const [loading, setLoading] = useState(false);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + '/auth/reset-password',
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'request' }),
       });
+      const data = await res.json();
 
-      if (resetError) {
-        setError(resetError.message);
+      if (!res.ok) {
+        setError(data.error || 'Something went wrong');
+      } else if (data.emailExists) {
+        setStep('reset');
       } else {
-        setSuccess(true);
+        // Don't reveal if email doesn't exist — show generic message
+        setStep('reset');
+      }
+    } catch {
+      setError('An unexpected error occurred');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, newPassword, action: 'reset' }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Password reset failed');
+      } else {
+        setStep('done');
       }
     } catch {
       setError('An unexpected error occurred');
@@ -41,11 +78,16 @@ export default function ForgotPasswordPage() {
         <div className="w-full max-w-md">
           <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-8">
             <h1 className="text-2xl font-bold text-white text-center mb-2">
-              Forgot Password
+              {step === 'done' ? 'Password Updated' : 'Reset Password'}
             </h1>
-            <p className="text-sm text-white/50 text-center mb-6">
-              Enter your email and we&apos;ll send you a reset link.
-            </p>
+
+            {step !== 'done' && (
+              <p className="text-sm text-white/50 text-center mb-6">
+                {step === 'email'
+                  ? 'Enter your email to reset your password.'
+                  : 'Enter your new password.'}
+              </p>
+            )}
 
             {error && (
               <div className="mb-4 p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
@@ -53,20 +95,8 @@ export default function ForgotPasswordPage() {
               </div>
             )}
 
-            {success ? (
-              <div className="p-4 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-center">
-                <p className="text-green-400 font-medium text-sm">
-                  Check your email for a password reset link.
-                </p>
-                <Link
-                  href="/auth?mode=signin"
-                  className="mt-4 inline-block text-sm text-blue-400 hover:text-blue-300 font-medium"
-                >
-                  Back to Sign In
-                </Link>
-              </div>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
+            {step === 'email' && (
+              <form onSubmit={handleEmailSubmit} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-white/70 mb-1">
                     Email
@@ -80,18 +110,80 @@ export default function ForgotPasswordPage() {
                     placeholder="you@example.com"
                   />
                 </div>
-
                 <button
                   type="submit"
                   disabled={loading}
                   className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {loading ? 'Sending...' : 'Send Reset Link'}
+                  {loading ? 'Verifying...' : 'Continue'}
                 </button>
               </form>
             )}
 
-            {!success && (
+            {step === 'reset' && (
+              <form onSubmit={handleResetSubmit} className="space-y-4">
+                <div className="p-3 bg-blue-500/10 ring-1 ring-blue-500/20 rounded-lg text-blue-400 text-sm text-center mb-2">
+                  Resetting password for <strong>{email}</strong>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
+                    placeholder="Minimum 8 characters"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-white/70 mb-1">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    minLength={8}
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-gray-500 focus:border-indigo-500/50 focus:bg-white/[0.08] outline-none transition-all"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg shadow-blue-500/20 font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? 'Updating...' : 'Update Password'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStep('email'); setError(''); }}
+                  className="w-full py-2 text-sm text-white/50 hover:text-white/70"
+                >
+                  Use a different email
+                </button>
+              </form>
+            )}
+
+            {step === 'done' && (
+              <div className="p-4 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-center">
+                <p className="text-green-400 font-medium text-sm">
+                  Your password has been updated successfully.
+                </p>
+                <Link
+                  href="/auth?mode=signin"
+                  className="mt-4 inline-block px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-medium rounded-lg"
+                >
+                  Sign In
+                </Link>
+              </div>
+            )}
+
+            {step !== 'done' && (
               <div className="mt-6 text-center">
                 <Link
                   href="/auth?mode=signin"

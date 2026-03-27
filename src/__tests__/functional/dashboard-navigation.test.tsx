@@ -154,10 +154,11 @@ describe('Dashboard Navigation', () => {
       </DashboardLayout>
     );
 
-    // The Dashboard link for candidate should have the active class
+    // The Dashboard link for candidate should have the active class (on the inner div)
     const dashboardLink = document.querySelector('a[href="/dashboard/candidate"]');
     expect(dashboardLink).toBeTruthy();
-    expect(dashboardLink!.className).toContain('text-blue-400');
+    const innerDiv = dashboardLink!.querySelector('div');
+    expect(innerDiv!.className).toContain('text-blue-400');
   });
 
   it('collapse sidebar toggle works', async () => {

@@ -72,53 +72,38 @@ export default function AuthPage() {
           return;
         }
 
-        const redirectTo = `${window.location.origin}/api/auth/callback`;
-        const { data, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { role, full_name: fullName },
-            emailRedirectTo: redirectTo,
-          },
+        // Use custom signup endpoint (auto-confirms, bypasses unreliable Supabase mailer)
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, fullName, role }),
         });
+        const result = await res.json();
 
-        if (signUpError) {
-          setError(signUpError.message);
+        if (!res.ok) {
+          setError(result.error || 'Signup failed');
           setLoading(false);
           return;
         }
 
-        if (data.user) {
-          // If email confirmation is required and user isn't confirmed yet
-          if (!data.session) {
-            setSuccess('Check your email! Click the confirmation link to activate your account.');
-            setLoading(false);
-            return;
-          }
+        // Auto-sign in after successful signup
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
 
-          // Create profile record
-          await supabase.from('profiles').insert({
-            user_id: data.user.id,
-            role,
-          });
+        if (signInError) {
+          setError('Account created but sign-in failed. Please sign in manually.');
+          setMode('signin');
+          setLoading(false);
+          return;
+        }
 
-          // Create role-specific record
-          if (role === 'candidate') {
-            await supabase.from('candidates').insert({
-              user_id: data.user.id,
-              full_name: fullName,
-              email,
-              country: 'us', // default, will be updated in onboarding
-            });
-            router.push('/dashboard/candidate/onboarding');
-          } else {
-            await supabase.from('recruiters').insert({
-              user_id: data.user.id,
-              company_name: '',
-              country: 'us',
-            });
-            router.push('/dashboard/recruiter/onboarding');
-          }
+        // Redirect to onboarding
+        if (role === 'candidate') {
+          router.push('/dashboard/candidate/onboarding');
+        } else {
+          router.push('/dashboard/recruiter/onboarding');
         }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -170,21 +155,6 @@ export default function AuthPage() {
             {success && (
               <div className="mb-4 p-4 bg-green-500/10 ring-1 ring-green-500/20 rounded-lg text-center">
                 <p className="text-green-400 font-medium text-sm">{success}</p>
-                <button
-                  onClick={async () => {
-                    if (!email) return;
-                    const { error: resendErr } = await supabase.auth.resend({
-                      type: 'signup',
-                      email,
-                      options: { emailRedirectTo: `${window.location.origin}/api/auth/callback` },
-                    });
-                    if (resendErr) setError(resendErr.message);
-                    else setSuccess('Confirmation email resent! Check your inbox.');
-                  }}
-                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
-                >
-                  Resend confirmation email
-                </button>
               </div>
             )}
 
