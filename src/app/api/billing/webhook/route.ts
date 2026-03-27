@@ -58,8 +58,8 @@ export async function POST(request: Request) {
           expand: ['items.data'],
         });
 
-        // In Stripe API v2025-04-30 (basil), current_period_end moved to subscription items
-        const periodEnd = subscription.items.data[0]?.current_period_end;
+        // Support both clover (subscription-level) and dahlia (item-level) API versions
+        const periodEnd = (subscription as any).current_period_end ?? subscription.items.data[0]?.current_period_end;
 
         await admin
           .from('recruiters')
@@ -82,7 +82,7 @@ export async function POST(request: Request) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const recruiterId = subscription.metadata?.recruiter_id;
-        const subPeriodEnd = subscription.items.data[0]?.current_period_end;
+        const subPeriodEnd = (subscription as any).current_period_end ?? subscription.items.data[0]?.current_period_end;
         const billingEnd = subPeriodEnd ? new Date(subPeriodEnd * 1000).toISOString() : null;
 
         if (!recruiterId) {
