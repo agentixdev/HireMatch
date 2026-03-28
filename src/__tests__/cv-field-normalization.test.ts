@@ -57,6 +57,10 @@ jest.mock('@/lib/photo-extraction', () => ({
   extractPhotoFromDOCX: jest.fn().mockReturnValue(null),
 }));
 
+jest.mock('@/lib/rate-limit', () => ({
+  rateLimit: jest.fn().mockReturnValue({ success: true, remaining: 99 }),
+}));
+
 jest.mock('pdf-parse', () => jest.fn().mockResolvedValue({ text: 'John Doe Software Engineer at Google...' }), { virtual: true });
 
 import { POST } from '@/app/api/parse-cv/route';

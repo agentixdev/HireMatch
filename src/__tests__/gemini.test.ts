@@ -55,7 +55,7 @@ describe('parseCVWithAI', () => {
       response: { text: () => 'Sorry, I cannot parse this CV.' },
     });
 
-    await expect(parseCVWithAI('garbage text')).rejects.toThrow('Failed to parse CV');
+    await expect(parseCVWithAI('garbage text')).rejects.toThrow('LLM returned no valid JSON');
   });
 });
 

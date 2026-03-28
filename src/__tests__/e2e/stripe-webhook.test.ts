@@ -86,12 +86,19 @@ function makeWebhookRequest(body: string, signature?: string): Request {
   } as unknown as Request;
 }
 
+let stripeEventCounter = 0;
+
 function makeStripeEvent(type: string, dataObject: Record<string, unknown>): {
+  id: string;
   type: string;
+  created: number;
   data: { object: Record<string, unknown> };
 } {
+  stripeEventCounter += 1;
   return {
+    id: `evt_test_${stripeEventCounter}_${Date.now()}`,
     type,
+    created: Math.floor(Date.now() / 1000),
     data: { object: dataObject },
   };
 }

@@ -11,9 +11,11 @@
 
 const mockCreateUser = jest.fn();
 const mockUpdateUserById = jest.fn();
+const mockGetUserById = jest.fn();
 const mockListUsers = jest.fn();
 const mockInsert = jest.fn();
 const mockEmailSend = jest.fn();
+const mockMaybeSingle = jest.fn();
 
 // Mock next/server — NextResponse.json needs to return a Response-like object
 jest.mock('next/server', () => {
@@ -46,11 +48,17 @@ jest.mock('@supabase/supabase-js', () => ({
       admin: {
         createUser: mockCreateUser,
         updateUserById: mockUpdateUserById,
+        getUserById: mockGetUserById,
         listUsers: mockListUsers,
       },
     },
     from: () => ({
       insert: mockInsert,
+      select: () => ({
+        eq: () => ({
+          maybeSingle: mockMaybeSingle,
+        }),
+      }),
     }),
   }),
 }));
@@ -211,11 +219,22 @@ describe('POST /api/auth/reset-password', () => {
     jest.clearAllMocks();
     process.env = { ...originalEnv };
     mockEmailSend.mockResolvedValue({ data: { id: 'msg_1' } });
+    // Default: profiles lookup returns null (user not found via table)
+    mockMaybeSingle.mockResolvedValue({ data: null });
   });
 
   afterAll(() => {
     process.env = originalEnv;
   });
+
+  /**
+   * Helper: configure mocks so findUserByEmail returns the given user.
+   * It mocks the profiles table to return user_id, then getUserById returns the full user.
+   */
+  function mockFindUser(user: { id: string; email: string; user_metadata?: Record<string, unknown> }) {
+    mockMaybeSingle.mockResolvedValue({ data: { user_id: user.id } });
+    mockGetUserById.mockResolvedValue({ data: { user } });
+  }
 
   it('rejects missing email on request', async () => {
     const res = await handler(makeRequest({ action: 'request' }));
@@ -223,8 +242,7 @@ describe('POST /api/auth/reset-password', () => {
   });
 
   it('returns success even for non-existent email (no information leak)', async () => {
-    mockListUsers.mockResolvedValue({ data: { users: [] } });
-
+    // maybeSingle returns null (default) — user not found
     const res = await handler(makeRequest({ email: 'nobody@example.com', action: 'request' }));
     expect(res.status).toBe(200);
     const body = await res.json();
@@ -238,7 +256,7 @@ describe('POST /api/auth/reset-password', () => {
       email: 'user@test.com',
       user_metadata: { role: 'candidate', full_name: 'Test' },
     };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    mockFindUser(testUser);
     mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({ email: 'user@test.com', action: 'request' }));
@@ -259,7 +277,7 @@ describe('POST /api/auth/reset-password', () => {
 
   it('verifies OTP from user_metadata', async () => {
     process.env.RESEND_API_KEY = 'test_key';
-    const testUser = {
+    mockFindUser({
       id: 'user-100',
       email: 'user@test.com',
       user_metadata: {
@@ -267,8 +285,8 @@ describe('POST /api/auth/reset-password', () => {
         reset_otp: '123456',
         reset_otp_expires: Date.now() + 10 * 60 * 1000,
       },
-    };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    });
+    mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({
       email: 'user@test.com',
@@ -282,15 +300,15 @@ describe('POST /api/auth/reset-password', () => {
 
   it('rejects expired OTP', async () => {
     process.env.RESEND_API_KEY = 'test_key';
-    const testUser = {
+    mockFindUser({
       id: 'user-100',
       email: 'user@test.com',
       user_metadata: {
         reset_otp: '123456',
         reset_otp_expires: Date.now() - 1000,
       },
-    };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    });
+    mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({
       email: 'user@test.com',
@@ -304,15 +322,15 @@ describe('POST /api/auth/reset-password', () => {
 
   it('rejects wrong OTP', async () => {
     process.env.RESEND_API_KEY = 'test_key';
-    const testUser = {
+    mockFindUser({
       id: 'user-100',
       email: 'user@test.com',
       user_metadata: {
         reset_otp: '123456',
         reset_otp_expires: Date.now() + 10 * 60 * 1000,
       },
-    };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    });
+    mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({
       email: 'user@test.com',
@@ -324,7 +342,7 @@ describe('POST /api/auth/reset-password', () => {
 
   it('resets password and clears OTP from metadata', async () => {
     process.env.RESEND_API_KEY = 'test_key';
-    const testUser = {
+    mockFindUser({
       id: 'user-100',
       email: 'user@test.com',
       user_metadata: {
@@ -333,8 +351,7 @@ describe('POST /api/auth/reset-password', () => {
         reset_otp: '123456',
         reset_otp_expires: Date.now() + 10 * 60 * 1000,
       },
-    };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    });
     mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({
@@ -348,7 +365,11 @@ describe('POST /api/auth/reset-password', () => {
     expect(body.success).toBe(true);
 
     // Verify password was updated and OTP was cleared
-    expect(mockUpdateUserById).toHaveBeenCalledWith('user-100', expect.objectContaining({
+    // findUserByEmail is called for both verify-phase and reset-phase,
+    // so updateUserById may be called multiple times. Check the last call.
+    const lastCall = mockUpdateUserById.mock.calls[mockUpdateUserById.mock.calls.length - 1];
+    expect(lastCall[0]).toBe('user-100');
+    expect(lastCall[1]).toEqual(expect.objectContaining({
       password: 'newSecure1',
       user_metadata: expect.objectContaining({
         role: 'candidate',
@@ -357,9 +378,8 @@ describe('POST /api/auth/reset-password', () => {
     }));
 
     // Ensure OTP fields are NOT in the updated metadata
-    const updateCall = mockUpdateUserById.mock.calls[0][1];
-    expect(updateCall.user_metadata).not.toHaveProperty('reset_otp');
-    expect(updateCall.user_metadata).not.toHaveProperty('reset_otp_expires');
+    expect(lastCall[1].user_metadata).not.toHaveProperty('reset_otp');
+    expect(lastCall[1].user_metadata).not.toHaveProperty('reset_otp_expires');
   });
 
   it('rejects reset with short password', async () => {
@@ -375,12 +395,11 @@ describe('POST /api/auth/reset-password', () => {
 
   it('allows direct reset without OTP when RESEND_API_KEY is not set', async () => {
     delete process.env.RESEND_API_KEY;
-    const testUser = {
+    mockFindUser({
       id: 'user-100',
       email: 'user@test.com',
       user_metadata: { role: 'candidate' },
-    };
-    mockListUsers.mockResolvedValue({ data: { users: [testUser] } });
+    });
     mockUpdateUserById.mockResolvedValue({ error: null });
 
     const res = await handler(makeRequest({
