@@ -511,6 +511,14 @@ export default function MatchmakerPage() {
   const [savedToProfile, setSavedToProfile] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [shareCopied, setShareCopied] = useState(false);
+  const [realJobs, setRealJobs] = useState<{
+    id: string; title: string; company: string; industry: string;
+    work_mode: string; country: string; city?: string; job_type: string;
+    salary_min?: number; salary_max?: number; salary_currency?: string;
+    visa_sponsorship: boolean; skills_required: string[]; match_tags: string[];
+    matchScore: number; matchReasons: string[];
+  }[]>([]);
+  const [realJobsLoading, setRealJobsLoading] = useState(false);
 
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -624,6 +632,177 @@ export default function MatchmakerPage() {
     saveResults();
   }, [phase]);
 
+  // ── Fetch real jobs and score against quiz profile ──────────
+
+  useEffect(() => {
+    if (phase !== 'results') return;
+
+    async function fetchAndScoreJobs() {
+      setRealJobsLoading(true);
+      try {
+        // Build user culture profile from quiz answers
+        const userProfile: Record<string, number> = {};
+        answers.forEach((optIdx, qIdx) => {
+          const question = QUIZ_QUESTIONS[qIdx];
+          if (!question) return;
+          const weights = question.tagWeights[optIdx];
+          if (!weights) return;
+          Object.entries(weights).forEach(([tag, weight]) => {
+            userProfile[tag] = (userProfile[tag] || 0) + weight;
+          });
+        });
+
+        // Map quiz culture tags to job attributes for scoring
+        const cultureToJobMap: Record<string, { work_modes?: string[]; traits?: string[] }> = {
+          remote: { work_modes: ['remote'], traits: ['remote', 'distributed', 'flexible'] },
+          team: { traits: ['collaboration', 'teamwork', 'team', 'agile'] },
+          autonomy: { traits: ['autonomous', 'independent', 'self-starter', 'ownership'] },
+          ship: { traits: ['fast-paced', 'startup', 'agile', 'delivery', 'ship'] },
+          impact: { traits: ['impact', 'scale', 'growth', 'mission'] },
+          mission: { traits: ['mission', 'purpose', 'social', 'impact', 'healthcare', 'education'] },
+          data: { traits: ['data', 'analytics', 'machine learning', 'ai', 'data-driven'] },
+          balance: { traits: ['work-life', 'balance', 'flexible', 'wellness'] },
+          quality: { traits: ['quality', 'craft', 'engineering', 'architecture'] },
+          creative: { traits: ['creative', 'design', 'innovation', 'product'] },
+          pressure: { traits: ['fast-paced', 'high-growth', 'startup', 'fintech'] },
+          solve: { traits: ['problem-solving', 'engineering', 'technical', 'architecture', 'cloud'] },
+          salary: { traits: ['competitive', 'compensation', 'senior'] },
+          equity: { traits: ['equity', 'startup', 'early-stage', 'options'] },
+          lead: { traits: ['leadership', 'management', 'lead', 'director', 'head'] },
+          mentor: { traits: ['mentorship', 'coaching', 'growth', 'learning'] },
+          ic: { traits: ['individual contributor', 'specialist', 'expert', 'senior'] },
+          flow: { traits: ['deep work', 'focused', 'engineering', 'research'] },
+          founded: { traits: ['startup', 'founder', 'entrepreneurial', 'early-stage'] },
+          office: { work_modes: ['onsite', 'hybrid'] },
+        };
+
+        // Determine user's preferred work modes
+        const preferredWorkModes: string[] = [];
+        if ((userProfile.remote || 0) >= 3) preferredWorkModes.push('remote');
+        if ((userProfile.office || 0) >= 3) preferredWorkModes.push('onsite');
+        if (preferredWorkModes.length === 0 || ((userProfile.remote || 0) > 0 && (userProfile.office || 0) > 0)) preferredWorkModes.push('hybrid');
+
+        // Fetch active jobs with recruiter company name
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('*, recruiter:recruiters(company_name)')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(50);
+
+        if (!jobs || jobs.length === 0) {
+          setRealJobs([]);
+          setRealJobsLoading(false);
+          return;
+        }
+
+        // Score each job
+        const scored = jobs.map((job: Record<string, unknown>) => {
+          let score = 0;
+          let maxScore = 0;
+          const reasons: string[] = [];
+          const jobTags = ((job.match_tags as string[]) || []).map((t: string) => t.toLowerCase());
+          const jobSkills = ((job.skills_required as string[]) || []).map((t: string) => t.toLowerCase());
+          const jobDesc = ((job.description as string) || '').toLowerCase();
+          const jobTitle = ((job.title as string) || '').toLowerCase();
+          const allJobText = [...jobTags, ...jobSkills, jobDesc, jobTitle].join(' ');
+
+          // Score based on quiz profile alignment
+          const topUserTraits = Object.entries(userProfile)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 8);
+
+          for (const [tag, weight] of topUserTraits) {
+            const mapping = cultureToJobMap[tag];
+            if (!mapping) continue;
+            maxScore += weight * 3;
+
+            // Work mode match
+            if (mapping.work_modes) {
+              if (mapping.work_modes.includes(job.work_mode as string)) {
+                score += weight * 3;
+                if (tag === 'remote' && job.work_mode === 'remote') reasons.push('Remote-first — matches your style');
+                if (tag === 'office' && job.work_mode === 'onsite') reasons.push('On-site culture you prefer');
+              }
+            }
+
+            // Trait match against job text
+            if (mapping.traits) {
+              const matched = mapping.traits.filter(t => allJobText.includes(t));
+              if (matched.length > 0) {
+                score += weight * Math.min(matched.length, 3);
+                // Build reason from first match
+                const traitLabels: Record<string, string> = {
+                  team: 'Collaborative team environment',
+                  autonomy: 'Values ownership and autonomy',
+                  ship: 'Fast-paced, ship-it culture',
+                  impact: 'High-impact role',
+                  mission: 'Mission-driven organization',
+                  data: 'Data-driven decision making',
+                  balance: 'Supports work-life balance',
+                  quality: 'Values engineering craft',
+                  creative: 'Creative and innovative role',
+                  solve: 'Complex problem-solving focus',
+                  lead: 'Leadership growth opportunity',
+                  mentor: 'Strong mentorship culture',
+                  pressure: 'High-growth environment',
+                  flow: 'Deep work friendly',
+                };
+                if (traitLabels[tag] && !reasons.includes(traitLabels[tag])) {
+                  reasons.push(traitLabels[tag]);
+                }
+              }
+            }
+          }
+
+          // Bonus: work mode match
+          if (preferredWorkModes.includes(job.work_mode as string)) {
+            score += 5;
+          }
+
+          // Normalize to 40-95 range
+          const rawPct = maxScore > 0 ? (score / maxScore) * 100 : 50;
+          const normalized = Math.round(40 + (rawPct / 100) * 55);
+          const clamped = Math.min(95, Math.max(40, normalized));
+
+          if (reasons.length < 2) {
+            reasons.push(`${(job.work_mode as string || 'hybrid').charAt(0).toUpperCase() + (job.work_mode as string || 'hybrid').slice(1)} position in ${(job.country as string || '').toUpperCase()}`);
+          }
+
+          const recruiterData = job.recruiter as Record<string, unknown> | null;
+
+          return {
+            id: job.id as string,
+            title: job.title as string,
+            company: (recruiterData?.company_name as string) || 'Company',
+            industry: (job.industry as string) || '',
+            work_mode: job.work_mode as string,
+            country: job.country as string,
+            city: job.city as string | undefined,
+            job_type: job.job_type as string,
+            salary_min: job.salary_min as number | undefined,
+            salary_max: job.salary_max as number | undefined,
+            salary_currency: (job.salary_currency as string) || 'USD',
+            visa_sponsorship: job.visa_sponsorship as boolean,
+            skills_required: (job.skills_required as string[]) || [],
+            match_tags: (job.match_tags as string[]) || [],
+            matchScore: clamped,
+            matchReasons: reasons.slice(0, 3),
+          };
+        });
+
+        // Sort by match score and take top 6
+        scored.sort((a: { matchScore: number }, b: { matchScore: number }) => b.matchScore - a.matchScore);
+        setRealJobs(scored.slice(0, 6));
+      } catch (err) {
+        console.error('Failed to fetch real jobs:', err);
+      }
+      setRealJobsLoading(false);
+    }
+
+    fetchAndScoreJobs();
+  }, [phase, answers]);
+
   // ── Handlers ────────────────────────────────────────────────
 
   const handleAnswer = useCallback(
@@ -664,6 +843,7 @@ export default function MatchmakerPage() {
     setShowConfetti(false);
     setShowShareModal(false);
     setShareCopied(false);
+    setRealJobs([]);
   }, []);
 
   const slideVariants = {
@@ -2042,19 +2222,205 @@ export default function MatchmakerPage() {
             )}
           </motion.div>
 
+          {/* ══ REAL JOBS THAT MATCH YOUR DNA ══ */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 2.5 }}
+            className="mb-8"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <h3
+                className="text-[28px] sm:text-[36px] text-white tracking-[1px]"
+                style={{ fontFamily: 'var(--font-bebas)' }}
+              >
+                Real Jobs For You
+              </h3>
+              <motion.span
+                className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-[1.5px] rounded-full bg-green-500/15 text-green-400 ring-1 ring-green-500/25"
+                animate={{ boxShadow: ['0 0 0 0 rgba(34,197,94,0)', '0 0 0 4px rgba(34,197,94,0.15)', '0 0 0 0 rgba(34,197,94,0)'] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              >
+                Live
+              </motion.span>
+            </div>
+            <p className="text-[13px] text-white/40 mb-6">
+              Active positions matched to your work DNA — scored against your quiz profile
+            </p>
+
+            {realJobsLoading ? (
+              <div className="space-y-3">
+                {[1, 2, 3].map(i => (
+                  <div key={i} className="rounded-xl bg-white/[0.03] ring-1 ring-white/[0.06] p-5 animate-pulse">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-lg bg-white/5" />
+                      <div className="flex-1">
+                        <div className="h-4 bg-white/5 rounded w-2/3 mb-2" />
+                        <div className="h-3 bg-white/5 rounded w-1/3" />
+                      </div>
+                    </div>
+                    <div className="h-2 bg-white/5 rounded w-full" />
+                  </div>
+                ))}
+              </div>
+            ) : realJobs.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="rounded-2xl bg-white/[0.03] ring-1 ring-white/[0.06] p-8 text-center"
+              >
+                <motion.div
+                  className="w-16 h-16 mx-auto mb-4 rounded-full bg-indigo-500/10 flex items-center justify-center"
+                  animate={{ scale: [1, 1.05, 1] }}
+                  transition={{ duration: 3, repeat: Infinity }}
+                >
+                  <svg className="w-7 h-7 text-indigo-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+                  </svg>
+                </motion.div>
+                <p className="text-[15px] text-white/60 font-medium mb-1">No live jobs yet</p>
+                <p className="text-[12px] text-white/30 mb-4">
+                  Recruiters are posting new positions daily — check back soon!
+                </p>
+                <p className="text-[11px] text-white/20">
+                  Your culture profile has been saved. You&apos;ll be notified when matching jobs appear.
+                </p>
+              </motion.div>
+            ) : (
+              <div className="space-y-3">
+                {realJobs.map((job, ji) => {
+                  const jobTemp = getTemperature(job.matchScore);
+                  const workModeIcons: Record<string, string> = {
+                    remote: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6',
+                    hybrid: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+                    onsite: 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4',
+                  };
+
+                  return (
+                    <motion.div
+                      key={job.id}
+                      initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      transition={{ delay: 2.6 + ji * 0.08, type: 'spring' as const, stiffness: 300, damping: 25 }}
+                      whileHover={{ y: -2, scale: 1.01 }}
+                      onClick={() => router.push(`/jobs/${job.id}`)}
+                      className="relative rounded-xl bg-white/[0.03] ring-1 ring-white/[0.08] hover:ring-white/[0.15] p-5 cursor-pointer group overflow-hidden transition-all"
+                    >
+                      {/* Temperature glow */}
+                      <div
+                        className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"
+                        style={{ background: `radial-gradient(ellipse at 80% 20%, ${jobTemp.color}08 0%, transparent 60%)` }}
+                      />
+
+                      <div className="relative">
+                        {/* Header row */}
+                        <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            <div
+                              className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0"
+                              style={{ backgroundColor: `${jobTemp.color}15`, color: jobTemp.color }}
+                            >
+                              {job.company.charAt(0)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-semibold text-white truncate group-hover:text-white/90">
+                                {job.title}
+                              </p>
+                              <p className="text-[12px] text-white/40 truncate">
+                                {job.company} · {job.city ? `${job.city}, ` : ''}{job.country.toUpperCase()}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Match score */}
+                          <div className="text-right flex-shrink-0 ml-3">
+                            <span
+                              className="text-[22px] font-black"
+                              style={{ color: jobTemp.color, fontFamily: 'var(--font-bebas)', letterSpacing: '1px' }}
+                            >
+                              {job.matchScore}%
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Tags row */}
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full bg-white/[0.06] text-white/50">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d={workModeIcons[job.work_mode] || workModeIcons.hybrid} />
+                            </svg>
+                            {job.work_mode}
+                          </span>
+                          <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-white/[0.06] text-white/50">
+                            {job.job_type}
+                          </span>
+                          {job.visa_sponsorship && (
+                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-green-500/10 text-green-400/70 ring-1 ring-green-500/20">
+                              Visa sponsor
+                            </span>
+                          )}
+                          {job.salary_max && (
+                            <span className="px-2 py-0.5 text-[10px] font-medium rounded-full bg-white/[0.06] text-white/50">
+                              {job.salary_currency} {Math.round((job.salary_min || 0) / 1000)}k–{Math.round(job.salary_max / 1000)}k
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Score bar */}
+                        <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden mb-2">
+                          <motion.div
+                            className="h-full rounded-full"
+                            style={{ backgroundColor: jobTemp.color }}
+                            initial={{ width: 0 }}
+                            animate={{ width: `${job.matchScore}%` }}
+                            transition={{ delay: 2.8 + ji * 0.08, duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                          />
+                        </div>
+
+                        {/* Match reasons */}
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                          {job.matchReasons.map((reason, ri) => (
+                            <span key={ri} className="text-[11px] text-white/30 flex items-center gap-1">
+                              <span className="w-1 h-1 rounded-full" style={{ backgroundColor: jobTemp.color }} />
+                              {reason}
+                            </span>
+                          ))}
+                        </div>
+
+                        {/* Skills preview */}
+                        {job.skills_required.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-2">
+                            {job.skills_required.slice(0, 5).map((skill, si) => (
+                              <span key={si} className="px-1.5 py-0.5 text-[9px] rounded bg-white/[0.04] text-white/25">
+                                {skill}
+                              </span>
+                            ))}
+                            {job.skills_required.length > 5 && (
+                              <span className="text-[9px] text-white/15">+{job.skills_required.length - 5}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </motion.div>
+                  );
+                })}
+              </div>
+            )}
+          </motion.div>
+
           {/* ── Action Buttons ── */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 2.6 }}
+            transition={{ delay: 2.6 + (realJobs.length > 0 ? realJobs.length * 0.08 : 0) }}
             className="space-y-3"
           >
             {/* Primary gradient CTA */}
             <button
-              onClick={() => router.push('/jobs')}
+              onClick={() => router.push(realJobs.length > 0 ? `/jobs/${realJobs[0].id}` : '/jobs')}
               className="w-full py-4 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white font-bold text-[15px] rounded-xl shadow-[0_0_30px_rgba(99,102,241,0.3)] hover:shadow-[0_0_40px_rgba(99,102,241,0.4)] transition-shadow cursor-pointer"
             >
-              Apply to Top Match
+              {realJobs.length > 0 ? `Apply to ${realJobs[0].title}` : 'Browse All Jobs'}
             </button>
 
             {/* View All Matched Jobs */}
@@ -2062,7 +2428,7 @@ export default function MatchmakerPage() {
               onClick={() => router.push('/jobs')}
               className="w-full py-3.5 bg-white/[0.05] ring-1 ring-white/[0.1] text-white/70 hover:text-white font-medium text-[14px] rounded-xl transition-colors cursor-pointer"
             >
-              View All Matched Jobs
+              View All Jobs
             </button>
 
             {/* Share Results — opens viral share modal */}
