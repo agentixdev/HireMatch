@@ -15,6 +15,7 @@ export default function Header() {
     { href: '/candidates', label: t('candidates'), iconBold: 'solar:users-group-rounded-bold', iconLinear: 'solar:users-group-rounded-linear' },
     { href: '/matchmaker', label: t('matchmaker'), iconBold: 'solar:heart-pulse-bold', iconLinear: 'solar:heart-pulse-linear' },
     { href: '/pricing', label: t('pricing'), iconBold: 'solar:tag-price-bold', iconLinear: 'solar:tag-price-linear' },
+    { href: '/visa', label: t('visa'), iconBold: 'solar:passport-bold', iconLinear: 'solar:passport-linear' },
   ];
 
   return (

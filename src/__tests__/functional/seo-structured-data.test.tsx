@@ -70,10 +70,10 @@ describe('SEO & Structured Data', () => {
     it('should include salary range in EUR', () => {
       const jld = jobPostingJsonLd(job);
       expect(jld.baseSalary).toBeDefined();
-      expect(jld.baseSalary.currency).toBe('EUR');
-      expect(jld.baseSalary.value.minValue).toBe(70000);
-      expect(jld.baseSalary.value.maxValue).toBe(95000);
-      expect(jld.baseSalary.value.unitText).toBe('YEAR');
+      expect(jld.baseSalary?.currency).toBe('EUR');
+      expect(jld.baseSalary?.value.minValue).toBe(70000);
+      expect(jld.baseSalary?.value.maxValue).toBe(95000);
+      expect(jld.baseSalary?.value.unitText).toBe('YEAR');
     });
 
     it('should include skills as comma-separated string', () => {
@@ -96,13 +96,13 @@ describe('SEO & Structured Data', () => {
         ['internship', 'INTERN'],
       ];
       types.forEach(([input, expected]) => {
-        const jld = jobPostingJsonLd({ ...job, job_type: input });
+        const jld = jobPostingJsonLd({ ...job, job_type: input as Job['job_type'] });
         expect(jld.employmentType).toBe(expected);
       });
     });
 
     it('should default unknown job types to FULL_TIME', () => {
-      const jld = jobPostingJsonLd({ ...job, job_type: 'volunteer' });
+      const jld = jobPostingJsonLd({ ...job, job_type: 'volunteer' as Job['job_type'] });
       expect(jld.employmentType).toBe('FULL_TIME');
     });
   });
@@ -119,7 +119,7 @@ describe('SEO & Structured Data', () => {
       bio: 'Passionate about machine learning and NLP',
       skills: ['Python', 'TensorFlow', 'PyTorch', 'SQL'],
       experience_years: 6,
-      education: [{ degree: 'MSc Computer Science', institution: 'TU Munich' }],
+      education: [{ degree: 'MSc Computer Science', institution: 'TU Munich', field: 'Computer Science', start_year: 2018 }],
       work_history: [],
       certifications: ['AWS ML Specialty'],
       languages: ['German', 'English', 'French'],

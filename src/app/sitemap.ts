@@ -1,6 +1,7 @@
 import { MetadataRoute } from 'next';
 import { createServiceClient } from '@/lib/supabase-server';
 import { locales } from '@/i18n/request';
+import { sampleBlogPosts } from '@/lib/blog-data';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
 
@@ -68,10 +69,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     .order('published_at', { ascending: false })
     .limit(5000);
 
-  if (posts) {
+  if (posts && posts.length > 0) {
     for (const post of posts) {
       entries.push({
         url: `${SITE_URL}/${post.locale || 'en'}/blog/${post.slug}`,
+        lastModified: new Date(post.updated_at),
+        changeFrequency: 'weekly',
+        priority: 0.7,
+      });
+    }
+  } else {
+    // Fallback: include sample blog posts so crawlers find them immediately
+    for (const post of sampleBlogPosts) {
+      entries.push({
+        url: `${SITE_URL}/en/blog/${post.slug}`,
         lastModified: new Date(post.updated_at),
         changeFrequency: 'weekly',
         priority: 0.7,

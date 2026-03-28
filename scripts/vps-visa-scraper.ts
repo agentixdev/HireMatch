@@ -361,17 +361,6 @@ async function processCountry(countryCode: string): Promise<boolean> {
   return anySuccess;
 }
 
-// ── Process countries in batches ─────────────────────────────────────
-async function processBatch(codes: string[]): Promise<Map<string, boolean>> {
-  const results = new Map<string, boolean>();
-  // Process countries in this batch sequentially to respect delays
-  for (const code of codes) {
-    const ok = await processCountry(code);
-    results.set(code, ok);
-  }
-  return results;
-}
-
 // ── Main ─────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
   log("=== HireMatch VPS Visa Scraper started ===");

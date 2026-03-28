@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     let filtered = rules || [];
 
     // Filter by sponsorship_required in the requirements JSONB
-    if (sponsorship !== null) {
+    if (sponsorship === 'true' || sponsorship === 'false') {
       const wantSponsorship = sponsorship === 'true';
       filtered = filtered.filter((rule: Record<string, unknown>) => {
         const req = rule.requirements as Record<string, unknown> | null;

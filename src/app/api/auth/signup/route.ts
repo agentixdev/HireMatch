@@ -33,16 +33,11 @@ export async function POST(request: Request) {
       process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
-    // Check if user already exists
-    const { data: existingUsers } = await admin.auth.admin.listUsers();
-    const existing = existingUsers?.users?.find(u => u.email === email);
-    if (existing) {
-      return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
-    }
-
     // Create user with admin API — auto-confirmed
+    // The admin API returns an error if the email is already taken,
+    // so no need for a separate listUsers() pre-check (which had a race condition).
     const { data: newUser, error: createError } = await admin.auth.admin.createUser({
-      email,
+      email: email.toLowerCase().trim(),
       password,
       email_confirm: true,
       user_metadata: { role, full_name: fullName || '' },
@@ -50,6 +45,11 @@ export async function POST(request: Request) {
 
     if (createError) {
       console.error('[auth/signup] Create user error:', createError);
+      // Map Supabase duplicate-email error to a user-friendly message
+      const msg = createError.message?.toLowerCase() || '';
+      if (msg.includes('already') || msg.includes('duplicate') || msg.includes('exists')) {
+        return NextResponse.json({ error: 'An account with this email already exists' }, { status: 409 });
+      }
       return NextResponse.json({ error: createError.message }, { status: 400 });
     }
 
@@ -71,7 +71,7 @@ export async function POST(request: Request) {
       const { error: candErr } = await admin.from('candidates').insert({
         user_id: userId,
         full_name: fullName || '',
-        email,
+        email: email.toLowerCase().trim(),
         country: 'us',
       });
       if (candErr) console.error('[auth/signup] Candidate insert error:', candErr);

@@ -3,17 +3,13 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { createServiceClient } from '@/lib/supabase-server';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/structured-data';
+import { sampleBlogPosts, readingTime } from '@/lib/blog-data';
 import type { BlogPost } from '@/types/blog';
 import type { Metadata } from 'next';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
 
-export async function generateMetadata({
-  params,
-}: {
-  params: Promise<{ locale: string; slug: string }>;
-}): Promise<Metadata> {
-  const { locale, slug } = await params;
+async function getPost(slug: string): Promise<BlogPost | null> {
   const supabase = await createServiceClient();
 
   const { data: post } = await supabase
@@ -22,11 +18,23 @@ export async function generateMetadata({
     .eq('slug', slug)
     .single();
 
-  if (!post) {
+  if (post) return post as BlogPost;
+
+  // Fallback to sample data
+  return sampleBlogPosts.find((p) => p.slug === slug) || null;
+}
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string; slug: string }>;
+}): Promise<Metadata> {
+  const { locale, slug } = await params;
+  const blogPost = await getPost(slug);
+
+  if (!blogPost) {
     return { title: 'Post Not Found | HireMatch' };
   }
-
-  const blogPost = post as BlogPost;
 
   return {
     title: blogPost.meta_title || `${blogPost.title} | HireMatch Blog`,
@@ -41,8 +49,14 @@ export async function generateMetadata({
       tags: blogPost.tags,
       images: blogPost.cover_image_url
         ? [{ url: blogPost.cover_image_url }]
-        : undefined,
+        : [{ url: `${SITE_URL}/og-default.png` }],
       url: `${SITE_URL}/${locale}/blog/${slug}`,
+      siteName: 'HireMatch',
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: blogPost.meta_title || blogPost.title,
+      description: blogPost.meta_description || blogPost.excerpt,
     },
     alternates: {
       canonical: `${SITE_URL}/${locale}/blog/${slug}`,
@@ -56,19 +70,11 @@ export default async function BlogPostPage({
   params: Promise<{ locale: string; slug: string }>;
 }) {
   const { locale, slug } = await params;
-  const supabase = await createServiceClient();
+  const blogPost = await getPost(slug);
 
-  const { data: post } = await supabase
-    .from('blog_posts')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (!post) {
+  if (!blogPost) {
     notFound();
   }
-
-  const blogPost = post as BlogPost;
 
   const breadcrumb = breadcrumbJsonLd([
     { name: 'Home', url: `${SITE_URL}/${locale}` },
@@ -77,6 +83,7 @@ export default async function BlogPostPage({
   ]);
 
   const article = articleJsonLd(blogPost);
+  const readTime = readingTime(blogPost.content);
 
   return (
     <>
@@ -136,6 +143,8 @@ export default async function BlogPostPage({
                 </time>
               </>
             )}
+            <span className="w-1 h-1 rounded-full bg-white/20" />
+            <span>{readTime}</span>
           </div>
         </header>
 

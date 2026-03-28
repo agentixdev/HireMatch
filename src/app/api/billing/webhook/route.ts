@@ -54,6 +54,10 @@ export async function POST(request: Request) {
 
         // Expand the subscription to get period end
         const subscriptionId = session.subscription as string;
+        if (!subscriptionId) {
+          console.error('[stripe-webhook] No subscription ID in checkout session');
+          break;
+        }
         const subscription = await getStripe().subscriptions.retrieve(subscriptionId, {
           expand: ['items.data'],
         });
@@ -72,7 +76,7 @@ export async function POST(request: Request) {
           })
           .eq('id', recruiterId);
 
-        console.log(`[stripe-webhook] Checkout completed: recruiter=${recruiterId} tier=${tier}`);
+        console.log(`[stripe-webhook] Checkout completed: recruiter=${recruiterId} tier=${tier || 'pro'}`);
         break;
       }
 

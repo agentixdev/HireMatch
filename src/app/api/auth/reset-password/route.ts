@@ -6,42 +6,48 @@ import { sendPasswordResetEmail } from '@/lib/email';
  * Password reset with optional email OTP verification.
  *
  * When RESEND_API_KEY is set:
- *   - "request" sends a 6-digit OTP via email
+ *   - "request" sends a 6-digit OTP via email (stored in Supabase user_metadata)
  *   - "verify" validates the OTP
  *   - "reset" requires a valid OTP to change the password
  *
  * When RESEND_API_KEY is NOT set (fallback):
  *   - "request" verifies email exists
  *   - "reset" directly changes the password (less secure, no email needed)
+ *
+ * OTPs are stored in Supabase user_metadata so they persist across
+ * serverless function invocations (unlike in-memory Maps).
  */
-
-// In-memory OTP store (per serverless instance — acceptable for low traffic)
-const otpStore = new Map<string, { code: string; expires: number }>();
 
 function generateOTP(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
 }
 
 export async function POST(request: Request) {
   try {
     const { email, newPassword, action, code } = await request.json();
     const hasResend = !!process.env.RESEND_API_KEY;
-
-    const admin = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
-    );
+    const admin = getAdmin();
 
     if (action === 'request') {
       if (!email) {
         return NextResponse.json({ error: 'Email is required' }, { status: 400 });
       }
 
-      const { data: users } = await admin.auth.admin.listUsers();
-      const user = users?.users?.find(u => u.email === email);
+      const normalizedEmail = email.toLowerCase().trim();
+
+      // Find user by email
+      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const user = users?.users?.find(u => u.email === normalizedEmail);
 
       if (!user) {
-        // Don't reveal whether the email exists — but return consistent shape
+        // Don't reveal whether the email exists — return consistent shape
         return NextResponse.json({
           success: true,
           message: 'If an account with that email exists, you will receive a reset code.',
@@ -50,20 +56,34 @@ export async function POST(request: Request) {
       }
 
       if (hasResend) {
-        // Generate OTP and send via Resend
+        // Generate OTP and store in user_metadata (persists across serverless invocations)
         const otp = generateOTP();
-        otpStore.set(email.toLowerCase(), { code: otp, expires: Date.now() + 15 * 60 * 1000 });
+        const otpExpires = Date.now() + 15 * 60 * 1000; // 15 minutes
 
-        const sent = await sendPasswordResetEmail(email, otp);
+        const { error: updateErr } = await admin.auth.admin.updateUserById(user.id, {
+          user_metadata: {
+            ...user.user_metadata,
+            reset_otp: otp,
+            reset_otp_expires: otpExpires,
+          },
+        });
+
+        if (updateErr) {
+          console.error('[auth/reset-password] Failed to store OTP:', updateErr);
+          return NextResponse.json({ error: 'Failed to initiate password reset' }, { status: 500 });
+        }
+
+        const sent = await sendPasswordResetEmail(normalizedEmail, otp);
         if (!sent) {
           console.error('[auth/reset-password] Failed to send reset email');
+          // Still return success to not reveal email existence,
+          // but log for debugging
         }
 
         return NextResponse.json({
           success: true,
           message: 'A reset code has been sent to your email.',
           requiresCode: true,
-          emailExists: true,
         });
       }
 
@@ -72,7 +92,6 @@ export async function POST(request: Request) {
         success: true,
         message: 'Email verified. You can now set a new password.',
         requiresCode: false,
-        emailExists: true,
       });
     }
 
@@ -81,8 +100,18 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Email and code are required' }, { status: 400 });
       }
 
-      const stored = otpStore.get(email.toLowerCase());
-      if (!stored || stored.code !== code || Date.now() > stored.expires) {
+      const normalizedEmail = email.toLowerCase().trim();
+      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const user = users?.users?.find(u => u.email === normalizedEmail);
+
+      if (!user) {
+        return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
+      }
+
+      const storedOtp = user.user_metadata?.reset_otp;
+      const otpExpires = user.user_metadata?.reset_otp_expires;
+
+      if (!storedOtp || storedOtp !== code || !otpExpires || Date.now() > otpExpires) {
         return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
       }
 
@@ -98,28 +127,33 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Password must be at least 8 characters' }, { status: 400 });
       }
 
-      // If Resend is configured, require valid OTP
-      if (hasResend) {
-        if (!code) {
-          return NextResponse.json({ error: 'Reset code is required' }, { status: 400 });
-        }
-        const stored = otpStore.get(email.toLowerCase());
-        if (!stored || stored.code !== code || Date.now() > stored.expires) {
-          return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
-        }
-        // OTP consumed — remove it
-        otpStore.delete(email.toLowerCase());
-      }
-
-      const { data: users } = await admin.auth.admin.listUsers();
-      const user = users?.users?.find(u => u.email === email);
+      const normalizedEmail = email.toLowerCase().trim();
+      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
+      const user = users?.users?.find(u => u.email === normalizedEmail);
 
       if (!user) {
         return NextResponse.json({ error: 'No account found with this email' }, { status: 404 });
       }
 
+      // If Resend is configured, require valid OTP
+      if (hasResend) {
+        if (!code) {
+          return NextResponse.json({ error: 'Reset code is required' }, { status: 400 });
+        }
+
+        const storedOtp = user.user_metadata?.reset_otp;
+        const otpExpires = user.user_metadata?.reset_otp_expires;
+
+        if (!storedOtp || storedOtp !== code || !otpExpires || Date.now() > otpExpires) {
+          return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
+        }
+      }
+
+      // Update password and clear OTP from metadata in one call
+      const { reset_otp, reset_otp_expires, ...cleanMetadata } = user.user_metadata || {};
       const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
         password: newPassword,
+        user_metadata: cleanMetadata,
       });
 
       if (updateError) {

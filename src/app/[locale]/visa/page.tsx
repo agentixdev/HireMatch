@@ -1,9 +1,22 @@
+import type { Metadata } from 'next';
 import { createServiceClient } from '@/lib/supabase-server';
 import Header from '@/components/Header';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
 import VisaCountrySection from './VisaCountrySection';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
+
+export const metadata: Metadata = {
+  title: 'Visa & Work Permit Rules by Country | HireMatch',
+  description:
+    'Browse work visa types, requirements, processing times, and costs across 29 countries. Data scraped and updated regularly from official government sources.',
+  openGraph: {
+    title: 'Visa & Work Permit Rules by Country | HireMatch',
+    description:
+      'Explore visa requirements for 29 countries including the US, UK, Canada, Germany, and more.',
+    url: `${SITE_URL}/visa`,
+  },
+};
 
 interface VisaRule {
   id: string;
@@ -52,10 +65,6 @@ const COUNTRIES: { code: string; name: string; flag: string }[] = [
   { code: 'vn', name: 'Vietnam', flag: '\u{1F1FB}\u{1F1F3}' },
   { code: 'ph', name: 'Philippines', flag: '\u{1F1F5}\u{1F1ED}' },
 ];
-
-function getCountryInfo(code: string) {
-  return COUNTRIES.find((c) => c.code === code.toLowerCase());
-}
 
 export default async function VisaRulesPage({
   params,

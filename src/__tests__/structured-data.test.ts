@@ -72,13 +72,13 @@ describe('Structured data (JSON-LD)', () => {
     });
 
     it('should map job types correctly', () => {
-      const partTime = { ...job, job_type: 'part-time' };
+      const partTime = { ...job, job_type: 'part-time' as const };
       expect(jobPostingJsonLd(partTime).employmentType).toBe('PART_TIME');
 
-      const contract = { ...job, job_type: 'contract' };
+      const contract = { ...job, job_type: 'contract' as const };
       expect(jobPostingJsonLd(contract).employmentType).toBe('CONTRACTOR');
 
-      const internship = { ...job, job_type: 'internship' };
+      const internship = { ...job, job_type: 'internship' as const };
       expect(jobPostingJsonLd(internship).employmentType).toBe('INTERN');
     });
 

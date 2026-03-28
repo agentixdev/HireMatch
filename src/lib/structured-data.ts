@@ -20,6 +20,24 @@ export function organizationJsonLd() {
   };
 }
 
+export function webSiteJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    name: 'HireMatch',
+    url: SITE_URL,
+    description: 'AI-powered recruitment platform connecting job seekers with employers across 29+ countries.',
+    potentialAction: {
+      '@type': 'SearchAction',
+      target: {
+        '@type': 'EntryPoint',
+        urlTemplate: `${SITE_URL}/en/jobs?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  };
+}
+
 export function jobPostingJsonLd(job: Job, companyName?: string) {
   return {
     '@context': 'https://schema.org',

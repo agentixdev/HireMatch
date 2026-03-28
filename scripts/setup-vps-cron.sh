@@ -27,9 +27,12 @@ VPS_SCRAPER_SECRET=CHANGE_ME
 ENVEOF
 
 # Setup daily cron at 1:00 AM UTC
-(crontab -l 2>/dev/null | grep -v hirematch-scraper; echo "0 1 * * * cd /opt/hirematch-scraper && /usr/bin/node scraper.js >> /var/log/hirematch-scraper.log 2>&1") | crontab -
+# Node.js 22+ can run TypeScript directly with --experimental-strip-types
+(crontab -l 2>/dev/null | grep -v hirematch-scraper; echo "0 1 * * * cd /opt/hirematch-scraper && /usr/bin/node --experimental-strip-types scraper.ts >> /var/log/hirematch-scraper.log 2>&1") | crontab -
 
 echo ""
 echo "Cron installed. Edit /opt/hirematch-scraper/.env with your VPS_SCRAPER_SECRET"
 echo "Deploy scraper: scp scripts/vps-visa-scraper.ts user@187.77.138.237:/opt/hirematch-scraper/scraper.ts"
-echo "Then compile: ssh user@187.77.138.237 'cd /opt/hirematch-scraper && npx tsc scraper.ts --target ES2022 --module nodenext --moduleResolution nodenext'"
+echo ""
+echo "Node.js 22+ runs TypeScript directly via --experimental-strip-types."
+echo "No compilation step needed."
