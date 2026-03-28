@@ -1,12 +1,14 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { createClient } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence, useSpring, useTransform } from 'framer-motion';
 import type { Recruiter, Job } from '@/types';
+import confetti from 'canvas-confetti';
 
 /* ─── Animated counter hook ─── */
 function useCountUp(target: number, duration = 1200) {
@@ -29,27 +31,45 @@ function useCountUp(target: number, duration = 1200) {
 }
 
 /* ─── Animation variants ─── */
-const containerVariants = {
-  hidden: {},
-  visible: { transition: { staggerChildren: 0.08 } },
-};
+const containerVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
+const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
+const statVariants = { hidden: { opacity: 0, scale: 0.8 }, visible: { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 400, damping: 20 } } };
+const listItemVariants = { hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
 
-const cardVariants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } },
-};
+const PROCESSING_STEPS = [
+  'Analyzing your job requirements...',
+  'Scanning candidate profiles...',
+  'Scoring skill & tag alignment...',
+  'Evaluating culture fit with AI...',
+  'Ranking top matches...',
+];
 
-const statVariants = {
-  hidden: { opacity: 0, scale: 0.8 },
-  visible: { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 400, damping: 20 } },
-};
+/* ─── Types ─── */
+interface MatchedCandidate {
+  score: number;
+  skills_match: number;
+  experience_match: number;
+  culture_match: number;
+  highlights: string[];
+  concerns: string[];
+  why: string;
+  candidate: {
+    id: string;
+    full_name: string;
+    headline: string;
+    photo_url: string | null;
+    skills: string[];
+    experience_years: number;
+    country: string;
+    city: string;
+    remote_preference: string;
+    visa_status: string;
+    available_now: boolean;
+    languages: string[];
+  };
+}
 
-const listItemVariants = {
-  hidden: { opacity: 0, x: -12 },
-  visible: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } },
-};
-
-/* ─── Tier theme config ─── */
+/* ─── Tier themes ─── */
 const tierThemes: Record<string, { badge: string; glow: string; gradient: string; accent: string }> = {
   free: { badge: 'bg-white/5 text-white/60', glow: '', gradient: 'from-white/5 to-transparent', accent: 'text-white/60' },
   pro: { badge: 'bg-blue-500/20 text-blue-400 ring-1 ring-blue-500/30', glow: 'shadow-blue-500/10', gradient: 'from-blue-600/8 via-transparent to-indigo-600/5', accent: 'text-blue-400' },
@@ -66,17 +86,38 @@ function StatCard({ value, label, color }: { value: number; label: string; color
     green: 'text-green-400 from-green-500/10 to-green-600/5',
   };
   return (
-    <motion.div
-      variants={statVariants}
-      whileHover={{ y: -2, scale: 1.02 }}
-      className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 relative overflow-hidden"
-    >
+    <motion.div variants={statVariants} whileHover={{ y: -2, scale: 1.02 }} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 relative overflow-hidden">
       <div className={`absolute inset-0 bg-gradient-to-br ${colorMap[color]?.split(' ').slice(1).join(' ')} opacity-50`} />
       <div className="relative">
         <div className={`text-3xl font-bold ${colorMap[color]?.split(' ')[0]}`}>{animatedValue}</div>
         <div className="text-sm text-white/50 mt-1">{label}</div>
       </div>
     </motion.div>
+  );
+}
+
+/* ─── Score ring ─── */
+function ScoreRing({ score, size = 56 }: { score: number; size?: number }) {
+  const circumference = 2 * Math.PI * ((size - 6) / 2);
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 80 ? '#10b981' : score >= 60 ? '#f59e0b' : '#ef4444';
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="rotate-[-90deg]">
+        <circle cx={size / 2} cy={size / 2} r={(size - 6) / 2} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth={3} />
+        <motion.circle
+          cx={size / 2} cy={size / 2} r={(size - 6) / 2}
+          fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset: offset }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+        />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span className="text-sm font-bold text-white">{score}</span>
+      </div>
+    </div>
   );
 }
 
@@ -90,26 +131,30 @@ export default function RecruiterDashboard() {
   const [stats, setStats] = useState({ totalApplicants: 0, activeJobs: 0, shortlisted: 0 });
   const [loading, setLoading] = useState(true);
 
+  // Matched candidates
+  const [matchedCandidates, setMatchedCandidates] = useState<MatchedCandidate[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [matchesLoaded, setMatchesLoaded] = useState(false);
+  const [processingStep, setProcessingStep] = useState(0);
+  const [matchError, setMatchError] = useState('');
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [expandedCard, setExpandedCard] = useState<string | null>(null);
+
+  // Temperature
+  const springTemp = useSpring(0, { stiffness: 30, damping: 12 });
+  const bgOpacity = useTransform(springTemp, [0, 1], [0, 0.12]);
+  const matchesRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
     async function load() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { router.push('/auth?mode=signin'); return; }
 
-      const { data: rec } = await supabase
-        .from('recruiters')
-        .select('*')
-        .eq('user_id', user.id)
-        .single();
-
+      const { data: rec } = await supabase.from('recruiters').select('*').eq('user_id', user.id).single();
       if (!rec) { router.push('/dashboard/recruiter/onboarding'); return; }
       setRecruiter(rec as unknown as Recruiter);
 
-      const { data: jobList } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('recruiter_id', rec.id)
-        .order('created_at', { ascending: false });
-
+      const { data: jobList } = await supabase.from('jobs').select('*').eq('recruiter_id', rec.id).order('created_at', { ascending: false });
       const typedJobs = (jobList || []) as unknown as Job[];
       setJobs(typedJobs);
 
@@ -117,10 +162,8 @@ export default function RecruiterDashboard() {
       const totalApplicants = typedJobs.reduce((sum, j) => sum + j.applications_count, 0);
 
       const { count: shortlisted } = await supabase
-        .from('applications')
-        .select('*', { count: 'exact', head: true })
-        .eq('recruiter_id', rec.id)
-        .in('status', ['shortlisted', 'interview_scheduled', 'interview_completed']);
+        .from('applications').select('*', { count: 'exact', head: true })
+        .eq('recruiter_id', rec.id).in('status', ['shortlisted', 'interview_scheduled', 'interview_completed']);
 
       setStats({ totalApplicants, activeJobs, shortlisted: shortlisted || 0 });
       setLoading(false);
@@ -128,14 +171,50 @@ export default function RecruiterDashboard() {
     load();
   }, []);
 
+  // Processing animation
+  useEffect(() => {
+    if (!matchesLoading) return;
+    const interval = setInterval(() => {
+      setProcessingStep(prev => prev < PROCESSING_STEPS.length - 1 ? prev + 1 : prev);
+    }, 2000);
+    return () => clearInterval(interval);
+  }, [matchesLoading]);
+
+  useEffect(() => { springTemp.set(matchesLoading ? 1 : 0); }, [matchesLoading, springTemp]);
+
+  const findCandidates = useCallback(async () => {
+    setMatchesLoading(true);
+    setMatchError('');
+    setProcessingStep(0);
+
+    try {
+      const url = selectedJobId
+        ? `/api/recruiter/matched-candidates?job_id=${selectedJobId}`
+        : '/api/recruiter/matched-candidates';
+      const res = await fetch(url);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error);
+      setMatchedCandidates(json.matches || []);
+      setMatchesLoaded(true);
+
+      if (json.matches?.length > 0) {
+        confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, colors: ['#a855f7', '#10b981', '#3b82f6'] });
+      }
+      setTimeout(() => matchesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
+    } catch (err) {
+      setMatchError(err instanceof Error ? err.message : 'Failed');
+    } finally {
+      setMatchesLoading(false);
+    }
+  }, [selectedJobId]);
+
   if (loading) {
     return (
       <DashboardLayout role="recruiter">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 animate-pulse">
-              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" />
-              <div className="h-3 bg-white/5 rounded w-2/3" />
+              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" /><div className="h-3 bg-white/5 rounded w-2/3" />
             </div>
           ))}
         </div>
@@ -144,89 +223,55 @@ export default function RecruiterDashboard() {
   }
 
   const tierLimits: Record<string, { jobs: number; views: number }> = {
-    free: { jobs: 3, views: 10 },
-    pro: { jobs: Infinity, views: Infinity },
-    enterprise: { jobs: Infinity, views: Infinity },
-    agency: { jobs: Infinity, views: Infinity },
+    free: { jobs: 3, views: 10 }, pro: { jobs: Infinity, views: Infinity },
+    enterprise: { jobs: Infinity, views: Infinity }, agency: { jobs: Infinity, views: Infinity },
   };
 
   const tier = recruiter?.tier || 'free';
   const theme = tierThemes[tier] || tierThemes.free;
   const limits = tierLimits[tier];
   const canPostJob = tier !== 'free' || jobs.length < limits.jobs;
+  const activeJobs = jobs.filter(j => j.is_active);
 
   return (
     <DashboardLayout role="recruiter" userName={recruiter?.company_name}>
-      <motion.div
-        className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
+      {/* Temperature background */}
+      <motion.div className="fixed inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 pointer-events-none z-0" style={{ opacity: bgOpacity }} />
+
+      <motion.div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
+
         {/* Company Header */}
         <motion.div variants={cardVariants} className={`bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-6 mb-8 relative overflow-hidden ${theme.glow ? `shadow-lg ${theme.glow}` : ''}`}>
           <div className={`absolute inset-0 bg-gradient-to-br ${theme.gradient}`} />
           <div className="relative flex items-center justify-between">
             <div className="flex items-center gap-4">
               {recruiter?.company_logo_url ? (
-                <motion.img
-                  src={recruiter.company_logo_url}
-                  alt=""
-                  className="w-16 h-16 rounded-lg object-cover"
-                  whileHover={{ scale: 1.08 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                />
+                <motion.img src={recruiter.company_logo_url} alt="" className="w-16 h-16 rounded-lg object-cover" whileHover={{ scale: 1.08 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }} />
               ) : (
-                <motion.div
-                  className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-purple-500/20"
-                  whileHover={{ scale: 1.08, rotate: -5 }}
-                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-                >
+                <motion.div className="w-16 h-16 rounded-lg bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center text-2xl font-bold text-white shadow-lg shadow-purple-500/20" whileHover={{ scale: 1.08, rotate: -5 }} transition={{ type: 'spring', stiffness: 300, damping: 20 }}>
                   {recruiter?.company_name?.charAt(0) || '?'}
                 </motion.div>
               )}
               <div>
                 <h1 className="text-2xl font-bold text-white">{recruiter?.company_name || 'Your Company'}</h1>
                 <div className="flex items-center gap-3 mt-1">
-                  <motion.span
-                    className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${theme.badge}`}
-                    whileHover={{ scale: 1.08 }}
-                  >
+                  <motion.span className={`px-2.5 py-0.5 text-xs font-medium rounded-full ${theme.badge}`} whileHover={{ scale: 1.08 }}>
                     {tier.charAt(0).toUpperCase() + tier.slice(1)} Plan
                   </motion.span>
-                  {tier === 'free' && (
-                    <span className="text-sm text-white/50">
-                      {t('viewsRemaining', { count: recruiter?.candidate_views_remaining ?? 0 })}
-                    </span>
-                  )}
+                  {tier === 'free' && <span className="text-sm text-white/50">{t('viewsRemaining', { count: recruiter?.candidate_views_remaining ?? 0 })}</span>}
                 </div>
               </div>
             </div>
             <div className="flex gap-3">
-              <motion.button
-                onClick={() => router.push('/dashboard/recruiter/profile')}
-                className="px-4 py-2 text-sm font-medium text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
-              >
+              <motion.button onClick={() => router.push('/dashboard/recruiter/profile')} className="px-4 py-2 text-sm font-medium text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
                 {t('companyProfile')}
               </motion.button>
               {canPostJob ? (
-                <motion.button
-                  onClick={() => router.push('/dashboard/recruiter/post-job')}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20"
-                  whileHover={{ scale: 1.05, boxShadow: '0 10px 40px rgba(59, 130, 246, 0.3)' }}
-                  whileTap={{ scale: 0.97 }}
-                >
+                <motion.button onClick={() => router.push('/dashboard/recruiter/post-job')} className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg shadow-lg shadow-blue-500/20" whileHover={{ scale: 1.05, boxShadow: '0 10px 40px rgba(59, 130, 246, 0.3)' }} whileTap={{ scale: 0.97 }}>
                   {t('postJob')}
                 </motion.button>
               ) : (
-                <motion.button
-                  onClick={() => router.push('/pricing')}
-                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg shadow-lg shadow-purple-500/20"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.97 }}
-                >
+                <motion.button onClick={() => router.push('/pricing')} className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-pink-600 rounded-lg shadow-lg shadow-purple-500/20" whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}>
                   {t('upgradeToPro')}
                 </motion.button>
               )}
@@ -241,21 +286,228 @@ export default function RecruiterDashboard() {
           <StatCard value={stats.shortlisted} label="In Pipeline" color="green" />
         </motion.div>
 
+        {/* ── AI MATCHED CANDIDATES ── */}
+        <motion.div variants={cardVariants} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 mb-8 overflow-hidden">
+          <div className="px-6 py-4 border-b border-white/[0.06]">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div className="flex items-center gap-3">
+                <span className="text-lg">🧠</span>
+                <h2 className="text-lg font-semibold text-white">AI Talent Matches</h2>
+                {matchesLoaded && matchedCandidates.length > 0 && (
+                  <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} className="px-2 py-0.5 bg-purple-500/20 text-purple-400 text-xs rounded-full font-medium">
+                    {matchedCandidates.length} found
+                  </motion.span>
+                )}
+              </div>
+              <div className="flex items-center gap-3">
+                {/* Job filter */}
+                {activeJobs.length > 0 && (
+                  <select
+                    value={selectedJobId}
+                    onChange={(e) => setSelectedJobId(e.target.value)}
+                    className="px-3 py-2 bg-white/5 ring-1 ring-white/10 rounded-lg text-sm text-white/60 focus:outline-none focus:ring-purple-500/40 appearance-none cursor-pointer"
+                  >
+                    <option value="">All active jobs</option>
+                    {activeJobs.map(j => (
+                      <option key={j.id} value={j.id}>{j.title}</option>
+                    ))}
+                  </select>
+                )}
+                <motion.button
+                  onClick={findCandidates}
+                  disabled={matchesLoading}
+                  className={`px-5 py-2 text-sm font-medium rounded-lg transition-all ${
+                    matchesLoading
+                      ? 'bg-white/5 text-white/30 cursor-not-allowed'
+                      : 'bg-gradient-to-r from-purple-600 to-pink-600 text-white shadow-lg shadow-purple-500/20 hover:shadow-xl'
+                  }`}
+                  whileHover={matchesLoading ? {} : { scale: 1.05 }}
+                  whileTap={matchesLoading ? {} : { scale: 0.97 }}
+                >
+                  {matchesLoading ? 'Scanning...' : matchesLoaded ? 'Refresh' : 'Find Top Talent'}
+                </motion.button>
+              </div>
+            </div>
+          </div>
+
+          {/* Processing reveal */}
+          <AnimatePresence>
+            {matchesLoading && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                <div className="p-8 text-center">
+                  <motion.div animate={{ scale: [1, 1.3, 1], opacity: [0.4, 1, 0.4] }} transition={{ duration: 2, repeat: Infinity }} className="w-16 h-16 rounded-full bg-purple-500/20 mx-auto mb-6 flex items-center justify-center">
+                    <span className="text-2xl">🧠</span>
+                  </motion.div>
+                  <AnimatePresence mode="wait">
+                    <motion.p key={processingStep} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="text-sm font-medium text-purple-300">
+                      {PROCESSING_STEPS[processingStep]}
+                    </motion.p>
+                  </AnimatePresence>
+                  <div className="mt-4 h-1 bg-white/10 rounded-full overflow-hidden max-w-xs mx-auto">
+                    <motion.div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500" initial={{ width: '5%' }} animate={{ width: `${Math.min(95, (processingStep + 1) / PROCESSING_STEPS.length * 100)}%` }} transition={{ duration: 1.5, ease: 'easeOut' }} />
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Candidate cards */}
+          <div ref={matchesRef}>
+            <AnimatePresence>
+              {matchesLoaded && !matchesLoading && matchedCandidates.length > 0 ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {matchedCandidates.map((match, i) => {
+                    const c = match.candidate;
+                    const isExpanded = expandedCard === c.id;
+                    return (
+                      <motion.div
+                        key={c.id}
+                        initial={{ opacity: 0, y: 30, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        transition={{ delay: i * 0.08, type: 'spring', stiffness: 200, damping: 20 }}
+                        whileHover={{ y: -4, scale: 1.02, boxShadow: '0 12px 40px rgba(168, 85, 247, 0.15)' }}
+                        onClick={() => setExpandedCard(isExpanded ? null : c.id)}
+                        className="bg-[#0a0f1e] ring-1 ring-white/10 rounded-xl overflow-hidden cursor-pointer transition-all hover:ring-purple-500/30"
+                      >
+                        {/* Header with photo + score */}
+                        <div className="p-4">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {c.photo_url ? (
+                                <img src={c.photo_url} alt="" className="w-11 h-11 rounded-full object-cover ring-2 ring-purple-500/20 flex-shrink-0" />
+                              ) : (
+                                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500/40 to-pink-500/40 flex items-center justify-center text-sm font-bold text-white flex-shrink-0">
+                                  {c.full_name?.charAt(0)}
+                                </div>
+                              )}
+                              <div className="min-w-0">
+                                <h3 className="text-sm font-semibold text-white truncate">{c.full_name}</h3>
+                                <p className="text-[11px] text-white/40 truncate">{c.headline || 'Candidate'}</p>
+                              </div>
+                            </div>
+                            <ScoreRing score={match.score} size={44} />
+                          </div>
+
+                          {/* Meta badges */}
+                          <div className="flex flex-wrap gap-1.5 mb-3">
+                            {c.available_now && <span className="px-2 py-0.5 bg-emerald-500/10 text-emerald-400 text-[10px] rounded-full ring-1 ring-emerald-500/20">Available</span>}
+                            {c.experience_years > 0 && <span className="px-2 py-0.5 bg-white/5 text-white/40 text-[10px] rounded-full">{c.experience_years}yr exp</span>}
+                            {c.country && <span className="px-2 py-0.5 bg-white/5 text-white/40 text-[10px] rounded-full">{c.country.toUpperCase()}</span>}
+                            {c.remote_preference && c.remote_preference !== 'any' && <span className="px-2 py-0.5 bg-white/5 text-white/40 text-[10px] rounded-full">{c.remote_preference}</span>}
+                          </div>
+
+                          {/* Score bars */}
+                          <div className="space-y-1.5 mb-3">
+                            {[
+                              { label: 'Skills', value: match.skills_match, color: 'bg-blue-500' },
+                              { label: 'Experience', value: match.experience_match, color: 'bg-emerald-500' },
+                              { label: 'Culture', value: match.culture_match, color: 'bg-purple-500' },
+                            ].map(bar => (
+                              <div key={bar.label} className="flex items-center gap-2">
+                                <span className="text-[10px] text-white/30 w-14">{bar.label}</span>
+                                <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden">
+                                  <motion.div className={`h-full rounded-full ${bar.color}`} initial={{ width: 0 }} animate={{ width: `${bar.value}%` }} transition={{ duration: 1, delay: 0.5 + i * 0.08, ease: 'easeOut' }} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+
+                          {/* Skills */}
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(c.skills || []).slice(0, 4).map(s => (
+                              <span key={s} className="px-1.5 py-0.5 bg-purple-500/10 text-purple-300/70 text-[10px] rounded">
+                                {s}
+                              </span>
+                            ))}
+                            {(c.skills?.length || 0) > 4 && <span className="text-[10px] text-white/20">+{(c.skills?.length || 0) - 4}</span>}
+                          </div>
+
+                          {/* Why */}
+                          <p className="text-[11px] text-white/40 line-clamp-2">{match.why}</p>
+                        </div>
+
+                        {/* Expanded details */}
+                        <AnimatePresence>
+                          {isExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: 'auto', opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              className="overflow-hidden border-t border-white/5"
+                            >
+                              <div className="p-4 space-y-3">
+                                {/* Highlights */}
+                                {match.highlights?.length > 0 && (
+                                  <div>
+                                    <p className="text-[10px] text-emerald-400/60 uppercase tracking-wider mb-1">Strengths</p>
+                                    {match.highlights.map((h, j) => (
+                                      <p key={j} className="text-[11px] text-white/50 flex items-start gap-1.5">
+                                        <span className="text-emerald-400 mt-px">✓</span> {h}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Concerns */}
+                                {match.concerns?.length > 0 && match.concerns[0] && (
+                                  <div>
+                                    <p className="text-[10px] text-amber-400/60 uppercase tracking-wider mb-1">Consider</p>
+                                    {match.concerns.map((c2, j) => (
+                                      <p key={j} className="text-[11px] text-white/40 flex items-start gap-1.5">
+                                        <span className="text-amber-400 mt-px">!</span> {c2}
+                                      </p>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Languages */}
+                                {c.languages?.length > 0 && (
+                                  <p className="text-[11px] text-white/30">Languages: {c.languages.join(', ')}</p>
+                                )}
+
+                                {/* View profile */}
+                                <Link
+                                  href={`/candidates/${c.id}`}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="block text-center py-2 bg-purple-500/10 text-purple-400 text-xs font-medium rounded-lg hover:bg-purple-500/20 transition-colors"
+                                >
+                                  View Full Profile →
+                                </Link>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </motion.div>
+                    );
+                  })}
+                </motion.div>
+              ) : matchesLoaded && !matchesLoading && matchedCandidates.length === 0 ? (
+                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="p-8 text-center text-white/40 text-sm">
+                  No matching candidates found. Try adjusting your job requirements or check back later.
+                </motion.div>
+              ) : !matchesLoaded && !matchesLoading ? (
+                <div className="p-8 text-center">
+                  <p className="text-white/30 text-sm">Click &quot;Find Top Talent&quot; to discover candidates matched to your jobs using AI.</p>
+                </div>
+              ) : null}
+            </AnimatePresence>
+          </div>
+
+          {matchError && (
+            <div className="px-6 pb-4">
+              <div className="p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">{matchError}</div>
+            </div>
+          )}
+        </motion.div>
+
         {/* Jobs List */}
         <motion.div variants={cardVariants} className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl">
           <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">{t('myJobs')}</h2>
-            {tier === 'free' && (
-              <span className="text-sm text-white/50">{jobs.length}/{limits.jobs} jobs used</span>
-            )}
+            {tier === 'free' && <span className="text-sm text-white/50">{jobs.length}/{limits.jobs} jobs used</span>}
           </div>
           {jobs.length === 0 ? (
-            <motion.div
-              className="p-12 text-center text-white/50"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-            >
+            <motion.div className="p-12 text-center text-white/50" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}>
               <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-purple-500/10 flex items-center justify-center">
                 <svg className="w-8 h-8 text-purple-400/60" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 4v16m8-8H4" />
@@ -263,37 +515,20 @@ export default function RecruiterDashboard() {
               </div>
               <p className="text-lg">No jobs posted yet</p>
               <p className="text-sm text-white/30 mt-1">Start attracting top talent</p>
-              <motion.button
-                onClick={() => router.push('/dashboard/recruiter/post-job')}
-                className="mt-4 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 font-medium"
-                whileHover={{ scale: 1.05, boxShadow: '0 10px 40px rgba(59, 130, 246, 0.3)' }}
-                whileTap={{ scale: 0.97 }}
-              >
+              <motion.button onClick={() => router.push('/dashboard/recruiter/post-job')} className="mt-4 px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 font-medium" whileHover={{ scale: 1.05, boxShadow: '0 10px 40px rgba(59, 130, 246, 0.3)' }} whileTap={{ scale: 0.97 }}>
                 Post Your First Job
               </motion.button>
             </motion.div>
           ) : (
             <motion.div variants={containerVariants} className="divide-y divide-white/[0.04]">
               {jobs.map((job) => (
-                <motion.div
-                  key={job.id}
-                  variants={listItemVariants}
-                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)', x: 4 }}
-                  className="px-6 py-4 flex items-center justify-between cursor-pointer transition-colors"
-                  onClick={() => router.push(`/dashboard/recruiter/jobs/${job.id}`)}
-                >
+                <motion.div key={job.id} variants={listItemVariants} whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)', x: 4 }} className="px-6 py-4 flex items-center justify-between cursor-pointer transition-colors" onClick={() => router.push(`/dashboard/recruiter/jobs/${job.id}`)}>
                   <div>
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-white">{job.title}</span>
-                      {!job.is_active && (
-                        <span className="px-2 py-0.5 text-xs bg-white/5 text-white/50 rounded-full">Inactive</span>
-                      )}
+                      {!job.is_active && <span className="px-2 py-0.5 text-xs bg-white/5 text-white/50 rounded-full">Inactive</span>}
                       {job.is_featured && (
-                        <motion.span
-                          className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded-full"
-                          animate={{ boxShadow: ['0 0 0 0 rgba(245,158,11,0)', '0 0 0 4px rgba(245,158,11,0.15)', '0 0 0 0 rgba(245,158,11,0)'] }}
-                          transition={{ duration: 2, repeat: Infinity }}
-                        >
+                        <motion.span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded-full" animate={{ boxShadow: ['0 0 0 0 rgba(245,158,11,0)', '0 0 0 4px rgba(245,158,11,0.15)', '0 0 0 0 rgba(245,158,11,0)'] }} transition={{ duration: 2, repeat: Infinity }}>
                           Featured
                         </motion.span>
                       )}
