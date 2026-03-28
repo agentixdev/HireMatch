@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/cron/visa-refresh",
-      "schedule": "0 3 * * *"
+      "schedule": "0 2 * * *"
     },
     {
       "path": "/api/cron/job-sync",
-      "schedule": "0 4 * * *"
+      "schedule": "0 */6 * * *"
     }
   ]
 }
