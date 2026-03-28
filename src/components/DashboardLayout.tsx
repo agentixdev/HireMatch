@@ -23,6 +23,7 @@ interface NavItem {
 const candidateNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/candidate', icon: 'solar:home-2-linear', iconActive: 'solar:home-2-bold' },
   { label: 'My Profile', href: '/dashboard/candidate/profile', icon: 'solar:user-linear', iconActive: 'solar:user-bold' },
+  { label: 'AI Coach', href: '/dashboard/candidate/ai-coach', icon: 'solar:magic-stick-3-linear', iconActive: 'solar:magic-stick-3-bold' },
   { label: 'Applications', href: '/dashboard/candidate/applications', icon: 'solar:document-text-linear', iconActive: 'solar:document-text-bold' },
   { label: 'Matchmaker', href: '/matchmaker', icon: 'solar:heart-pulse-linear', iconActive: 'solar:heart-pulse-bold' },
   { label: 'Settings', href: '/dashboard/candidate/settings', icon: 'solar:settings-linear', iconActive: 'solar:settings-bold' },
