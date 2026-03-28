@@ -504,6 +504,7 @@ export default function MatchmakerPage() {
   const [direction, setDirection] = useState(1);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [processingStage, setProcessingStage] = useState(0);
+  const [showResultsFlash, setShowResultsFlash] = useState(false);
   const [displayScore, setDisplayScore] = useState(0);
   const [showAllMatches, setShowAllMatches] = useState(false);
   const [showConfetti, setShowConfetti] = useState(false);
@@ -548,10 +549,10 @@ export default function MatchmakerPage() {
   // ── Processing phase animation ──────────────────────────────
 
   const PROCESSING_STAGES = [
-    { icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', label: 'Analyzing your work DNA...' },
-    { icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', label: 'Cross-referencing companies...' },
-    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Calculating culture scores...' },
-    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', label: 'Revealing your matches...' },
+    { icon: 'M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z', label: 'Analyzing your work DNA...', sublabel: 'Mapping your work values and preferences' },
+    { icon: 'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10', label: 'Cross-referencing companies...', sublabel: 'Scanning 16 company culture profiles' },
+    { icon: 'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z', label: 'Calculating culture scores...', sublabel: 'Running compatibility algorithms' },
+    { icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z', label: 'Revealing your matches...', sublabel: 'Ranking your top matches' },
   ];
 
   useEffect(() => {
@@ -564,23 +565,29 @@ export default function MatchmakerPage() {
     timers.push(setTimeout(() => setProcessingStage(3), 2600));
     timers.push(
       setTimeout(() => {
-        setPhase('results');
-        // Count up score
-        const target = results[0]?.score || 0;
-        const dur = 1500;
-        const start = performance.now();
-        function tick(now: number) {
-          const elapsed = now - start;
-          const progress = Math.min(elapsed / dur, 1);
-          const eased = 1 - Math.pow(1 - progress, 3);
-          setDisplayScore(Math.round(target * eased));
-          if (progress < 1) requestAnimationFrame(tick);
-          else {
-            // Confetti burst for high scores
-            if (target >= 75) setShowConfetti(true);
-          }
-        }
-        requestAnimationFrame(tick);
+        setShowResultsFlash(true);
+        timers.push(
+          setTimeout(() => {
+            setShowResultsFlash(false);
+            setPhase('results');
+            // Count up score
+            const target = results[0]?.score || 0;
+            const dur = 1500;
+            const start = performance.now();
+            function tick(now: number) {
+              const elapsed = now - start;
+              const progress = Math.min(elapsed / dur, 1);
+              const eased = 1 - Math.pow(1 - progress, 3);
+              setDisplayScore(Math.round(target * eased));
+              if (progress < 1) requestAnimationFrame(tick);
+              else {
+                // Confetti burst for high scores
+                if (target >= 75) setShowConfetti(true);
+              }
+            }
+            requestAnimationFrame(tick);
+          }, 400)
+        );
       }, 3500)
     );
     return () => timers.forEach(clearTimeout);
@@ -1310,23 +1317,21 @@ export default function MatchmakerPage() {
 
   if (phase === 'processing') {
     const topColor = results?.[0]?.brandColor || '#a855f7';
+    const stageColors = ['rgba(59,130,246,0.08)', 'rgba(99,102,241,0.10)', 'rgba(168,85,247,0.12)', 'rgba(34,197,94,0.10)'];
+    const progressPercent = Math.round(((processingStage + 1) / PROCESSING_STAGES.length) * 100);
 
     return (
       <>
         <Header />
         <div className="relative min-h-screen overflow-hidden flex items-center justify-center">
-          {/* Pulsing radial gradient background */}
+          {/* Temperature-shifting background */}
           <div className="absolute inset-0 pointer-events-none">
             <motion.div
               className="absolute inset-0"
               animate={{
-                background: [
-                  `radial-gradient(ellipse at 50% 50%, ${topColor}08 0%, transparent 70%)`,
-                  `radial-gradient(ellipse at 50% 50%, ${topColor}15 0%, transparent 70%)`,
-                  `radial-gradient(ellipse at 50% 50%, ${topColor}08 0%, transparent 70%)`,
-                ],
+                backgroundColor: stageColors[processingStage] || stageColors[0],
               }}
-              transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              transition={{ duration: 0.8, ease: 'easeInOut' }}
             />
             {/* Orbiting particles */}
             {[0, 1, 2].map((i) => (
@@ -1350,7 +1355,24 @@ export default function MatchmakerPage() {
             ))}
           </div>
 
-          <div className="relative text-center px-4 max-w-md">
+          <motion.div
+            className="relative text-center px-4 max-w-md"
+            animate={showResultsFlash ? { scale: 1.02 } : { scale: 1 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+          >
+            {/* Results flash ring pulse */}
+            <AnimatePresence>
+              {showResultsFlash && (
+                <motion.div
+                  className="absolute inset-0 rounded-2xl pointer-events-none"
+                  initial={{ boxShadow: `0 0 0 0px ${topColor}60` }}
+                  animate={{ boxShadow: `0 0 0 40px ${topColor}00` }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.4, ease: 'easeOut' }}
+                />
+              )}
+            </AnimatePresence>
+
             {/* Spinning dual-ring loader */}
             <motion.div
               className="mx-auto w-20 h-20 rounded-full mb-8 relative"
@@ -1379,75 +1401,105 @@ export default function MatchmakerPage() {
               </motion.div>
             </motion.div>
 
-            {/* Stages */}
-            <div className="space-y-3">
+            {/* Stages with connector lines and sublabels */}
+            <div className="space-y-0">
               {PROCESSING_STAGES.map((stage, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{
-                    opacity: processingStage >= i ? 1 : 0.15,
-                    x: processingStage >= i ? 0 : -20,
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                  className="flex items-center gap-3"
-                >
+                <div key={i}>
                   <motion.div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ring-1 ${
-                      processingStage > i
-                        ? 'bg-green-500/20 ring-green-500/30'
-                        : processingStage === i
-                          ? 'ring-white/20'
-                          : 'ring-white/5'
-                    }`}
-                    style={
-                      processingStage === i
-                        ? {
-                            backgroundColor: `${topColor}15`,
-                            boxShadow: `0 0 0 1px ${topColor}30`,
-                          }
-                        : undefined
-                    }
-                    animate={processingStage === i ? { scale: [1, 1.1, 1] } : {}}
-                    transition={{ duration: 0.8, repeat: Infinity }}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{
+                      opacity: processingStage >= i ? 1 : 0.15,
+                      x: processingStage >= i ? 0 : -20,
+                    }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    className="flex items-start gap-3"
                   >
-                    {processingStage > i ? (
-                      <motion.svg
-                        className="w-4 h-4 text-green-400"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2.5}
-                        initial={{ scale: 0, rotate: -90 }}
-                        animate={{ scale: 1, rotate: 0 }}
-                        transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                    <div className="flex flex-col items-center flex-shrink-0">
+                      <motion.div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center ring-1 ${
+                          processingStage > i
+                            ? 'bg-green-500/20 ring-green-500/30'
+                            : processingStage === i
+                              ? 'ring-white/20'
+                              : 'ring-white/5'
+                        }`}
+                        style={
+                          processingStage === i
+                            ? {
+                                backgroundColor: `${topColor}15`,
+                                boxShadow: `0 0 0 1px ${topColor}30`,
+                              }
+                            : undefined
+                        }
+                        animate={processingStage === i ? { scale: [1, 1.1, 1] } : {}}
+                        transition={{ duration: 0.8, repeat: Infinity }}
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                      </motion.svg>
-                    ) : (
-                      <svg
-                        className={`w-4 h-4 ${processingStage === i ? 'text-white/70' : 'text-white/20'}`}
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={1.5}
+                        {processingStage > i ? (
+                          <motion.svg
+                            className="w-4 h-4 text-green-400"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2.5}
+                            initial={{ scale: 0, rotate: -90 }}
+                            animate={{ scale: 1, rotate: 0 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                          </motion.svg>
+                        ) : (
+                          <svg
+                            className={`w-4 h-4 ${processingStage === i ? 'text-white/70' : 'text-white/20'}`}
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={1.5}
+                          >
+                            <path strokeLinecap="round" strokeLinejoin="round" d={stage.icon} />
+                          </svg>
+                        )}
+                      </motion.div>
+                      {/* Connector line between stages */}
+                      {i < PROCESSING_STAGES.length - 1 && (
+                        <div
+                          className={`w-px h-6 border-l border-dashed ${
+                            processingStage > i ? 'border-green-500/30' : 'border-white/10'
+                          }`}
+                        />
+                      )}
+                    </div>
+                    <div className="pt-1 text-left">
+                      <span
+                        className={`text-sm font-medium block ${
+                          processingStage > i
+                            ? 'text-green-400/70'
+                            : processingStage === i
+                              ? 'text-white/80'
+                              : 'text-white/20'
+                        }`}
                       >
-                        <path strokeLinecap="round" strokeLinejoin="round" d={stage.icon} />
-                      </svg>
-                    )}
+                        {stage.label}
+                      </span>
+                      <motion.span
+                        className={`text-xs block mt-0.5 ${
+                          processingStage > i
+                            ? 'text-green-400/40'
+                            : processingStage === i
+                              ? 'text-white/40'
+                              : 'text-white/10'
+                        }`}
+                        initial={{ opacity: 0, y: -4 }}
+                        animate={{
+                          opacity: processingStage >= i ? 1 : 0,
+                          y: processingStage >= i ? 0 : -4,
+                        }}
+                        transition={{ delay: 0.15, duration: 0.3 }}
+                      >
+                        {stage.sublabel}
+                      </motion.span>
+                    </div>
                   </motion.div>
-                  <span
-                    className={`text-sm font-medium ${
-                      processingStage > i
-                        ? 'text-green-400/70'
-                        : processingStage === i
-                          ? 'text-white/80'
-                          : 'text-white/20'
-                    }`}
-                  >
-                    {stage.label}
-                  </span>
-                </motion.div>
+                </div>
               ))}
             </div>
 
@@ -1463,7 +1515,18 @@ export default function MatchmakerPage() {
                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
               />
             </motion.div>
-          </div>
+
+            {/* Progress percentage */}
+            <motion.p
+              className="mt-2 text-xs font-mono text-white/40"
+              key={progressPercent}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              {progressPercent}%
+            </motion.p>
+          </motion.div>
         </div>
       </>
     );

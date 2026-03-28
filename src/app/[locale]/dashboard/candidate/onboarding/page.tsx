@@ -52,10 +52,17 @@ const SKILL_SUGGESTIONS = [
 ];
 
 const PROCESSING_STAGES = [
-  'Reading your resume...',
-  'Extracting skills & experience...',
-  'Building your profile...',
-  'Generating match tags...',
+  { label: 'Reading your resume...', sublabel: 'Extracting raw text and structure' },
+  { label: 'Extracting skills & experience...', sublabel: 'Identifying key qualifications' },
+  { label: 'Building your profile...', sublabel: 'Mapping data to your HireMatch profile' },
+  { label: 'Generating match tags...', sublabel: 'Optimizing for recruiter discovery' },
+];
+
+const STAGE_COLORS = [
+  { bg: 'rgba(59,130,246,0.08)', core: '#3B82F6', ring: 'rgba(59,130,246,0.3)' },
+  { bg: 'rgba(168,85,247,0.1)', core: '#A855F7', ring: 'rgba(168,85,247,0.3)' },
+  { bg: 'rgba(245,158,11,0.1)', core: '#F59E0B', ring: 'rgba(245,158,11,0.3)' },
+  { bg: 'rgba(34,197,94,0.12)', core: '#22C55E', ring: 'rgba(34,197,94,0.3)' },
 ];
 
 type OnboardingStep = 'choose-path' | 'resume-upload' | 'resume-processing' | 'manual-basic' | 'manual-skills' | 'manual-prefs' | 'review' | 'done';
@@ -606,56 +613,176 @@ export default function CandidateOnboarding() {
               <motion.div
                 key="resume-processing"
                 initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
+                animate={{
+                  opacity: 1,
+                  scale: stagesCompleted.every(Boolean) ? 1.02 : 1,
+                  borderColor: stagesCompleted.every(Boolean) ? 'rgba(34,197,94,0.5)' : 'transparent',
+                }}
                 exit={{ opacity: 0, scale: 1.05 }}
                 transition={springTransition}
               >
-                <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl p-10 sm:p-14">
+                <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl p-10 sm:p-14 relative overflow-hidden">
+                  {/* Temperature background */}
                   <motion.div
-                    className="w-16 h-16 mx-auto rounded-full bg-blue-500/10 flex items-center justify-center mb-8"
-                    animate={{ rotate: 360 }}
-                    transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
-                  >
-                    <svg className="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                    </svg>
-                  </motion.div>
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ filter: 'blur(80px)' }}
+                    animate={{
+                      backgroundColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].bg,
+                    }}
+                    transition={{ duration: 0.8, ease: 'easeInOut' }}
+                  />
 
-                  <h2 className="text-2xl font-bold text-white text-center mb-8">
+                  {/* DNA Helix Loader */}
+                  <div className="relative w-24 h-24 mx-auto mb-8">
+                    {/* Outer ring 1 — clockwise */}
+                    <motion.div
+                      className="absolute inset-0 rounded-full"
+                      style={{
+                        border: '2px solid transparent',
+                        borderTopColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                        borderRightColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                      }}
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                    />
+                    {/* Outer ring 2 — counter-clockwise */}
+                    <motion.div
+                      className="absolute inset-2 rounded-full"
+                      style={{
+                        border: '2px solid transparent',
+                        borderBottomColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                        borderLeftColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                        opacity: 0.6,
+                      }}
+                      animate={{ rotate: -360 }}
+                      transition={{ duration: 2.5, repeat: Infinity, ease: 'linear' }}
+                    />
+                    {/* Pulsing core */}
+                    <motion.div
+                      className="absolute inset-0 m-auto w-10 h-10 rounded-full"
+                      style={{ backgroundColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core }}
+                      animate={{
+                        scale: [1, 1.25, 1],
+                        opacity: [0.3, 0.6, 0.3],
+                        backgroundColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                      }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                    />
+                    {/* Orbiting particles */}
+                    {[0, 1, 2].map((p) => (
+                      <motion.div
+                        key={p}
+                        className="absolute w-2 h-2 rounded-full"
+                        style={{
+                          backgroundColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core,
+                          top: '50%',
+                          left: '50%',
+                          marginTop: -4,
+                          marginLeft: -4,
+                        }}
+                        animate={{
+                          x: [
+                            Math.cos((p * 2 * Math.PI) / 3) * 36,
+                            Math.cos((p * 2 * Math.PI) / 3 + Math.PI) * 36,
+                            Math.cos((p * 2 * Math.PI) / 3 + 2 * Math.PI) * 36,
+                          ],
+                          y: [
+                            Math.sin((p * 2 * Math.PI) / 3) * 36,
+                            Math.sin((p * 2 * Math.PI) / 3 + Math.PI) * 36,
+                            Math.sin((p * 2 * Math.PI) / 3 + 2 * Math.PI) * 36,
+                          ],
+                          opacity: [0.8, 1, 0.8],
+                        }}
+                        transition={{ duration: 3, repeat: Infinity, ease: 'linear', delay: p * 0.15 }}
+                      />
+                    ))}
+
+                    {/* Particle burst on completion */}
+                    {stagesCompleted.every(Boolean) &&
+                      Array.from({ length: 8 }).map((_, p) => (
+                        <motion.div
+                          key={`burst-${p}`}
+                          className="absolute w-1.5 h-1.5 rounded-full bg-green-400"
+                          style={{ top: '50%', left: '50%', marginTop: -3, marginLeft: -3 }}
+                          initial={{ x: 0, y: 0, opacity: 1 }}
+                          animate={{
+                            x: Math.cos((p * 2 * Math.PI) / 8) * 60,
+                            y: Math.sin((p * 2 * Math.PI) / 8) * 60,
+                            opacity: 0,
+                          }}
+                          transition={{ duration: 0.4, ease: 'easeOut' }}
+                        />
+                      ))}
+                  </div>
+
+                  <h2 className="relative text-2xl font-bold text-white text-center mb-8">
                     AI is analyzing your resume
                   </h2>
 
-                  <div className="space-y-4 max-w-sm mx-auto">
+                  <div className="relative space-y-3 max-w-sm mx-auto">
                     {PROCESSING_STAGES.map((stage, i) => (
                       <AnimatePresence key={i}>
                         {processingStageIndex >= i && (
                           <motion.div
-                            className="flex items-center gap-3"
-                            initial={{ opacity: 0, x: -20 }}
+                            className="flex items-start gap-3"
+                            initial={{ opacity: 0, x: -30 }}
                             animate={{ opacity: 1, x: 0 }}
-                            transition={{ ...springTransition, delay: 0.05 }}
+                            transition={{ type: 'spring', stiffness: 300, damping: 24, delay: 0.05 }}
                           >
                             {stagesCompleted[i] ? (
                               <motion.div
-                                className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0"
+                                className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center flex-shrink-0 mt-0.5"
                                 initial={{ scale: 0 }}
                                 animate={{ scale: 1 }}
-                                transition={springTransition}
+                                transition={{ type: 'spring', stiffness: 400, damping: 15 }}
                               >
                                 <svg className="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                                 </svg>
                               </motion.div>
                             ) : (
-                              <div className="w-6 h-6 border-2 border-blue-400 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                              <div className="relative w-6 h-6 flex-shrink-0 mt-0.5">
+                                {/* Active stage pulsing glow ring */}
+                                <motion.div
+                                  className="absolute inset-[-3px] rounded-full"
+                                  style={{ backgroundColor: STAGE_COLORS[Math.min(i, 3)].ring }}
+                                  animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0, 0.4] }}
+                                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                                />
+                                <div
+                                  className="w-6 h-6 border-2 border-t-transparent rounded-full animate-spin"
+                                  style={{ borderColor: STAGE_COLORS[Math.min(i, 3)].core, borderTopColor: 'transparent' }}
+                                />
+                              </div>
                             )}
-                            <span className={`text-sm ${stagesCompleted[i] ? 'text-green-400' : 'text-blue-400'}`}>
-                              {stage}
-                            </span>
+                            <div className="flex flex-col">
+                              <span className={`text-sm font-medium ${stagesCompleted[i] ? 'text-green-400' : 'text-white'}`}>
+                                {stage.label}
+                              </span>
+                              <span className="text-xs text-white/40 mt-0.5">{stage.sublabel}</span>
+                            </div>
                           </motion.div>
                         )}
                       </AnimatePresence>
                     ))}
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="relative mt-8 max-w-sm mx-auto">
+                    <div className="h-1.5 rounded-full bg-white/5 overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ backgroundColor: STAGE_COLORS[Math.min(processingStageIndex, 3)].core }}
+                        initial={{ width: '0%' }}
+                        animate={{
+                          width: `${((stagesCompleted.filter(Boolean).length) / PROCESSING_STAGES.length) * 100}%`,
+                        }}
+                        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                      />
+                    </div>
+                    <p className="text-xs text-white/30 text-center mt-3">
+                      {stagesCompleted.filter(Boolean).length} of {PROCESSING_STAGES.length} steps complete
+                    </p>
                   </div>
                 </div>
               </motion.div>
