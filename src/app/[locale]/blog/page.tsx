@@ -1,30 +1,35 @@
-import Image from 'next/image';
-import Link from 'next/link';
 import { createServiceClient } from '@/lib/supabase-server';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
-import { sampleBlogPosts, BLOG_CATEGORIES, readingTime } from '@/lib/blog-data';
+import { sampleBlogPosts, BLOG_CATEGORIES } from '@/lib/blog-data';
 import type { BlogPost } from '@/types/blog';
 import type { Metadata } from 'next';
 import BlogFilters from './blog-filters';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
 
-export const metadata: Metadata = {
-  title: 'Blog | HireMatch',
-  description:
-    'Recruitment insights, visa guides, career tips, and hiring best practices from HireMatch.',
-  openGraph: {
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return {
     title: 'Blog | HireMatch',
     description:
       'Recruitment insights, visa guides, career tips, and hiring best practices from HireMatch.',
-    type: 'website',
-    url: `${SITE_URL}/en/blog`,
-    siteName: 'HireMatch',
-  },
-  alternates: {
-    canonical: `${SITE_URL}/en/blog`,
-  },
-};
+    openGraph: {
+      title: 'Blog | HireMatch',
+      description:
+        'Recruitment insights, visa guides, career tips, and hiring best practices from HireMatch.',
+      type: 'website',
+      url: `${SITE_URL}/${locale}/blog`,
+      siteName: 'HireMatch',
+    },
+    alternates: {
+      canonical: `${SITE_URL}/${locale}/blog`,
+    },
+  };
+}
 
 export default async function BlogPage({
   params,
@@ -72,7 +77,6 @@ export default async function BlogPage({
         posts={blogPosts}
         locale={locale}
         categories={BLOG_CATEGORIES as unknown as string[]}
-        readingTimeFn={null}
       />
     </>
   );

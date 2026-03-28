@@ -76,7 +76,10 @@ export default async function JobDetailPage({
   if (!recruiter) notFound();
 
   // Increment view count (fire-and-forget)
-  supabase.from('jobs').update({ views_count: job.views_count + 1 }).eq('id', id).then(() => {}, () => {});
+  supabase.from('jobs').update({ views_count: job.views_count + 1 }).eq('id', id).then(
+    () => {},
+    (err: unknown) => console.error('[job-detail] Failed to increment view count:', err)
+  );
 
   // Fetch similar jobs (same industry or same company, max 4)
   const { data: similarRaw } = await supabase

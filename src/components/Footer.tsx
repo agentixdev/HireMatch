@@ -1,5 +1,3 @@
-'use client';
-
 import Link from 'next/link';
 
 const footerColumns = [
@@ -24,9 +22,8 @@ const footerColumns = [
   {
     title: 'Resources',
     links: [
-      { label: 'Blog', href: '#' },
-      { label: 'Help Center', href: '#' },
-      { label: 'API Docs', href: '#' },
+      { label: 'Blog', href: '/blog' },
+      { label: 'Help Center', href: '/contact' },
     ],
   },
   {

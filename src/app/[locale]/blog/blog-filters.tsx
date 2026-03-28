@@ -4,13 +4,7 @@ import { useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import type { BlogPost } from '@/types/blog';
-
-function readingTime(html: string): string {
-  const text = html.replace(/<[^>]*>/g, '');
-  const words = text.split(/\s+/).filter(Boolean).length;
-  const minutes = Math.max(1, Math.round(words / 230));
-  return `${minutes} min read`;
-}
+import { readingTime } from '@/lib/blog-data';
 
 export default function BlogFilters({
   posts,
@@ -20,7 +14,6 @@ export default function BlogFilters({
   posts: BlogPost[];
   locale: string;
   categories: string[];
-  readingTimeFn: null; // kept for serialization compat; we use local fn
 }) {
   const [activeCategory, setActiveCategory] = useState('All');
   const [search, setSearch] = useState('');
@@ -124,6 +117,7 @@ export default function BlogFilters({
                     src={post.cover_image_url}
                     alt={post.title}
                     fill
+                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 </div>

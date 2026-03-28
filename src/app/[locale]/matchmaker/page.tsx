@@ -525,7 +525,7 @@ export default function MatchmakerPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) setIsAuthenticated(true);
-    });
+    }).catch(() => { /* auth check non-critical */ });
   }, []);
 
   const results = useMemo(() => {

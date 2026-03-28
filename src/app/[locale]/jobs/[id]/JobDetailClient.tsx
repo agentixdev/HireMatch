@@ -354,7 +354,10 @@ function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
         colors: [theme.hex, '#ffffff', '#6366f1'],
       });
 
-      supabase.rpc('increment_applications', { job_id: jobId }).then(() => {}, () => {});
+      supabase.rpc('increment_applications', { job_id: jobId }).then(
+        () => {},
+        (err: unknown) => console.error('[job-apply] Failed to increment applications:', err)
+      );
       setTimeout(() => setApplySuccess(false), 3000);
     }
     setApplying(false);

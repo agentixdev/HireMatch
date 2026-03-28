@@ -53,8 +53,12 @@ export default function AuthPage() {
           supabase.auth.getUser().then(({ data: { user } }) => {
             const userRole = user?.user_metadata?.role;
             router.push(userRole === 'recruiter' ? '/dashboard/recruiter' : '/dashboard/candidate');
+          }).catch(() => {
+            setError('Failed to fetch user profile. Please sign in.');
           });
         }
+      }).catch(() => {
+        setError('Email confirmation failed. Please try signing in.');
       });
     }
   }, [searchParams]);
