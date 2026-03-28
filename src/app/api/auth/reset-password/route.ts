@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendPasswordResetEmail } from '@/lib/email';
+import { rateLimit } from '@/lib/rate-limit';
+import crypto from 'crypto';
 
 /**
  * Password reset with optional email OTP verification.
@@ -18,8 +20,20 @@ import { sendPasswordResetEmail } from '@/lib/email';
  * serverless function invocations (unlike in-memory Maps).
  */
 
+const MAX_OTP_ATTEMPTS = 5;
+
 function generateOTP(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // Use cryptographically secure random number generation
+  const buf = crypto.getRandomValues(new Uint32Array(1));
+  const num = buf[0] % 900000 + 100000; // 100000–999999
+  return num.toString();
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  const bufA = Buffer.from(a);
+  const bufB = Buffer.from(b);
+  return crypto.timingSafeEqual(bufA, bufB);
 }
 
 function getAdmin() {
@@ -29,11 +43,56 @@ function getAdmin() {
   );
 }
 
+/**
+ * Look up a Supabase auth user by email.
+ * Instead of listing all users, query the profiles table to get the user_id
+ * and then fetch the auth user by id.
+ */
+async function findUserByEmail(admin: ReturnType<typeof getAdmin>, email: string) {
+  // Try profiles table first (efficient indexed lookup)
+  const { data: profile } = await admin
+    .from('profiles')
+    .select('user_id')
+    .eq('email', email)
+    .maybeSingle();
+
+  // If no email column on profiles, try candidates table
+  if (!profile) {
+    const { data: candidate } = await admin
+      .from('candidates')
+      .select('user_id')
+      .eq('email', email)
+      .maybeSingle();
+
+    if (candidate) {
+      const { data } = await admin.auth.admin.getUserById(candidate.user_id);
+      return data?.user || null;
+    }
+
+    // No profile/candidate row means a broken or incomplete account.
+    // Every valid signup creates one of these rows, so returning null is correct.
+    return null;
+  }
+
+  const { data } = await admin.auth.admin.getUserById(profile.user_id);
+  return data?.user || null;
+}
+
 export async function POST(request: Request) {
   try {
     const { email, newPassword, action, code } = await request.json();
     const hasResend = !!process.env.RESEND_API_KEY;
     const admin = getAdmin();
+
+    // Rate limit: 10 requests per minute per email
+    const rlKey = `reset-password:${(email || '').toLowerCase().trim()}`;
+    const rl = rateLimit(rlKey, 10, 60_000);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 },
+      );
+    }
 
     if (action === 'request') {
       if (!email) {
@@ -43,8 +102,7 @@ export async function POST(request: Request) {
       const normalizedEmail = email.toLowerCase().trim();
 
       // Find user by email
-      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const user = users?.users?.find(u => u.email === normalizedEmail);
+      const user = await findUserByEmail(admin, normalizedEmail);
 
       if (!user) {
         // Don't reveal whether the email exists — return consistent shape
@@ -65,6 +123,7 @@ export async function POST(request: Request) {
             ...user.user_metadata,
             reset_otp: otp,
             reset_otp_expires: otpExpires,
+            reset_otp_attempts: 0,
           },
         });
 
@@ -101,8 +160,7 @@ export async function POST(request: Request) {
       }
 
       const normalizedEmail = email.toLowerCase().trim();
-      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const user = users?.users?.find(u => u.email === normalizedEmail);
+      const user = await findUserByEmail(admin, normalizedEmail);
 
       if (!user) {
         return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
@@ -110,8 +168,22 @@ export async function POST(request: Request) {
 
       const storedOtp = user.user_metadata?.reset_otp;
       const otpExpires = user.user_metadata?.reset_otp_expires;
+      const attempts = user.user_metadata?.reset_otp_attempts || 0;
 
-      if (!storedOtp || storedOtp !== code || !otpExpires || Date.now() > otpExpires) {
+      // Check attempt limit
+      if (attempts >= MAX_OTP_ATTEMPTS) {
+        return NextResponse.json({ error: 'Too many failed attempts. Please request a new code.' }, { status: 400 });
+      }
+
+      // Increment attempts
+      await admin.auth.admin.updateUserById(user.id, {
+        user_metadata: {
+          ...user.user_metadata,
+          reset_otp_attempts: attempts + 1,
+        },
+      });
+
+      if (!storedOtp || !otpExpires || Date.now() > otpExpires || !timingSafeEqual(String(storedOtp), String(code))) {
         return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
       }
 
@@ -128,8 +200,7 @@ export async function POST(request: Request) {
       }
 
       const normalizedEmail = email.toLowerCase().trim();
-      const { data: users } = await admin.auth.admin.listUsers({ perPage: 1000 });
-      const user = users?.users?.find(u => u.email === normalizedEmail);
+      const user = await findUserByEmail(admin, normalizedEmail);
 
       if (!user) {
         return NextResponse.json({ error: 'No account found with this email' }, { status: 404 });
@@ -143,14 +214,27 @@ export async function POST(request: Request) {
 
         const storedOtp = user.user_metadata?.reset_otp;
         const otpExpires = user.user_metadata?.reset_otp_expires;
+        const attempts = user.user_metadata?.reset_otp_attempts || 0;
 
-        if (!storedOtp || storedOtp !== code || !otpExpires || Date.now() > otpExpires) {
+        // Check attempt limit
+        if (attempts >= MAX_OTP_ATTEMPTS) {
+          return NextResponse.json({ error: 'Too many failed attempts. Please request a new code.' }, { status: 400 });
+        }
+
+        if (!storedOtp || !otpExpires || Date.now() > otpExpires || !timingSafeEqual(String(storedOtp), String(code))) {
+          // Increment attempts on failure
+          await admin.auth.admin.updateUserById(user.id, {
+            user_metadata: {
+              ...user.user_metadata,
+              reset_otp_attempts: attempts + 1,
+            },
+          });
           return NextResponse.json({ error: 'Invalid or expired code' }, { status: 400 });
         }
       }
 
       // Update password and clear OTP from metadata in one call
-      const { reset_otp, reset_otp_expires, ...cleanMetadata } = user.user_metadata || {};
+      const { reset_otp, reset_otp_expires, reset_otp_attempts, ...cleanMetadata } = user.user_metadata || {};
       const { error: updateError } = await admin.auth.admin.updateUserById(user.id, {
         password: newPassword,
         user_metadata: cleanMetadata,
