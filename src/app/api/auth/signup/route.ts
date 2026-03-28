@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendWelcomeEmail } from '@/lib/email';
 
 /**
  * Custom signup endpoint that creates a user and auto-confirms them.
@@ -82,6 +83,9 @@ export async function POST(request: Request) {
       });
       if (recErr) console.error('[auth/signup] Recruiter insert error:', recErr);
     }
+
+    // Send welcome email (non-blocking — don't fail signup if email fails)
+    sendWelcomeEmail(email, fullName || '', role).catch(() => {});
 
     return NextResponse.json({
       success: true,
