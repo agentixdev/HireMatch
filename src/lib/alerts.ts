@@ -75,7 +75,7 @@ async function sendEmailAlert(alert: AlertPayload): Promise<void> {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        from: 'HireMatch Alerts <alerts@hirematch.app>',
+        from: 'HireMatch Alerts <agentix.biz@gmail.com>',
         to: [to],
         subject: `${severityEmoji[alert.severity]} [${alert.severity.toUpperCase()}] ${alert.type}: ${alert.message}`,
         html: `

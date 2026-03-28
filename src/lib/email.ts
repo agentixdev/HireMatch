@@ -8,7 +8,7 @@ function getResend(): Resend | null {
   return _resend;
 }
 
-const FROM = process.env.EMAIL_FROM || 'HireMatch <noreply@hirematch.app>';
+const FROM = process.env.EMAIL_FROM || 'HireMatch <agentix.biz@gmail.com>';
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://hirematch-ten.vercel.app';
 
 // ---------------------------------------------------------------------------
