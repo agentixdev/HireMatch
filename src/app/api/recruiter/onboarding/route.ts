@@ -36,10 +36,45 @@ export async function POST(request: Request) {
       values_dna,
       work_style,
       hiring_needs,
+      _mode,
     } = body;
 
     if (!company_name) {
       return NextResponse.json({ error: 'Company name is required' }, { status: 400 });
+    }
+
+    // Suggest mode: only return AI suggestions without saving
+    if (_mode === 'suggest') {
+      let suggestions = {
+        suggested_culture_tags: [] as string[],
+        culture_temperature: 'balanced',
+      };
+      try {
+        const suggestPrompt = `Analyze this company description and generate culture suggestions.
+
+Company: ${company_name}
+Industry: ${industry || 'Not specified'}
+Size: ${company_size || 'Not specified'}
+Description: ${bio || 'Not provided'}
+Existing tags: ${(culture_tags || []).join(', ') || 'None'}
+
+Return JSON:
+{
+  "suggested_culture_tags": ["tag1", "tag2", ...],
+  "culture_temperature": "one of: cool-analytical, warm-creative, balanced, hot-startup, steady-enterprise"
+}
+
+Rules:
+- suggested_culture_tags: 5-8 culture tags relevant to the company
+- culture_temperature: best-fit based on description`;
+        const result = await model.generateContent(suggestPrompt);
+        const text = result.response.text();
+        const parsed = JSON.parse(text.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
+        suggestions = { ...suggestions, ...parsed };
+      } catch {
+        // Fallback: return empty suggestions
+      }
+      return NextResponse.json(suggestions);
     }
 
     // Generate smart tags + culture analysis via Gemini

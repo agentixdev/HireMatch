@@ -21,6 +21,23 @@ jest.mock('next/server', () => ({
   },
 }));
 
+jest.mock('@/lib/visa-scraper', () => ({
+  seedVisaRules: jest.fn().mockResolvedValue({ success: true, total: 22 }),
+  scrapeAllCountries: jest.fn().mockResolvedValue({
+    results: { us: { success: true, count: 6 }, gb: { success: true, count: 4 } },
+    totalSuccess: 2,
+    totalFailed: 0,
+  }),
+  VISA_SOURCES: {
+    us: { name: 'United States', urls: [] },
+    gb: { name: 'United Kingdom', urls: [] },
+  },
+}));
+
+jest.mock('@/lib/event-bus', () => ({
+  publishEvent: jest.fn().mockResolvedValue({ eventId: 'evt-1', deliveryCount: 0 }),
+}));
+
 // ---------------------------------------------------------------------------
 // Imports
 // ---------------------------------------------------------------------------
@@ -151,6 +168,9 @@ describe('E2E: Visa Rules Flow', () => {
     expect(res.status).toBe(200);
     expect(json.ok).toBe(true);
     expect(json.timestamp).toBeDefined();
+    expect(json.seed).toBeDefined();
+    expect(json.scrape).toBeDefined();
+    expect(json.eventsPublished).toBeGreaterThanOrEqual(0);
   });
 
   it('can filter visa rules by destination country', () => {

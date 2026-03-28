@@ -501,6 +501,8 @@ export default function RecruiterOnboarding() {
                 i === step ? 'text-white' : i < step ? 'text-white/40 hover:text-white/60 cursor-pointer' : 'text-white/20 cursor-default'
               }`}
               disabled={i > step}
+              aria-label={`Step ${i + 1}: ${s.label}`}
+              aria-current={i === step ? 'step' : undefined}
             >
               <Icon icon={s.icon} className="w-4 h-4" />
               <span className="hidden sm:inline">{s.label}</span>
@@ -520,7 +522,7 @@ export default function RecruiterOnboarding() {
               exit={{ opacity: 0, height: 0 }}
               className="mb-4"
             >
-              <div className="p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
+              <div role="alert" className="p-3 bg-red-500/10 ring-1 ring-red-500/20 rounded-lg text-red-400 text-sm">
                 {error}
               </div>
             </motion.div>
@@ -544,20 +546,23 @@ export default function RecruiterOnboarding() {
                 <motion.div variants={staggerContainer} initial="initial" animate="animate" className="space-y-5">
                   {/* Company Name */}
                   <motion.div variants={staggerItem}>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">Company Name *</label>
+                    <label htmlFor="company-name" className="block text-sm font-medium text-white/70 mb-1.5">Company Name *</label>
                     <input
+                      id="company-name"
                       type="text"
                       value={companyName}
                       onChange={(e) => setCompanyName(e.target.value)}
                       className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition-all"
                       placeholder="Acme Corp"
+                      aria-required="true"
                     />
                   </motion.div>
 
                   {/* Website */}
                   <motion.div variants={staggerItem}>
-                    <label className="block text-sm font-medium text-white/70 mb-1.5">Website</label>
+                    <label htmlFor="company-website" className="block text-sm font-medium text-white/70 mb-1.5">Website</label>
                     <input
+                      id="company-website"
                       type="url"
                       value={website}
                       onChange={(e) => setWebsite(e.target.value)}
@@ -569,11 +574,13 @@ export default function RecruiterOnboarding() {
                   {/* Industry + Size */}
                   <motion.div variants={staggerItem} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-white/70 mb-1.5">Industry *</label>
+                      <label htmlFor="company-industry" className="block text-sm font-medium text-white/70 mb-1.5">Industry *</label>
                       <select
+                        id="company-industry"
                         value={industry}
                         onChange={(e) => setIndustry(e.target.value)}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
+                        aria-required="true"
                       >
                         <option value="">Select...</option>
                         {INDUSTRIES.map((ind) => (
@@ -582,8 +589,9 @@ export default function RecruiterOnboarding() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-white/70 mb-1.5">Company Size</label>
+                      <label htmlFor="company-size" className="block text-sm font-medium text-white/70 mb-1.5">Company Size</label>
                       <select
+                        id="company-size"
                         value={companySize}
                         onChange={(e) => setCompanySize(e.target.value)}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all"
@@ -599,8 +607,9 @@ export default function RecruiterOnboarding() {
                   {/* Country + City */}
                   <motion.div variants={staggerItem} className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                     <div>
-                      <label className="block text-sm font-medium text-white/70 mb-1.5">Country</label>
+                      <label htmlFor="company-country" className="block text-sm font-medium text-white/70 mb-1.5">Country</label>
                       <select
+                        id="company-country"
                         value={country}
                         onChange={(e) => setCountry(e.target.value as CountryCode)}
                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white focus:ring-2 focus:ring-blue-500/50 outline-none"
@@ -611,8 +620,9 @@ export default function RecruiterOnboarding() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-white/70 mb-1.5">City</label>
+                      <label htmlFor="company-city" className="block text-sm font-medium text-white/70 mb-1.5">City</label>
                       <input
+                        id="company-city"
                         type="text"
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
@@ -625,7 +635,7 @@ export default function RecruiterOnboarding() {
                   {/* Bio with AI */}
                   <motion.div variants={staggerItem}>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-sm font-medium text-white/70">About Your Company</label>
+                      <label htmlFor="company-bio" className="text-sm font-medium text-white/70">About Your Company</label>
                       {aiLoading && (
                         <motion.span
                           initial={{ opacity: 0 }}
@@ -638,6 +648,7 @@ export default function RecruiterOnboarding() {
                       )}
                     </div>
                     <textarea
+                      id="company-bio"
                       value={bio}
                       onChange={(e) => setBio(e.target.value)}
                       rows={4}
@@ -765,7 +776,7 @@ export default function RecruiterOnboarding() {
                             className="px-3 py-1.5 bg-purple-500/15 text-purple-400 text-xs font-medium rounded-full flex items-center gap-1.5"
                           >
                             {tag}
-                            <button onClick={() => setCultureTags(cultureTags.filter(t => t !== tag))} className="text-purple-500 hover:text-purple-300 transition-colors">
+                            <button onClick={() => setCultureTags(cultureTags.filter(t => t !== tag))} className="text-purple-500 hover:text-purple-300 transition-colors" aria-label={`Remove ${tag}`}>
                               <Icon icon="solar:close-circle-bold" className="w-3.5 h-3.5" />
                             </button>
                           </motion.span>
@@ -781,6 +792,7 @@ export default function RecruiterOnboarding() {
                         onChange={(e) => setNewTag(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                         placeholder="Add custom culture tag..."
+                        aria-label="Add custom culture tag"
                         className="flex-1 px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 text-sm outline-none focus:ring-2 focus:ring-purple-500/50"
                       />
                       <button onClick={addTag} className="px-4 py-2.5 bg-purple-600/80 text-white rounded-xl text-sm font-medium hover:bg-purple-600 transition-colors">
@@ -901,9 +913,10 @@ export default function RecruiterOnboarding() {
 
                   {/* Ideal Candidate */}
                   <motion.div variants={staggerItem}>
-                    <h3 className="text-lg font-semibold text-white mb-1">Ideal Candidate</h3>
+                    <label htmlFor="ideal-candidate" className="text-lg font-semibold text-white mb-1 block">Ideal Candidate</label>
                     <p className="text-white/40 text-sm mb-3">Describe your dream hire in a few sentences.</p>
                     <textarea
+                      id="ideal-candidate"
                       value={idealCandidate}
                       onChange={(e) => setIdealCandidate(e.target.value)}
                       rows={3}
@@ -963,6 +976,9 @@ export default function RecruiterOnboarding() {
                   {/* Culture DNA */}
                   <motion.div variants={staggerItem} className="bg-white/[0.03] rounded-xl p-5 ring-1 ring-white/[0.06]">
                     <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Culture DNA</h3>
+                    {selectedValues.length === 0 && workStyles.length === 0 && cultureTags.length === 0 && (
+                      <p className="text-white/30 text-sm">No culture data added yet. You can go back to add values, work styles, and tags.</p>
+                    )}
                     {selectedValues.length > 0 && (
                       <div className="mb-3">
                         <p className="text-white/30 text-xs mb-2">Core Values</p>
@@ -1011,6 +1027,9 @@ export default function RecruiterOnboarding() {
                   {/* Hiring Needs */}
                   <motion.div variants={staggerItem} className="bg-white/[0.03] rounded-xl p-5 ring-1 ring-white/[0.06]">
                     <h3 className="text-sm font-semibold text-white/60 uppercase tracking-wider mb-3">Hiring Needs</h3>
+                    {hiringPriorities.length === 0 && !teamGrowth && !idealCandidate && (
+                      <p className="text-white/30 text-sm">No hiring needs added yet. You can go back to add priorities and growth plans.</p>
+                    )}
                     {hiringPriorities.length > 0 && (
                       <div className="mb-3">
                         <p className="text-white/30 text-xs mb-2">Priority Departments</p>
