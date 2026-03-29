@@ -29,9 +29,9 @@
   },
   "hero": {
     "title": "Find Your Perfect Career Match",
-    "subtitle": "AI-powered matching connects job seekers with their ideal roles across {countryCount}+ countries. Upload your CV, take the matchmaker quiz, and let our AI find your perfect fit.",
-    "candidateCta": "I'm Looking for a Job",
-    "recruiterCta": "I'm Hiring",
+    "subtitle": "Upload your CV, take a 2-minute culture quiz, and get matched with companies that fit your work style — with visa rules for {countryCount}+ countries built in.",
+    "candidateCta": "Get Matched Free",
+    "recruiterCta": "Start Hiring",
     "statsJobs": "Active Jobs",
     "statsCandidates": "Candidates",
     "statsCountries": "Countries",
