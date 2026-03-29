@@ -98,6 +98,10 @@ export default function AICoachPage() {
   // Copied state
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
+  // Apply-to-profile state
+  const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [appliedIds, setAppliedIds] = useState<Set<string>>(new Set());
+
   // Spring animation for temperature
   const springProgress = useSpring(0, { stiffness: 40, damping: 15 });
   const bgOpacity = useTransform(springProgress, [0, 1], [0.05, 0.15]);
@@ -136,6 +140,30 @@ export default function AICoachPage() {
   useEffect(() => {
     springProgress.set(processing ? 1 : 0);
   }, [processing, springProgress]);
+
+  // ── Apply enhancement to profile ──
+  const applyToProfile = useCallback(async (field: string, value: unknown, buttonId: string) => {
+    setApplyingId(buttonId);
+    try {
+      const res = await fetch('/api/candidate/apply-enhancement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ field, value }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      setAppliedIds(prev => new Set([...prev, buttonId]));
+      confetti({
+        particleCount: 60,
+        spread: 55,
+        origin: { y: 0.7 },
+        colors: ['#22c55e', '#10b981', '#34d399'],
+      });
+    } catch {
+      setError('Failed to apply enhancement to profile');
+    } finally {
+      setApplyingId(null);
+    }
+  }, []);
 
   // ── Copy to clipboard ──
   const copyText = useCallback((text: string, id: string) => {
@@ -467,9 +495,9 @@ export default function AICoachPage() {
                 transition={{ type: 'spring', stiffness: 80, damping: 18 }}
                 className="space-y-6"
               >
-                {activePhase === 'resume' && <ResumeResults data={phaseResult as ResumeData} copyText={copyText} copiedId={copiedId} />}
+                {activePhase === 'resume' && <ResumeResults data={phaseResult as ResumeData} copyText={copyText} copiedId={copiedId} applyToProfile={applyToProfile} applyingId={applyingId} appliedIds={appliedIds} />}
                 {activePhase === 'jobs' && <JobResults data={phaseResult as JobsData} />}
-                {activePhase === 'actions' && <ActionResults data={phaseResult as ActionsData} />}
+                {activePhase === 'actions' && <ActionResults data={phaseResult as ActionsData} applyToProfile={applyToProfile} applyingId={applyingId} appliedIds={appliedIds} />}
                 {activePhase === 'social' && <SocialResults data={phaseResult as SocialData} copyText={copyText} copiedId={copiedId} platform={platform} />}
               </motion.div>
             ) : null}
@@ -598,10 +626,90 @@ function CopyButton({ text, id, copiedId, copyText }: { text: string; id: string
   );
 }
 
+/* ── Apply Button ── */
+function ApplyButton({ id, label, onClick, applyingId, appliedIds }: {
+  id: string;
+  label: string;
+  onClick: () => void;
+  applyingId: string | null;
+  appliedIds: Set<string>;
+}) {
+  const applied = appliedIds.has(id);
+  const applying = applyingId === id;
+
+  return (
+    <motion.button
+      onClick={onClick}
+      disabled={applied || applying}
+      whileHover={!applied && !applying ? { scale: 1.03 } : undefined}
+      whileTap={!applied && !applying ? { scale: 0.97 } : undefined}
+      className={`px-3 py-1.5 text-xs rounded-lg font-medium transition-all flex items-center gap-1.5 ${
+        applied
+          ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30 cursor-default'
+          : applying
+          ? 'bg-white/5 text-white/30 ring-1 ring-white/10 cursor-wait'
+          : 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-600/30 cursor-pointer'
+      }`}
+    >
+      {applied ? (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          Applied
+        </>
+      ) : applying ? (
+        <>
+          <div className="w-3 h-3 border-2 border-white/30 border-t-emerald-400 rounded-full animate-spin" />
+          Applying...
+        </>
+      ) : (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+          {label}
+        </>
+      )}
+    </motion.button>
+  );
+}
+
 /* ── Resume Results ── */
-function ResumeResults({ data, copyText, copiedId }: { data: ResumeData; copyText: (t: string, id: string) => void; copiedId: string | null }) {
+function ResumeResults({ data, copyText, copiedId, applyToProfile, applyingId, appliedIds }: {
+  data: ResumeData;
+  copyText: (t: string, id: string) => void;
+  copiedId: string | null;
+  applyToProfile: (field: string, value: unknown, id: string) => Promise<void>;
+  applyingId: string | null;
+  appliedIds: Set<string>;
+}) {
   return (
     <div className="space-y-6">
+      {/* Apply All — hero button */}
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: 'spring', stiffness: 120 }}
+        className="bg-gradient-to-r from-emerald-600/10 to-cyan-600/10 ring-1 ring-emerald-500/30 rounded-xl p-5"
+      >
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-white">Apply All Enhancements to Your Profile</h3>
+            <p className="text-xs text-white/40 mt-1">One click to update your headline, bio, skills, and work history</p>
+          </div>
+          <ApplyButton
+            id="apply-all-resume"
+            label="Apply All"
+            applyingId={applyingId}
+            appliedIds={appliedIds}
+            onClick={() => applyToProfile('all_resume', {
+              headline: data.improved_headline,
+              bio: data.improved_bio,
+              skills: data.improved_skills,
+              added_skills: data.added_skills,
+              work_history: data.work_history_improvements,
+            }, 'apply-all-resume')}
+          />
+        </div>
+      </motion.div>
+
       {/* Score cards */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <ScoreComparison label="Headline Score" before={data.headline_score_before} after={data.headline_score_after} />
@@ -613,7 +721,10 @@ function ResumeResults({ data, copyText, copiedId }: { data: ResumeData; copyTex
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="bg-[#0F172A] ring-1 ring-cyan-500/20 rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-cyan-400">Enhanced Headline</h3>
-          <CopyButton text={data.improved_headline} id="headline" copiedId={copiedId} copyText={copyText} />
+          <div className="flex gap-2">
+            <ApplyButton id="apply-headline" label="Apply" applyingId={applyingId} appliedIds={appliedIds} onClick={() => applyToProfile('headline', data.improved_headline, 'apply-headline')} />
+            <CopyButton text={data.improved_headline} id="headline" copiedId={copiedId} copyText={copyText} />
+          </div>
         </div>
         <p className="text-white font-medium">{data.improved_headline}</p>
       </motion.div>
@@ -622,7 +733,10 @@ function ResumeResults({ data, copyText, copiedId }: { data: ResumeData; copyTex
       <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="bg-[#0F172A] ring-1 ring-cyan-500/20 rounded-xl p-5">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-semibold text-cyan-400">Enhanced Bio</h3>
-          <CopyButton text={data.improved_bio} id="bio" copiedId={copiedId} copyText={copyText} />
+          <div className="flex gap-2">
+            <ApplyButton id="apply-bio" label="Apply" applyingId={applyingId} appliedIds={appliedIds} onClick={() => applyToProfile('bio', data.improved_bio, 'apply-bio')} />
+            <CopyButton text={data.improved_bio} id="bio" copiedId={copiedId} copyText={copyText} />
+          </div>
         </div>
         <p className="text-white/80 text-sm leading-relaxed">{data.improved_bio}</p>
       </motion.div>
@@ -630,7 +744,10 @@ function ResumeResults({ data, copyText, copiedId }: { data: ResumeData; copyTex
       {/* Added skills */}
       {data.added_skills && data.added_skills.length > 0 && (
         <motion.div initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.4 }} className="bg-[#0F172A] ring-1 ring-cyan-500/20 rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-cyan-400 mb-3">Skills You Should Add</h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-semibold text-cyan-400">Skills You Should Add</h3>
+            <ApplyButton id="apply-skills" label="Add to Profile" applyingId={applyingId} appliedIds={appliedIds} onClick={() => applyToProfile('skills', data.added_skills, 'apply-skills')} />
+          </div>
           <div className="flex flex-wrap gap-2">
             {data.added_skills.map(skill => (
               <span key={skill} className="px-3 py-1 bg-cyan-500/10 text-cyan-300 text-xs rounded-full ring-1 ring-cyan-500/20">
@@ -763,7 +880,12 @@ function JobResults({ data }: { data: JobsData }) {
 }
 
 /* ── Action Results ── */
-function ActionResults({ data }: { data: ActionsData }) {
+function ActionResults({ data, applyToProfile, applyingId, appliedIds }: {
+  data: ActionsData;
+  applyToProfile: (field: string, value: unknown, id: string) => Promise<void>;
+  applyingId: string | null;
+  appliedIds: Set<string>;
+}) {
   const gradeColors: Record<string, string> = {
     A: 'from-emerald-500 to-green-500',
     B: 'from-blue-500 to-cyan-500',
@@ -854,7 +976,16 @@ function ActionResults({ data }: { data: ActionsData }) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {data.skill_gaps && data.skill_gaps.length > 0 && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.7 }} className="bg-[#0F172A] ring-1 ring-amber-500/20 rounded-xl p-5">
-            <h3 className="text-sm font-semibold text-amber-400 mb-3">Trending Skills to Learn</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-amber-400">Trending Skills to Learn</h3>
+              <ApplyButton
+                id="apply-skill-gaps"
+                label="Add All to Profile"
+                applyingId={applyingId}
+                appliedIds={appliedIds}
+                onClick={() => applyToProfile('skills', data.skill_gaps, 'apply-skill-gaps')}
+              />
+            </div>
             <div className="flex flex-wrap gap-2">
               {data.skill_gaps.map(s => (
                 <span key={s} className="px-2.5 py-1 bg-amber-500/10 text-amber-300 text-xs rounded-full ring-1 ring-amber-500/20">

@@ -94,6 +94,90 @@ function ThreatBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
   );
 }
 
+// ── Boost Profile Button (Stand-out Tip) ────────────────────────
+
+function BoostProfileButton({ isAuthenticated }: { isAuthenticated: boolean }) {
+  const router = useRouter();
+  const [boosting, setBoosting] = useState(false);
+  const [boosted, setBoosted] = useState(false);
+
+  const handleBoost = async () => {
+    if (!isAuthenticated) {
+      router.push('/auth?mode=signin&redirect=/dashboard/candidate/ai-coach');
+      return;
+    }
+
+    setBoosting(true);
+    try {
+      // Call the AI coach to generate resume improvements, then auto-apply them
+      const res = await fetch('/api/candidate/ai-coach', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'improve-resume' }),
+      });
+      if (!res.ok) throw new Error('Failed to generate improvements');
+      const { data } = await res.json();
+
+      // Now apply the improvements to the profile
+      const applyRes = await fetch('/api/candidate/apply-enhancement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          field: 'all_resume',
+          value: {
+            headline: data.improved_headline,
+            bio: data.improved_bio,
+            skills: data.improved_skills,
+            added_skills: data.added_skills,
+            work_history: data.work_history_improvements,
+          },
+        }),
+      });
+      if (!applyRes.ok) throw new Error('Failed to apply');
+
+      setBoosted(true);
+    } catch {
+      // On error, redirect to AI coach for manual application
+      router.push('/dashboard/candidate/ai-coach');
+    } finally {
+      setBoosting(false);
+    }
+  };
+
+  return (
+    <motion.button
+      onClick={handleBoost}
+      disabled={boosting || boosted}
+      whileHover={!boosting && !boosted ? { scale: 1.05 } : undefined}
+      whileTap={!boosting && !boosted ? { scale: 0.95 } : undefined}
+      className={`flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold transition-all flex items-center gap-1.5 ${
+        boosted
+          ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30'
+          : boosting
+          ? 'bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20'
+          : 'bg-gradient-to-r from-amber-600 to-orange-600 text-white shadow-lg shadow-amber-500/20 hover:shadow-amber-500/30'
+      }`}
+    >
+      {boosted ? (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+          Profile Boosted!
+        </>
+      ) : boosting ? (
+        <>
+          <div className="w-3 h-3 border-2 border-amber-300/30 border-t-amber-300 rounded-full animate-spin" />
+          Boosting...
+        </>
+      ) : (
+        <>
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" /></svg>
+          Boost My Profile
+        </>
+      )}
+    </motion.button>
+  );
+}
+
 // ── Competitor Drill-Down Drawer ────────────────────────────────
 
 function CompetitorDrawer({
@@ -991,10 +1075,13 @@ export default function MatchmakerResults({
 
             {/* Stand out tip */}
             <div className="p-3 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20">
-              <p className="text-[12px] text-amber-400/80">
-                <span className="font-bold">Stand out tip:</span> Update your profile with leadership
-                experience to boost your match score by up to 8%
-              </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[12px] text-amber-400/80 flex-1">
+                  <span className="font-bold">Stand out tip:</span> Update your profile with leadership
+                  experience to boost your match score by up to 8%
+                </p>
+                <BoostProfileButton isAuthenticated={isAuthenticated} />
+              </div>
             </div>
           </motion.div>
 
