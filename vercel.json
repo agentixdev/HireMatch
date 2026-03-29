@@ -1,15 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/cron/visa-refresh",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/job-sync",
-      "schedule": "0 6 * * *"
-    },
-    {
-      "path": "/api/cron/job-expiration",
+      "path": "/api/cron/daily",
       "schedule": "0 3 * * *"
     }
   ]
