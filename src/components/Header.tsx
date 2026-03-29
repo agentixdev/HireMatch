@@ -60,7 +60,8 @@ export default function Header() {
 
   const navItems = useMemo<NavItem[]>(() => [
     { href: '/jobs', label: t('jobs'), iconBold: 'solar:suitcase-bold', iconLinear: 'solar:suitcase-linear' },
-    { href: '/candidates', label: t('candidates'), iconBold: 'solar:users-group-rounded-bold', iconLinear: 'solar:users-group-rounded-linear' },
+    { href: '/talent', label: t('talent'), iconBold: 'solar:users-group-rounded-bold', iconLinear: 'solar:users-group-rounded-linear' },
+    { href: '/companies', label: t('companies'), iconBold: 'solar:buildings-bold', iconLinear: 'solar:buildings-linear' },
     { href: '/matchmaker', label: t('matchmaker'), iconBold: 'solar:heart-pulse-bold', iconLinear: 'solar:heart-pulse-linear' },
     { href: '/pricing', label: t('pricing'), iconBold: 'solar:tag-price-bold', iconLinear: 'solar:tag-price-linear' },
     { href: '/visa', label: t('visa'), iconBold: 'solar:passport-bold', iconLinear: 'solar:passport-linear' },
