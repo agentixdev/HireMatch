@@ -1,9 +1,17 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
+import {
+  springSnappy,
+  springBouncy,
+  springSmooth,
+  getTemperatureColors,
+  staggerContainer,
+  staggerItem,
+} from '@/lib/wow';
 import type { CompanyMatch, Competitor, RealJob } from '../types';
 
 interface MatchmakerResultsProps {
@@ -71,6 +79,292 @@ function radarPoint(index: number, value: number) {
   };
 }
 
+// ── Threat Level Badge ──────────────────────────────────────────
+
+function ThreatBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
+  const config = {
+    low: { bg: 'bg-green-500/10', text: 'text-green-400', border: 'border-green-500/20', label: 'Low Threat' },
+    medium: { bg: 'bg-amber-500/10', text: 'text-amber-400', border: 'border-amber-500/20', label: 'Medium Threat' },
+    high: { bg: 'bg-red-500/10', text: 'text-red-400', border: 'border-red-500/20', label: 'High Threat' },
+  }[level];
+  return (
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${config.bg} ${config.text} border ${config.border}`}>
+      {config.label}
+    </span>
+  );
+}
+
+// ── Competitor Drill-Down Drawer ────────────────────────────────
+
+function CompetitorDrawer({
+  competitor,
+  userScore,
+  userRadarProfile,
+  onClose,
+}: {
+  competitor: Competitor;
+  userScore: number;
+  userRadarProfile: Record<string, number>;
+  onClose: () => void;
+}) {
+  const tempColors = getTemperatureColors(competitor.score);
+  const scoreDiff = userScore - competitor.score;
+  const maxRadar = Math.max(
+    ...competitor.workStyle.map((w) => w.value),
+    ...Object.values(userRadarProfile).map((v) => (v / Math.max(...Object.values(userRadarProfile), 1)) * 100),
+    1,
+  );
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ x: '100%' }}
+        animate={{ x: 0 }}
+        exit={{ x: '100%' }}
+        transition={springSmooth}
+        onClick={(e) => e.stopPropagation()}
+        className="absolute right-0 top-0 bottom-0 w-full max-w-lg bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
+      >
+        {/* Close button */}
+        <button onClick={onClose} className="absolute top-4 right-4 z-10 text-white/40 hover:text-white p-2 cursor-pointer">
+          <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+
+        {/* Header */}
+        <div className="p-6 pb-4" style={{ background: `linear-gradient(180deg, ${competitor.avatar.replace(')', ', 0.15)')} 0%, transparent 100%)` }}>
+          <div className="flex items-start gap-4">
+            {/* Avatar */}
+            <motion.div
+              initial={{ scale: 0.7, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={springBouncy}
+              className="w-16 h-16 rounded-2xl flex items-center justify-center text-2xl font-black text-white shrink-0"
+              style={{ backgroundColor: competitor.avatar }}
+            >
+              {competitor.name.charAt(0)}
+            </motion.div>
+
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 mb-1">
+                <h2 className="text-xl font-bold text-white">{competitor.name}</h2>
+                <ThreatBadge level={competitor.threatLevel} />
+              </div>
+              <p className="text-sm" style={{ color: competitor.avatar }}>{competitor.headline}</p>
+              <div className="flex items-center gap-2 mt-1.5 text-xs text-white/30">
+                <span>{competitor.location}</span>
+                <span>&middot;</span>
+                <span>{competitor.experience}yr exp</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Score Comparison */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Score Comparison</h3>
+          <div className="grid grid-cols-2 gap-3">
+            {/* Your score */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="rounded-xl p-4 bg-gradient-to-br from-blue-500/10 to-purple-500/10 border border-blue-500/15"
+            >
+              <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">You</p>
+              <p className="text-3xl font-black text-white">{userScore}%</p>
+            </motion.div>
+
+            {/* Their score */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="rounded-xl p-4 border"
+              style={{ backgroundColor: tempColors.bg, borderColor: tempColors.primary + '20' }}
+            >
+              <p className="text-[10px] text-white/30 uppercase tracking-wider mb-1">{competitor.name.split(' ')[0]}</p>
+              <p className="text-3xl font-black" style={{ color: tempColors.primary }}>{competitor.score}%</p>
+            </motion.div>
+          </div>
+
+          {/* Difference callout */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, ...springBouncy }}
+            className={`mt-3 p-3 rounded-lg text-center text-sm font-semibold ${
+              scoreDiff > 0
+                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                : scoreDiff < 0
+                  ? 'bg-red-500/10 text-red-400 border border-red-500/20'
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+            }`}
+          >
+            {scoreDiff > 0
+              ? `You're ahead by ${scoreDiff} points`
+              : scoreDiff < 0
+                ? `They're ahead by ${Math.abs(scoreDiff)} points`
+                : "You're neck and neck!"}
+          </motion.div>
+        </div>
+
+        {/* Skills */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Skills</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {competitor.skills.map((skill) => (
+              <motion.span
+                key={skill}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3 + Math.random() * 0.2 }}
+                className="px-2.5 py-1 bg-white/[0.04] text-white/60 text-xs rounded-full border border-white/[0.06]"
+              >
+                {skill}
+              </motion.span>
+            ))}
+          </div>
+        </div>
+
+        {/* Work Style Comparison Bars */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Work Style Comparison</h3>
+          <div className="space-y-3">
+            {competitor.workStyle.map((trait, i) => {
+              const radarKey = trait.label.toLowerCase();
+              const maxUserVal = Math.max(...Object.values(userRadarProfile), 1);
+              const userVal = Math.round(((userRadarProfile[radarKey] || 0) / maxUserVal) * 100);
+              return (
+                <motion.div
+                  key={trait.label}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + i * 0.08 }}
+                >
+                  <div className="flex items-center justify-between text-[11px] mb-1">
+                    <span className="text-white/50">{trait.label}</span>
+                    <span className="text-white/20">You: {userVal}% | Them: {trait.value}%</span>
+                  </div>
+                  <div className="relative h-2 rounded-full bg-white/[0.04] overflow-hidden">
+                    {/* User bar */}
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-60"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${userVal}%` }}
+                      transition={{ delay: 0.5 + i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                    {/* Competitor bar */}
+                    <motion.div
+                      className="absolute inset-y-0 left-0 rounded-full opacity-50"
+                      style={{ backgroundColor: competitor.avatar }}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${trait.value}%` }}
+                      transition={{ delay: 0.55 + i * 0.08, duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+                    />
+                  </div>
+                </motion.div>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-4 mt-3 text-[10px] text-white/20">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-1.5 rounded-full bg-gradient-to-r from-blue-500 to-purple-500 opacity-60" />
+              You
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-1.5 rounded-full opacity-50" style={{ backgroundColor: competitor.avatar }} />
+              {competitor.name.split(' ')[0]}
+            </span>
+          </div>
+        </div>
+
+        {/* Strengths */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Their Strengths</h3>
+          <div className="space-y-2">
+            {competitor.strengths.map((s, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.5 + i * 0.1 }}
+                className="flex items-start gap-2 text-sm"
+              >
+                <span className="text-green-400 mt-0.5 shrink-0">+</span>
+                <span className="text-white/60">{s}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Weaknesses */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Where You Have the Edge</h3>
+          <div className="space-y-2">
+            {competitor.weaknesses.map((w, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.6 + i * 0.1 }}
+                className="flex items-start gap-2 text-sm"
+              >
+                <span className="text-amber-400 mt-0.5 shrink-0">!</span>
+                <span className="text-white/50">{w}</span>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+
+        {/* Companies they're targeting */}
+        <div className="px-6 py-4 border-t border-white/5">
+          <h3 className="text-xs font-semibold text-white/30 uppercase tracking-wider mb-3">Also Competing For</h3>
+          <div className="flex flex-wrap gap-2">
+            {competitor.topCompanies.map((company) => (
+              <span key={company} className="px-3 py-1.5 bg-white/[0.03] text-white/50 text-xs rounded-lg border border-white/[0.06]">
+                {company}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Tactical Advice */}
+        <div className="px-6 py-4 border-t border-white/5 mb-4">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className={`p-4 rounded-xl ${
+              scoreDiff >= 0
+                ? 'bg-green-500/5 border border-green-500/15'
+                : 'bg-amber-500/5 border border-amber-500/15'
+            }`}
+          >
+            <p className={`text-xs font-bold mb-1 ${scoreDiff >= 0 ? 'text-green-400' : 'text-amber-400'}`}>
+              {scoreDiff >= 0 ? 'Your Competitive Advantage' : 'How to Close the Gap'}
+            </p>
+            <p className="text-[12px] text-white/40 leading-relaxed">
+              {scoreDiff >= 0
+                ? `You outperform ${competitor.name.split(' ')[0]} overall, but they have strong ${competitor.strengths[0]?.toLowerCase()}. Focus on showcasing your unique value to stay ahead.`
+                : `${competitor.name.split(' ')[0]} has a ${Math.abs(scoreDiff)}-point edge. Their main advantage is ${competitor.strengths[0]?.toLowerCase()}. Counter by highlighting your distinct skills and experience.`}
+            </p>
+          </motion.div>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ── Main Results Component ──────────────────────────────────────
+
 export default function MatchmakerResults({
   results,
   answers,
@@ -93,6 +387,7 @@ export default function MatchmakerResults({
   userRadarProfile,
 }: MatchmakerResultsProps) {
   const router = useRouter();
+  const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
 
   if (!results || results.length === 0) return null;
 
@@ -654,15 +949,24 @@ export default function MatchmakerResults({
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 2.0 + i * 0.08 }}
-                  className="flex items-center gap-3"
+                  onClick={() => setSelectedCompetitor(comp)}
+                  className="flex items-center gap-3 cursor-pointer group rounded-lg px-2 py-1.5 -mx-2 hover:bg-white/[0.03] transition-colors"
                 >
-                  <div
-                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white/80 flex-shrink-0"
+                  <motion.div
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white/80 flex-shrink-0 ring-2 ring-transparent group-hover:ring-white/20 transition-all"
                     style={{ backgroundColor: comp.avatar }}
                   >
                     {comp.name.charAt(0)}
-                  </div>
+                  </motion.div>
                   <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <span className="text-[11px] text-white/50 group-hover:text-white/70 transition-colors font-medium">
+                        {comp.name}
+                      </span>
+                      <ThreatBadge level={comp.threatLevel} />
+                    </div>
                     <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                       <motion.div
                         className="h-full rounded-full"
@@ -673,9 +977,14 @@ export default function MatchmakerResults({
                       />
                     </div>
                   </div>
-                  <span className="text-[12px] text-white/40 tabular-nums w-10 text-right">
-                    {comp.score}%
-                  </span>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-[12px] text-white/40 tabular-nums w-10 text-right">
+                      {comp.score}%
+                    </span>
+                    <svg className="w-4 h-4 text-white/15 group-hover:text-white/40 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </motion.div>
               ))}
             </div>
@@ -1055,6 +1364,18 @@ export default function MatchmakerResults({
           </motion.div>
         </div>
       </div>
+
+      {/* Competitor Drill-Down Drawer */}
+      <AnimatePresence>
+        {selectedCompetitor && (
+          <CompetitorDrawer
+            competitor={selectedCompetitor}
+            userScore={topMatch.score}
+            userRadarProfile={userRadarProfile}
+            onClose={() => setSelectedCompetitor(null)}
+          />
+        )}
+      </AnimatePresence>
     </>
   );
 }

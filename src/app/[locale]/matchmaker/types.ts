@@ -29,6 +29,16 @@ export interface Competitor {
   name: string;
   score: number;
   avatar: string;
+  headline: string;
+  location: string;
+  experience: number;
+  skills: string[];
+  strengths: string[];
+  weaknesses: string[];
+  matchReasons: string[];
+  workStyle: { label: string; value: number }[];
+  topCompanies: string[];
+  threatLevel: 'low' | 'medium' | 'high';
 }
 
 export interface RealJob {

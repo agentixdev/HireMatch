@@ -23,7 +23,9 @@
     "matchmaker": "Matchmaker",
     "pricing": "Prijzen",
     "visa": "Visumregels",
-    "about": "Over ons"
+    "about": "Over ons",
+    "talent": "Talent",
+    "companies": "Bedrijven"
   },
   "hero": {
     "title": "Vind uw perfecte carri\u00e8rematch",
@@ -114,9 +116,9 @@
       "apiAccess": "API-toegang",
       "atsIntegration": "ATS-integratie",
       "teamSeats": "Teamplaatsen",
-      "dedicatedSupport": "Toegewijd support",
+      "dedicatedSupport": "Toegewijde ondersteuning",
       "multiClient": "Multi-klantbeheer",
-      "commissionTracking": "Commissie-tracking"
+      "commissionTracking": "Provisieregistratie"
     }
   },
   "auth": {

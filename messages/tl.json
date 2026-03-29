@@ -12,7 +12,7 @@
     "cancel": "Kanselahin",
     "submit": "Isumite",
     "loading": "Naglo-load...",
-    "noResults": "Walang nahanap na resulta",
+    "noResults": "Walang nahanap na mga resulta",
     "viewAll": "Tingnan Lahat",
     "learnMore": "Alamin Pa",
     "getStarted": "Magsimula",
@@ -23,7 +23,9 @@
     "matchmaker": "Matchmaker",
     "pricing": "Presyo",
     "visa": "Mga Patakaran sa Visa",
-    "about": "Tungkol Sa Amin"
+    "about": "Tungkol Sa Amin",
+    "talent": "Talento",
+    "companies": "Mga Kumpanya"
   },
   "hero": {
     "title": "Hanapin ang Perpektong Career Match Mo",
@@ -68,7 +70,7 @@
     "pipeline": "Pipeline ng Talento",
     "shortlist": "Shortlist",
     "matchedCandidates": "Mga Tugmang Kandidato",
-    "viewsRemaining": "{count} na tinging ng kandidato ang natitira",
+    "viewsRemaining": "{count} na pagtingin ng kandidato ang natitira",
     "upgradeToPro": "Mag-upgrade sa Pro",
     "aiAssist": "AI Assist",
     "parseJobDescription": "I-paste ang iyong job description at hayaang i-extract ng AI ang mga detalye"
@@ -80,7 +82,7 @@
     "next": "Susunod",
     "previous": "Nakaraan",
     "finish": "Tingnan ang Mga Tugma Ko",
-    "progress": "Tanong {current} sa {total}",
+    "progress": "Tanong {current} ng {total}",
     "results": "Ang Iyong Mga Nangungunang Tugma",
     "retake": "Ulitin ang Quiz"
   },
@@ -106,14 +108,14 @@
     "monthly": "/buwan",
     "perFeature": {
       "jobPosts": "{count} job post/buwan",
-      "candidateViews": "{count} tinging ng kandidato/buwan",
+      "candidateViews": "{count} pagtingin ng kandidato/buwan",
       "unlimited": "Walang Limitasyon",
       "aiRanking": "AI candidate ranking",
       "bulkOutreach": "Maramihang pag-abot",
       "analytics": "Analytics dashboard",
       "apiAccess": "API access",
       "atsIntegration": "ATS integration",
-      "teamSeats": "Mga upuan ng team",
+      "teamSeats": "Mga team seat",
       "dedicatedSupport": "Dedikadong suporta",
       "multiClient": "Multi-client management",
       "commissionTracking": "Pagsubaybay ng komisyon"

@@ -23,11 +23,13 @@
     "matchmaker": "Matchmaker",
     "pricing": "Precios",
     "visa": "Reglas de visa",
-    "about": "Acerca de"
+    "about": "Acerca de",
+    "talent": "Talento",
+    "companies": "Empresas"
   },
   "hero": {
     "title": "Encuentra tu empleo ideal",
-    "subtitle": "La IA conecta a los buscadores de empleo con sus roles ideales en m\u00e1s de {countryCount} pa\u00edses. Sube tu CV, realiza el quiz y deja que nuestra IA encuentre tu coincidencia perfecta.",
+    "subtitle": "La IA conecta a los buscadores de empleo con sus roles ideales en más de {countryCount} países. Suba su CV, realice el quiz y deje que nuestra IA encuentre su coincidencia perfecta.",
     "candidateCta": "Busco empleo",
     "recruiterCta": "Estoy contratando",
     "statsJobs": "Empleos activos",
@@ -38,8 +40,8 @@
   "candidate": {
     "profile": "Mi perfil",
     "uploadCv": "Subir CV",
-    "cvParsing": "Analizando tu CV con IA...",
-    "cvParsed": "\u00a1CV analizado con \u00e9xito! Revisa tu perfil extra\u00eddo a continuaci\u00f3n.",
+    "cvParsing": "Analizando su CV con IA...",
+    "cvParsed": "¡CV analizado con éxito! Revise su perfil extraído a continuación.",
     "editProfile": "Editar perfil",
     "skills": "Habilidades",
     "experience": "Experiencia",
@@ -66,16 +68,16 @@
     "myJobs": "Mis empleos",
     "applicants": "Postulantes",
     "pipeline": "Pipeline de talento",
-    "shortlist": "Preseleccci\u00f3n",
+    "shortlist": "Preselección",
     "matchedCandidates": "Candidatos compatibles",
     "viewsRemaining": "{count} visualizaciones de candidatos restantes",
     "upgradeToPro": "Actualizar a Pro",
     "aiAssist": "Asistencia IA",
-    "parseJobDescription": "Pega tu descripci\u00f3n del puesto y deja que la IA extraiga los detalles"
+    "parseJobDescription": "Pegue su descripción del puesto y deje que la IA extraiga los detalles"
   },
   "matchmaker": {
     "title": "Encuentra tu coincidencia perfecta",
-    "subtitle": "Responde {count} preguntas r\u00e1pidas sobre tu estilo de trabajo, valores y preferencias. Nuestra IA usa tus respuestas para encontrar las mejores coincidencias.",
+    "subtitle": "Responda {count} preguntas rápidas sobre su estilo de trabajo, valores y preferencias. Nuestra IA usa sus respuestas para encontrar las mejores coincidencias.",
     "start": "Iniciar quiz",
     "next": "Siguiente",
     "previous": "Anterior",
@@ -121,13 +123,13 @@
   },
   "auth": {
     "signInTitle": "Bienvenido de nuevo",
-    "signUpTitle": "Crea tu cuenta",
+    "signUpTitle": "Cree su cuenta",
     "email": "Correo electr\u00f3nico",
     "password": "Contrase\u00f1a",
     "confirmPassword": "Confirmar contrase\u00f1a",
-    "forgotPassword": "\u00bfOlvidaste tu contrase\u00f1a?",
-    "noAccount": "\u00bfNo tienes una cuenta?",
-    "hasAccount": "\u00bfYa tienes una cuenta?",
+    "forgotPassword": "¿Olvidó su contraseña?",
+    "noAccount": "¿No tiene una cuenta?",
+    "hasAccount": "¿Ya tiene una cuenta?",
     "selectRole": "Soy...",
     "candidateRole": "Buscador de empleo",
     "recruiterRole": "Reclutador / Empleador"

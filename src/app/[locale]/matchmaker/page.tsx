@@ -460,14 +460,61 @@ function calculateMatches(answers: number[]): CompanyMatch[] {
 
 // ── Fake competitor data generator ─────────────────────────────
 
-function generateCompetitors(topScore: number) {
-  const names = ['Alex M.', 'Jordan K.', 'Taylor R.', 'Sam P.', 'Casey L.'];
-  const scores = names.map((name, i) => ({
-    name,
-    score: Math.max(45, topScore - 3 - Math.floor(Math.random() * 25) - i * 4),
-    avatar: `hsl(${(i * 72 + 200) % 360}, 60%, 50%)`,
-  }));
-  return scores.sort((a, b) => b.score - a.score);
+function generateCompetitors(topScore: number, topCompanyNames: string[]) {
+  const profiles = [
+    {
+      name: 'Alex M.', headline: 'Senior Full-Stack Engineer', location: 'San Francisco, US',
+      experience: 7, skills: ['React', 'Node.js', 'TypeScript', 'AWS', 'PostgreSQL'],
+      strengths: ['Strong system design background', 'Open-source contributor', 'Led a team of 5'],
+      weaknesses: ['Limited remote experience', 'No startup background'],
+      workStyle: [{ label: 'Team', value: 85 }, { label: 'Autonomy', value: 60 }, { label: 'Impact', value: 75 }, { label: 'Balance', value: 45 }],
+    },
+    {
+      name: 'Jordan K.', headline: 'Product Manager | ex-Meta', location: 'London, UK',
+      experience: 5, skills: ['Product Strategy', 'Data Analysis', 'Figma', 'SQL', 'A/B Testing'],
+      strengths: ['FAANG experience', 'Data-driven decision maker', 'Cross-functional leadership'],
+      weaknesses: ['Less technical depth', 'Prefers larger orgs'],
+      workStyle: [{ label: 'Team', value: 90 }, { label: 'Autonomy', value: 50 }, { label: 'Impact', value: 80 }, { label: 'Balance', value: 70 }],
+    },
+    {
+      name: 'Taylor R.', headline: 'ML Engineer & Researcher', location: 'Berlin, DE',
+      experience: 4, skills: ['Python', 'PyTorch', 'MLOps', 'Kubernetes', 'Data Pipelines'],
+      strengths: ['Published ML research', 'Strong mathematics foundation', 'Multilingual (3 languages)'],
+      weaknesses: ['Fewer leadership roles', 'Niche specialization'],
+      workStyle: [{ label: 'Team', value: 55 }, { label: 'Autonomy', value: 90 }, { label: 'Impact', value: 85 }, { label: 'Balance', value: 60 }],
+    },
+    {
+      name: 'Sam P.', headline: 'UX Designer & Design Systems Lead', location: 'Toronto, CA',
+      experience: 6, skills: ['Figma', 'Design Systems', 'User Research', 'Prototyping', 'CSS'],
+      strengths: ['Built design system from scratch', 'Strong portfolio', 'Accessibility expert'],
+      weaknesses: ['Limited backend knowledge', 'Smaller company experience'],
+      workStyle: [{ label: 'Team', value: 80 }, { label: 'Autonomy', value: 70 }, { label: 'Impact', value: 65 }, { label: 'Balance', value: 85 }],
+    },
+    {
+      name: 'Casey L.', headline: 'DevOps & Platform Engineer', location: 'Sydney, AU',
+      experience: 8, skills: ['Terraform', 'AWS', 'Docker', 'CI/CD', 'Go', 'Monitoring'],
+      strengths: ['Deep infrastructure expertise', '99.99% uptime track record', 'Incident commander experience'],
+      weaknesses: ['Prefers backend roles only', 'Less product-facing experience'],
+      workStyle: [{ label: 'Team', value: 65 }, { label: 'Autonomy', value: 80 }, { label: 'Impact', value: 70 }, { label: 'Balance', value: 50 }],
+    },
+  ];
+
+  return profiles.map((profile, i) => {
+    const score = Math.max(45, topScore - 3 - Math.floor(Math.random() * 25) - i * 4);
+    const threat = score >= topScore - 5 ? 'high' as const : score >= topScore - 15 ? 'medium' as const : 'low' as const;
+    return {
+      ...profile,
+      score,
+      avatar: `hsl(${(i * 72 + 200) % 360}, 60%, 50%)`,
+      matchReasons: [
+        `${score}% culture alignment with top companies`,
+        `${profile.experience} years of relevant experience`,
+        profile.strengths[0],
+      ],
+      topCompanies: topCompanyNames.slice(0, 3),
+      threatLevel: threat,
+    };
+  }).sort((a, b) => b.score - a.score);
 }
 
 // ── Build user radar profile from answers ──────────────────────
@@ -539,7 +586,7 @@ export default function MatchmakerPage() {
 
   const competitors = useMemo(() => {
     if (!results) return [];
-    return generateCompetitors(results[0]?.score || 75);
+    return generateCompetitors(results[0]?.score || 75, results.slice(0, 5).map((r) => r.name));
   }, [results]);
 
   const userRank = useMemo(() => {
@@ -658,37 +705,46 @@ export default function MatchmakerPage() {
           });
         });
 
-        // Map quiz culture tags to job attributes for scoring
-        const cultureToJobMap: Record<string, { work_modes?: string[]; traits?: string[] }> = {
-          remote: { work_modes: ['remote'], traits: ['remote', 'distributed', 'flexible'] },
-          team: { traits: ['collaboration', 'teamwork', 'team', 'agile'] },
-          autonomy: { traits: ['autonomous', 'independent', 'self-starter', 'ownership'] },
-          ship: { traits: ['fast-paced', 'startup', 'agile', 'delivery', 'ship'] },
-          impact: { traits: ['impact', 'scale', 'growth', 'mission'] },
-          mission: { traits: ['mission', 'purpose', 'social', 'impact', 'healthcare', 'education'] },
-          data: { traits: ['data', 'analytics', 'machine learning', 'ai', 'data-driven'] },
-          balance: { traits: ['work-life', 'balance', 'flexible', 'wellness'] },
-          quality: { traits: ['quality', 'craft', 'engineering', 'architecture'] },
-          creative: { traits: ['creative', 'design', 'innovation', 'product'] },
-          pressure: { traits: ['fast-paced', 'high-growth', 'startup', 'fintech'] },
-          solve: { traits: ['problem-solving', 'engineering', 'technical', 'architecture', 'cloud'] },
-          salary: { traits: ['competitive', 'compensation', 'senior'] },
-          equity: { traits: ['equity', 'startup', 'early-stage', 'options'] },
-          lead: { traits: ['leadership', 'management', 'lead', 'director', 'head'] },
-          mentor: { traits: ['mentorship', 'coaching', 'growth', 'learning'] },
-          ic: { traits: ['individual contributor', 'specialist', 'expert', 'senior'] },
-          flow: { traits: ['deep work', 'focused', 'engineering', 'research'] },
-          founded: { traits: ['startup', 'founder', 'entrepreneurial', 'early-stage'] },
-          office: { work_modes: ['onsite', 'hybrid'] },
+        // Expanded culture-to-job semantic mapping with synonyms and related terms
+        const cultureToJobMap: Record<string, { work_modes?: string[]; traits: string[]; weight: number }> = {
+          remote: { work_modes: ['remote'], traits: ['remote', 'distributed', 'flexible', 'work from home', 'wfh', 'async', 'global team', 'anywhere'], weight: 3 },
+          team: { traits: ['collaboration', 'teamwork', 'team', 'agile', 'scrum', 'cross-functional', 'pair programming', 'squad', 'tribe'], weight: 2 },
+          autonomy: { traits: ['autonomous', 'independent', 'self-starter', 'ownership', 'empowerment', 'self-directed', 'initiative'], weight: 2 },
+          ship: { traits: ['fast-paced', 'startup', 'agile', 'delivery', 'ship', 'iterate', 'mvp', 'rapid', 'velocity', 'sprint'], weight: 2 },
+          impact: { traits: ['impact', 'scale', 'growth', 'millions', 'global', 'transformative', 'meaningful', 'change'], weight: 3 },
+          mission: { traits: ['mission', 'purpose', 'social', 'impact', 'healthcare', 'education', 'sustainability', 'non-profit', 'climate', 'diversity'], weight: 3 },
+          data: { traits: ['data', 'analytics', 'machine learning', 'ai', 'data-driven', 'metrics', 'a/b test', 'experiment', 'quantitative', 'statistical'], weight: 2 },
+          balance: { traits: ['work-life', 'balance', 'flexible', 'wellness', 'unlimited pto', 'mental health', 'sustainable pace', '4-day', 'no crunch'], weight: 2 },
+          quality: { traits: ['quality', 'craft', 'engineering excellence', 'architecture', 'code review', 'testing', 'best practices', 'clean code', 'technical debt'], weight: 2 },
+          creative: { traits: ['creative', 'design', 'innovation', 'product', 'user experience', 'prototype', 'experiment', 'ideation', 'brainstorm'], weight: 2 },
+          pressure: { traits: ['fast-paced', 'high-growth', 'startup', 'fintech', 'intense', 'demanding', 'competitive', 'ambitious'], weight: 1 },
+          solve: { traits: ['problem-solving', 'engineering', 'technical', 'architecture', 'cloud', 'distributed systems', 'algorithms', 'complex', 'research'], weight: 2 },
+          salary: { traits: ['competitive', 'compensation', 'senior', 'top of market', 'premium', 'well-paid', 'above market'], weight: 1 },
+          equity: { traits: ['equity', 'startup', 'early-stage', 'options', 'stock', 'vesting', 'shares', 'ownership stake'], weight: 2 },
+          lead: { traits: ['leadership', 'management', 'lead', 'director', 'head', 'vp', 'principal', 'staff', 'manager'], weight: 2 },
+          mentor: { traits: ['mentorship', 'coaching', 'growth', 'learning', 'development', 'training', 'onboarding', 'career path'], weight: 2 },
+          ic: { traits: ['individual contributor', 'specialist', 'expert', 'senior', 'staff engineer', 'principal', 'ic track', 'deep expertise'], weight: 2 },
+          flow: { traits: ['deep work', 'focused', 'engineering', 'research', 'concentration', 'uninterrupted', 'maker schedule'], weight: 2 },
+          founded: { traits: ['startup', 'founder', 'entrepreneurial', 'early-stage', 'pre-seed', 'seed', 'series a', 'bootstrapped', 'co-founder'], weight: 2 },
+          office: { work_modes: ['onsite', 'hybrid'], traits: ['office', 'in-person', 'on-site', 'campus', 'headquarters'], weight: 2 },
         };
 
-        // Determine user's preferred work modes
+        // Determine user's preferred work modes with nuance
         const preferredWorkModes: string[] = [];
-        if ((userProfile.remote || 0) >= 3) preferredWorkModes.push('remote');
-        if ((userProfile.office || 0) >= 3) preferredWorkModes.push('onsite');
-        if (preferredWorkModes.length === 0 || ((userProfile.remote || 0) > 0 && (userProfile.office || 0) > 0)) preferredWorkModes.push('hybrid');
+        const remoteScore = userProfile.remote || 0;
+        const officeScore = userProfile.office || 0;
+        if (remoteScore >= 3) preferredWorkModes.push('remote');
+        if (officeScore >= 3) preferredWorkModes.push('onsite');
+        if (remoteScore > 0 && officeScore > 0) preferredWorkModes.push('hybrid');
+        if (preferredWorkModes.length === 0) preferredWorkModes.push('remote', 'hybrid', 'onsite');
 
-        // Fetch active jobs with recruiter company name
+        // Get top user traits sorted by strength
+        const topUserTraits = Object.entries(userProfile)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 12);
+        const userTopTagSet = new Set(topUserTraits.map(([tag]) => tag));
+
+        // Fetch active jobs
         const { data: jobs } = await supabase
           .from('jobs')
           .select('*, recruiter:recruiters(company_name)')
@@ -702,72 +758,116 @@ export default function MatchmakerPage() {
           return;
         }
 
-        // Score each job
+        // Multi-dimensional scoring
         const scored = jobs.map((job: Record<string, unknown>) => {
-          let score = 0;
-          let maxScore = 0;
           const reasons: string[] = [];
           const jobTags = ((job.match_tags as string[]) || []).map((t: string) => t.toLowerCase());
           const jobSkills = ((job.skills_required as string[]) || []).map((t: string) => t.toLowerCase());
           const jobDesc = ((job.description as string) || '').toLowerCase();
           const jobTitle = ((job.title as string) || '').toLowerCase();
-          const allJobText = [...jobTags, ...jobSkills, jobDesc, jobTitle].join(' ');
+          const jobIndustry = ((job.industry as string) || '').toLowerCase();
+          const allJobText = [jobTitle, jobDesc, jobIndustry, ...jobTags, ...jobSkills].join(' ');
 
-          // Score based on quiz profile alignment
-          const topUserTraits = Object.entries(userProfile)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 8);
-
-          for (const [tag, weight] of topUserTraits) {
+          // 1. CULTURE FIT (40% of total) — quiz tags vs job text + match_tags
+          let cultureScore = 0;
+          let cultureMax = 0;
+          for (const [tag, userWeight] of topUserTraits) {
             const mapping = cultureToJobMap[tag];
             if (!mapping) continue;
-            maxScore += weight * 3;
+            const traitWeight = mapping.weight * userWeight;
+            cultureMax += traitWeight;
 
-            // Work mode match
-            if (mapping.work_modes) {
-              if (mapping.work_modes.includes(job.work_mode as string)) {
-                score += weight * 3;
-                if (tag === 'remote' && job.work_mode === 'remote') reasons.push('Remote-first — matches your style');
-                if (tag === 'office' && job.work_mode === 'onsite') reasons.push('On-site culture you prefer');
-              }
+            // Direct tag overlap with job match_tags (strongest signal)
+            if (jobTags.includes(tag)) {
+              cultureScore += traitWeight;
+              continue;
             }
 
-            // Trait match against job text
-            if (mapping.traits) {
-              const matched = mapping.traits.filter(t => allJobText.includes(t));
-              if (matched.length > 0) {
-                score += weight * Math.min(matched.length, 3);
-                // Build reason from first match
-                const traitLabels: Record<string, string> = {
-                  team: 'Collaborative team environment',
-                  autonomy: 'Values ownership and autonomy',
-                  ship: 'Fast-paced, ship-it culture',
-                  impact: 'High-impact role',
-                  mission: 'Mission-driven organization',
-                  data: 'Data-driven decision making',
-                  balance: 'Supports work-life balance',
-                  quality: 'Values engineering craft',
-                  creative: 'Creative and innovative role',
-                  solve: 'Complex problem-solving focus',
-                  lead: 'Leadership growth opportunity',
-                  mentor: 'Strong mentorship culture',
-                  pressure: 'High-growth environment',
-                  flow: 'Deep work friendly',
-                };
-                if (traitLabels[tag] && !reasons.includes(traitLabels[tag])) {
-                  reasons.push(traitLabels[tag]);
-                }
-              }
+            // Semantic trait matching against job text
+            const matchedTraits = mapping.traits.filter(t => allJobText.includes(t));
+            if (matchedTraits.length > 0) {
+              cultureScore += traitWeight * Math.min(matchedTraits.length / mapping.traits.length * 2, 1);
+            }
+          }
+          const culturePct = cultureMax > 0 ? (cultureScore / cultureMax) * 100 : 50;
+
+          // 2. WORK MODE FIT (20% of total)
+          let workModePct = 50;
+          const jobWorkMode = job.work_mode as string;
+          if (preferredWorkModes.includes(jobWorkMode)) {
+            workModePct = 90;
+            if (jobWorkMode === 'remote' && remoteScore >= 3) {
+              reasons.push('Remote-first — matches your style');
+              workModePct = 95;
+            } else if (jobWorkMode === 'onsite' && officeScore >= 3) {
+              reasons.push('On-site culture you prefer');
+              workModePct = 95;
+            } else if (jobWorkMode === 'hybrid') {
+              reasons.push('Hybrid flexibility');
+            }
+          } else {
+            workModePct = 30;
+          }
+
+          // 3. TAG OVERLAP (25% of total) — direct match_tags alignment
+          const jobTagSet = new Set(jobTags);
+          let tagOverlap = 0;
+          for (const tag of userTopTagSet) {
+            if (jobTagSet.has(tag)) tagOverlap++;
+            // Also check partial matches (e.g., "team" in "teamwork")
+            for (const jt of jobTags) {
+              if (jt.includes(tag) || tag.includes(jt)) { tagOverlap += 0.5; break; }
+            }
+          }
+          const tagPct = Math.min((tagOverlap / Math.max(userTopTagSet.size, 1)) * 100, 100);
+
+          // 4. INDUSTRY/ROLE ALIGNMENT (15% of total) — from quiz trait mapping
+          let industryPct = 50;
+          const traitLabels: Record<string, string> = {
+            team: 'Collaborative team environment',
+            autonomy: 'Values ownership and autonomy',
+            ship: 'Fast-paced, ship-it culture',
+            impact: 'High-impact role',
+            mission: 'Mission-driven organization',
+            data: 'Data-driven decision making',
+            balance: 'Supports work-life balance',
+            quality: 'Values engineering craft',
+            creative: 'Creative and innovative role',
+            solve: 'Complex problem-solving focus',
+            lead: 'Leadership growth opportunity',
+            mentor: 'Strong mentorship culture',
+            pressure: 'High-growth environment',
+            flow: 'Deep work friendly',
+            equity: 'Equity-forward compensation',
+            founded: 'Entrepreneurial environment',
+          };
+
+          // Find top matching traits for reasons
+          const traitMatches: { tag: string; strength: number }[] = [];
+          for (const [tag, userWeight] of topUserTraits) {
+            const mapping = cultureToJobMap[tag];
+            if (!mapping) continue;
+            const matched = mapping.traits.filter(t => allJobText.includes(t));
+            if (matched.length > 0 || jobTags.includes(tag)) {
+              traitMatches.push({ tag, strength: userWeight * matched.length });
+            }
+          }
+          traitMatches.sort((a, b) => b.strength - a.strength);
+          for (const tm of traitMatches.slice(0, 3)) {
+            if (traitLabels[tm.tag] && !reasons.includes(traitLabels[tm.tag])) {
+              reasons.push(traitLabels[tm.tag]);
             }
           }
 
-          // Bonus: work mode match
-          if (preferredWorkModes.includes(job.work_mode as string)) {
-            score += 5;
-          }
+          // Industry alignment bonus
+          if (traitMatches.length >= 3) industryPct = 80;
+          else if (traitMatches.length >= 1) industryPct = 65;
 
-          // Normalize to 40-95 range
-          const rawPct = maxScore > 0 ? (score / maxScore) * 100 : 50;
+          // Weighted composite score
+          const compositeRaw = culturePct * 0.4 + workModePct * 0.2 + tagPct * 0.25 + industryPct * 0.15;
+
+          // Normalize to 40-95 range with better distribution
+          const rawPct = compositeRaw;
           const normalized = Math.round(40 + (rawPct / 100) * 55);
           const clamped = Math.min(95, Math.max(40, normalized));
 
@@ -799,7 +899,47 @@ export default function MatchmakerPage() {
 
         // Sort by match score and take top 6
         scored.sort((a: { matchScore: number }, b: { matchScore: number }) => b.matchScore - a.matchScore);
-        setRealJobs(scored.slice(0, 6));
+        const clientScoredJobs = scored.slice(0, 6);
+        setRealJobs(clientScoredJobs);
+
+        // For authenticated users, also try LLM-powered matching via API
+        // This provides more nuanced scoring than client-side tag matching
+        if (isAuthenticated) {
+          try {
+            const res = await fetch('/api/candidate/matched-jobs');
+            if (res.ok) {
+              const data = await res.json();
+              if (data.matches && data.matches.length > 0) {
+                // Merge LLM results — LLM scores are more accurate
+                const llmJobs = data.matches.map((m: Record<string, unknown>) => {
+                  const mJob = m.job as Record<string, unknown>;
+                  const recruiterData = mJob?.recruiter as Record<string, unknown> | null;
+                  return {
+                    id: (mJob?.id as string) || '',
+                    title: (mJob?.title as string) || '',
+                    company: (recruiterData?.company_name as string) || 'Company',
+                    industry: (mJob?.industry as string) || '',
+                    work_mode: (mJob?.work_mode as string) || 'hybrid',
+                    country: (mJob?.country as string) || '',
+                    city: mJob?.city as string | undefined,
+                    job_type: (mJob?.job_type as string) || 'full-time',
+                    salary_min: mJob?.salary_min as number | undefined,
+                    salary_max: mJob?.salary_max as number | undefined,
+                    salary_currency: ((mJob?.salary_currency as string) || 'USD'),
+                    visa_sponsorship: (mJob?.visa_sponsorship as boolean) || false,
+                    skills_required: (mJob?.skills_required as string[]) || [],
+                    match_tags: (mJob?.match_tags as string[]) || [],
+                    matchScore: Math.min(95, Math.max(40, (m.score as number) || 50)),
+                    matchReasons: [(m.why as string) || 'AI-matched', (m.tip as string) || ''].filter(Boolean),
+                  };
+                });
+                setRealJobs(llmJobs.slice(0, 6));
+              }
+            }
+          } catch {
+            // LLM matching is optional enhancement — client-side results still showing
+          }
+        }
       } catch (err) {
         console.error('Failed to fetch real jobs:', err);
       }
@@ -807,7 +947,7 @@ export default function MatchmakerPage() {
     }
 
     fetchAndScoreJobs();
-  }, [phase, answers]);
+  }, [phase, answers, isAuthenticated]);
 
   // ── Handlers ────────────────────────────────────────────────
 

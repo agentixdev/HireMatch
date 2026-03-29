@@ -23,7 +23,9 @@
     "matchmaker": "Matchmaker",
     "pricing": "Tarifs",
     "visa": "R\u00e8gles de visa",
-    "about": "\u00c0 propos"
+    "about": "\u00c0 propos",
+    "talent": "Talents",
+    "companies": "Entreprises"
   },
   "hero": {
     "title": "Trouvez votre emploi id\u00e9al",
@@ -120,7 +122,7 @@
     }
   },
   "auth": {
-    "signInTitle": "Bon retour",
+    "signInTitle": "Bon retour parmi nous",
     "signUpTitle": "Cr\u00e9ez votre compte",
     "email": "E-mail",
     "password": "Mot de passe",

@@ -23,7 +23,9 @@
     "matchmaker": "Matchmaker",
     "pricing": "Preise",
     "visa": "Visumsregeln",
-    "about": "\u00dcber uns"
+    "about": "Über uns",
+    "talent": "Talente",
+    "companies": "Unternehmen"
   },
   "hero": {
     "title": "Finden Sie Ihre perfekte Karriere",
@@ -86,8 +88,8 @@
   },
   "visa": {
     "title": "Visum- und Arbeitserlaubnisanforderungen",
-    "sponsorshipAvailable": "Visumsf\u00f6rderung verf\u00fcgbar",
-    "noSponsorship": "Keine Visumsf\u00f6rderung",
+    "sponsorshipAvailable": "Visum-Sponsoring verfügbar",
+    "noSponsorship": "Kein Visum-Sponsoring",
     "processingTime": "Bearbeitungszeit",
     "fees": "Geb\u00fchren",
     "requiredDocs": "Erforderliche Dokumente",
@@ -129,7 +131,7 @@
     "noAccount": "Noch kein Konto?",
     "hasAccount": "Bereits ein Konto?",
     "selectRole": "Ich bin...",
-    "candidateRole": "Arbeitssuchend",
+    "candidateRole": "Arbeitssuchende/r",
     "recruiterRole": "Recruiter / Arbeitgeber"
   }
 }

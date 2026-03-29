@@ -23,7 +23,9 @@
     "matchmaker": "Matchmaker",
     "pricing": "Pre\u00e7os",
     "visa": "Regras de visto",
-    "about": "Sobre"
+    "about": "Sobre",
+    "talent": "Talentos",
+    "companies": "Empresas"
   },
   "hero": {
     "title": "Encontre sua carreira ideal",
@@ -113,7 +115,7 @@
       "analytics": "Painel anal\u00edtico",
       "apiAccess": "Acesso \u00e0 API",
       "atsIntegration": "Integra\u00e7\u00e3o ATS",
-      "teamSeats": "Vagas para equipe",
+      "teamSeats": "Licenças de equipe",
       "dedicatedSupport": "Suporte dedicado",
       "multiClient": "Gest\u00e3o multi-cliente",
       "commissionTracking": "Rastreamento de comiss\u00f5es"

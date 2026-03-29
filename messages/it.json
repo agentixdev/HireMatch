@@ -23,11 +23,13 @@
     "matchmaker": "Matchmaker",
     "pricing": "Prezzi",
     "visa": "Regole per il visto",
-    "about": "Chi siamo"
+    "about": "Chi siamo",
+    "talent": "Talenti",
+    "companies": "Aziende"
   },
   "hero": {
     "title": "Trova la tua carriera ideale",
-    "subtitle": "L'IA collega i candidati con i ruoli ideali in oltre {countryCount} paesi. Carica il tuo CV, rispondi al quiz e lascia che la nostra IA trovi la corrispondenza perfetta.",
+    "subtitle": "L'IA collega i candidati con i ruoli ideali in oltre {countryCount} paesi. Carichi il Suo CV, risponda al quiz e lasci che la nostra IA trovi la corrispondenza perfetta.",
     "candidateCta": "Cerco lavoro",
     "recruiterCta": "Sto assumendo",
     "statsJobs": "Offerte attive",
@@ -39,7 +41,7 @@
     "profile": "Il mio profilo",
     "uploadCv": "Carica CV",
     "cvParsing": "Analisi del CV con l'IA in corso...",
-    "cvParsed": "CV analizzato con successo! Controlla il tuo profilo estratto qui sotto.",
+    "cvParsed": "CV analizzato con successo! Verifichi il Suo profilo estratto qui sotto.",
     "editProfile": "Modifica profilo",
     "skills": "Competenze",
     "experience": "Esperienza",
@@ -71,11 +73,11 @@
     "viewsRemaining": "{count} visualizzazioni candidati rimanenti",
     "upgradeToPro": "Passa a Pro",
     "aiAssist": "Assistenza IA",
-    "parseJobDescription": "Incolla la descrizione del lavoro e lascia che l'IA estragga i dettagli"
+    "parseJobDescription": "Incolli la descrizione della posizione e lasci che l'IA estragga i dettagli"
   },
   "matchmaker": {
     "title": "Trova la tua corrispondenza perfetta",
-    "subtitle": "Rispondi a {count} domande rapide sul tuo stile di lavoro, i tuoi valori e le tue preferenze. La nostra IA usa le tue risposte per trovare le migliori corrispondenze.",
+    "subtitle": "Risponda a {count} domande rapide sul Suo stile di lavoro, i Suoi valori e le Sue preferenze. La nostra IA usa le Sue risposte per trovare le migliori corrispondenze.",
     "start": "Inizia il quiz",
     "next": "Avanti",
     "previous": "Indietro",
@@ -121,15 +123,15 @@
   },
   "auth": {
     "signInTitle": "Bentornato",
-    "signUpTitle": "Crea il tuo account",
+    "signUpTitle": "Crei il Suo account",
     "email": "E-mail",
     "password": "Password",
     "confirmPassword": "Conferma password",
     "forgotPassword": "Password dimenticata?",
-    "noAccount": "Non hai un account?",
-    "hasAccount": "Hai gi\u00e0 un account?",
+    "noAccount": "Non ha un account?",
+    "hasAccount": "Ha già un account?",
     "selectRole": "Sono un...",
-    "candidateRole": "Candidato",
+    "candidateRole": "Candidato/a",
     "recruiterRole": "Recruiter / Datore di lavoro"
   }
 }
