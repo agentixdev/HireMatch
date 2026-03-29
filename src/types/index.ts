@@ -241,4 +241,6 @@ export type WebhookEvent =
   | 'application.status_changed'
   | 'candidate.matched'
   | 'job.created'
-  | 'job.updated';
+  | 'job.updated'
+  | 'job.closed'
+  | 'match.found';
