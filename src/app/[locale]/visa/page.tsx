@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import { createServiceClient } from '@/lib/supabase-server';
+import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import Header from '@/components/Header';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
 import VisaCountrySection from './VisaCountrySection';
+import VisaPaywall from './VisaPaywall';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
 
@@ -74,6 +75,25 @@ export default async function VisaRulesPage({
   const { locale } = await params;
   const supabase = await createServiceClient();
 
+  // Check auth + subscription tier
+  const authClient = await createServerSupabase();
+  const { data: { user } } = await authClient.auth.getUser();
+
+  let hasPaidAccess = false;
+  if (user) {
+    const { data: recruiter } = await supabase
+      .from('recruiters')
+      .select('tier')
+      .eq('user_id', user.id)
+      .single();
+
+    if (recruiter && recruiter.tier && recruiter.tier !== 'free') {
+      hasPaidAccess = true;
+    }
+  }
+
+  const FREE_PREVIEW_COUNT = 2; // Show first 2 countries free
+
   const { data: rules } = await supabase
     .from('visa_rules')
     .select('*')
@@ -138,14 +158,23 @@ export default async function VisaRulesPage({
             </div>
           ) : (
             <div className="space-y-4">
-              {countriesWithRules.map((country) => (
+              {countriesWithRules.map((country, index) => (
                 <VisaCountrySection
                   key={country.code}
                   flag={country.flag}
                   name={country.name}
                   rules={grouped[country.code]}
+                  locked={!hasPaidAccess && index >= FREE_PREVIEW_COUNT}
                 />
               ))}
+
+              {!hasPaidAccess && countriesWithRules.length > FREE_PREVIEW_COUNT && (
+                <VisaPaywall
+                  isLoggedIn={!!user}
+                  lockedCount={countriesWithRules.length - FREE_PREVIEW_COUNT}
+                  locale={locale}
+                />
+              )}
             </div>
           )}
         </div>

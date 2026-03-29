@@ -23,19 +23,21 @@ export default function VisaCountrySection({
   flag,
   name,
   rules,
+  locked = false,
 }: {
   flag: string;
   name: string;
   rules: VisaRule[];
+  locked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
   return (
-    <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl overflow-hidden hover:ring-white/20 transition-all">
+    <div className={`bg-[#0F172A] ring-1 ring-white/10 rounded-2xl overflow-hidden transition-all ${locked ? 'opacity-60' : 'hover:ring-white/20'}`}>
       {/* Country header (toggle) */}
       <button
-        onClick={() => setOpen(!open)}
-        className="w-full flex items-center gap-4 px-6 py-5 text-left"
+        onClick={() => !locked && setOpen(!open)}
+        className={`w-full flex items-center gap-4 px-6 py-5 text-left ${locked ? 'cursor-not-allowed' : ''}`}
       >
         <span className="text-3xl">{flag}</span>
         <div className="flex-1 min-w-0">
@@ -44,14 +46,18 @@ export default function VisaCountrySection({
             {rules.length} visa {rules.length === 1 ? 'type' : 'types'}
           </p>
         </div>
-        <Icon
-          icon="solar:alt-arrow-down-linear"
-          className={`w-5 h-5 text-white/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
-        />
+        {locked ? (
+          <Icon icon="solar:lock-keyhole-linear" className="w-5 h-5 text-yellow-500/70" />
+        ) : (
+          <Icon
+            icon="solar:alt-arrow-down-linear"
+            className={`w-5 h-5 text-white/40 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+          />
+        )}
       </button>
 
       {/* Visa cards */}
-      {open && (
+      {open && !locked && (
         <div className="px-6 pb-6 space-y-4">
           {rules.map((rule) => (
             <div
