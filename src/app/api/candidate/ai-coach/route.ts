@@ -150,12 +150,34 @@ CANDIDATE:
 - Photo: ${candidate.photo_url ? 'Yes' : 'No — critical gap'}
 - CV Uploaded: ${candidate.cv_url ? 'Yes' : 'No — critical gap'}
 
+For each critical action, you MUST include an "action_type" and "action_payload" so the frontend can render an executable button. Choose the action_type as follows:
+
+- "update_field" — when the fix is setting a profile field. Payload: { "field": "visa_status"|"is_public"|"headline"|"bio", "value": <appropriate value>, "label": "Button text" }. For is_public use { "field": "is_public", "value": true, "label": "Make Profile Public" }. For visa_status, pick the most likely value from "citizen", "permanent_resident", "work_visa", "needs_sponsorship".
+- "go_to_resume" — when the action is about improving resume/headline/bio/work history quantification. Payload: { "label": "Open Resume Enhancer" }
+- "go_to_social" — when the action is about LinkedIn, social media, thought leadership, or online presence. Payload: { "label": "Generate Social Content" }
+- "upload_cv" — when the action is about uploading or updating a CV/resume document. Payload: { "label": "Upload CV" }
+- "upload_photo" — when the action is about adding a professional photo. Payload: { "label": "Upload Photo" }
+- "add_skills" — when suggesting specific skills to add. Payload: { "skills": ["skill1", "skill2"], "label": "Add Skills" }
+- "external_link" — when suggesting visiting an external site (LinkedIn profile setup, certification sites). Payload: { "url": "https://...", "label": "Open LinkedIn" }
+- "generate" — when the action could benefit from AI-generated content (like generating a niche bio). Payload: { "generate_type": "niche_bio"|"achievement_bullets"|"elevator_pitch", "context": "<relevant context e.g. field/industry>", "label": "Generate with AI" }
+
 Return JSON:
 {
   "profile_grade": "A|B|C|D|F",
   "profile_score": 0-100,
   "critical_actions": [
-    { "action": "what to do", "impact": "high|medium|low", "effort": "easy|medium|hard", "reason": "why this matters" }
+    {
+      "action": "what to do",
+      "impact": "high|medium|low",
+      "effort": "easy|medium|hard",
+      "reason": "why this matters",
+      "action_type": "update_field|go_to_resume|go_to_social|upload_cv|upload_photo|add_skills|external_link|generate",
+      "action_payload": {
+        "field": "visa_status",
+        "value": "needs_sponsorship",
+        "label": "Set Visa Status"
+      }
+    }
   ],
   "skill_gaps": ["trending skills they should learn based on their field"],
   "certification_suggestions": ["specific certs that would boost their profile"],

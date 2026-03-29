@@ -497,7 +497,7 @@ export default function AICoachPage() {
               >
                 {activePhase === 'resume' && <ResumeResults data={phaseResult as ResumeData} copyText={copyText} copiedId={copiedId} applyToProfile={applyToProfile} applyingId={applyingId} appliedIds={appliedIds} />}
                 {activePhase === 'jobs' && <JobResults data={phaseResult as JobsData} />}
-                {activePhase === 'actions' && <ActionResults data={phaseResult as ActionsData} applyToProfile={applyToProfile} applyingId={applyingId} appliedIds={appliedIds} />}
+                {activePhase === 'actions' && <ActionResults data={phaseResult as ActionsData} applyToProfile={applyToProfile} applyingId={applyingId} appliedIds={appliedIds} setActivePhase={setActivePhase} runPhase={runPhase} />}
                 {activePhase === 'social' && <SocialResults data={phaseResult as SocialData} copyText={copyText} copiedId={copiedId} platform={platform} />}
               </motion.div>
             ) : null}
@@ -551,10 +551,29 @@ interface JobsData {
   message?: string;
 }
 
+interface ActionPayload {
+  field?: string;
+  value?: unknown;
+  label?: string;
+  skills?: string[];
+  url?: string;
+  generate_type?: string;
+  context?: string;
+}
+
+interface CriticalAction {
+  action: string;
+  impact: string;
+  effort: string;
+  reason: string;
+  action_type?: 'update_field' | 'go_to_resume' | 'go_to_social' | 'upload_cv' | 'upload_photo' | 'add_skills' | 'external_link' | 'generate';
+  action_payload?: ActionPayload;
+}
+
 interface ActionsData {
   profile_grade: string;
   profile_score: number;
-  critical_actions: Array<{ action: string; impact: string; effort: string; reason: string }>;
+  critical_actions: CriticalAction[];
   skill_gaps: string[];
   certification_suggestions: string[];
   career_trajectory: string;
@@ -879,12 +898,188 @@ function JobResults({ data }: { data: JobsData }) {
   );
 }
 
+/* ── Action Button for each critical action ── */
+function ActionExecuteButton({ action, index, applyToProfile, applyingId, appliedIds, setActivePhase, runPhase }: {
+  action: CriticalAction;
+  index: number;
+  applyToProfile: (field: string, value: unknown, id: string) => Promise<void>;
+  applyingId: string | null;
+  appliedIds: Set<string>;
+  setActivePhase: (phase: Phase) => void;
+  runPhase: (phase: Phase) => void;
+}) {
+  const [generating, setGenerating] = useState(false);
+  const [generated, setGenerated] = useState<string | null>(null);
+  const router = useRouter();
+  const buttonId = `action-${index}`;
+  const payload = action.action_payload;
+  const label = payload?.label || 'Do It';
+
+  if (!action.action_type) return null;
+
+  const handleClick = async () => {
+    switch (action.action_type) {
+      case 'update_field':
+        if (payload?.field && payload?.value !== undefined) {
+          await applyToProfile(payload.field, payload.value, buttonId);
+        }
+        break;
+      case 'go_to_resume':
+        setActivePhase('resume');
+        setTimeout(() => runPhase('resume'), 300);
+        break;
+      case 'go_to_social':
+        setActivePhase('social');
+        setTimeout(() => runPhase('social'), 300);
+        break;
+      case 'upload_cv':
+        router.push('/dashboard/candidate');
+        break;
+      case 'upload_photo':
+        router.push('/dashboard/candidate');
+        break;
+      case 'add_skills':
+        if (payload?.skills?.length) {
+          await applyToProfile('skills', payload.skills, buttonId);
+        }
+        break;
+      case 'external_link':
+        if (payload?.url) {
+          window.open(payload.url, '_blank', 'noopener,noreferrer');
+        }
+        break;
+      case 'generate': {
+        setGenerating(true);
+        try {
+          const res = await fetch('/api/candidate/ai-coach', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action: 'improve-resume',
+              jobDescription: payload?.context || '',
+            }),
+          });
+          if (res.ok) {
+            const { data } = await res.json();
+            if (payload?.generate_type === 'niche_bio' && data?.improved_bio) {
+              setGenerated(data.improved_bio);
+            } else if (payload?.generate_type === 'achievement_bullets' && data?.work_history_improvements?.length) {
+              setGenerated(data.work_history_improvements.map((w: { company: string; improved_description: string }) => `${w.company}: ${w.improved_description}`).join('\n\n'));
+            } else if (payload?.generate_type === 'elevator_pitch' && data?.improved_headline) {
+              setGenerated(`${data.improved_headline}\n\n${data.improved_bio || ''}`);
+            } else {
+              setGenerated(data?.improved_bio || data?.improved_headline || 'Generated content ready — use Resume Enhancer for full results.');
+            }
+          }
+        } catch { /* ignore */ } finally {
+          setGenerating(false);
+        }
+        break;
+      }
+    }
+  };
+
+  const actionIcons: Record<string, string> = {
+    update_field: 'M5 13l4 4L19 7',
+    go_to_resume: 'M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z',
+    go_to_social: 'M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z',
+    upload_cv: 'M9 13h6m-3-3v6m5 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
+    upload_photo: 'M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z',
+    add_skills: 'M12 6v6m0 0v6m0-6h6m-6 0H6',
+    external_link: 'M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14',
+    generate: 'M13 10V3L4 14h7v7l9-11h-7z',
+  };
+
+  const applied = appliedIds.has(buttonId);
+  const applying = applyingId === buttonId;
+  const isNav = action.action_type === 'go_to_resume' || action.action_type === 'go_to_social' || action.action_type === 'upload_cv' || action.action_type === 'upload_photo';
+  const isExternal = action.action_type === 'external_link';
+
+  return (
+    <div className="mt-3 space-y-2">
+      <motion.button
+        onClick={handleClick}
+        disabled={applied || applying || generating}
+        whileHover={!applied && !applying ? { scale: 1.02 } : undefined}
+        whileTap={!applied && !applying ? { scale: 0.98 } : undefined}
+        className={`w-full px-4 py-2.5 text-sm rounded-lg font-medium transition-all flex items-center justify-center gap-2 cursor-pointer ${
+          applied
+            ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/30 cursor-default'
+            : applying || generating
+            ? 'bg-white/5 text-white/30 ring-1 ring-white/10 cursor-wait'
+            : isNav
+            ? 'bg-blue-600/20 text-blue-400 ring-1 ring-blue-500/30 hover:bg-blue-600/30'
+            : isExternal
+            ? 'bg-purple-600/20 text-purple-400 ring-1 ring-purple-500/30 hover:bg-purple-600/30'
+            : action.action_type === 'generate'
+            ? 'bg-amber-600/20 text-amber-400 ring-1 ring-amber-500/30 hover:bg-amber-600/30'
+            : 'bg-emerald-600/20 text-emerald-400 ring-1 ring-emerald-500/30 hover:bg-emerald-600/30'
+        }`}
+      >
+        {applied ? (
+          <>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+            Done
+          </>
+        ) : applying || generating ? (
+          <>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-current rounded-full animate-spin" />
+            {generating ? 'Generating...' : 'Applying...'}
+          </>
+        ) : (
+          <>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d={actionIcons[action.action_type] || actionIcons.update_field} />
+            </svg>
+            {label}
+            {isExternal && (
+              <svg className="w-3 h-3 ml-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+              </svg>
+            )}
+          </>
+        )}
+      </motion.button>
+
+      {/* Generated content preview */}
+      {generated && (
+        <motion.div
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          className="bg-black/30 rounded-lg p-3 ring-1 ring-amber-500/20"
+        >
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-amber-400 font-medium">Generated Content</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { navigator.clipboard.writeText(generated); }}
+                className="px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded text-white/50 hover:text-white/80 cursor-pointer"
+              >
+                Copy
+              </button>
+              <button
+                onClick={() => applyToProfile('bio', generated, buttonId + '-apply')}
+                className="px-2 py-1 text-xs bg-emerald-500/20 hover:bg-emerald-500/30 rounded text-emerald-400 cursor-pointer"
+              >
+                Apply to Bio
+              </button>
+            </div>
+          </div>
+          <p className="text-white/60 text-xs whitespace-pre-wrap leading-relaxed">{generated}</p>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
 /* ── Action Results ── */
-function ActionResults({ data, applyToProfile, applyingId, appliedIds }: {
+function ActionResults({ data, applyToProfile, applyingId, appliedIds, setActivePhase, runPhase }: {
   data: ActionsData;
   applyToProfile: (field: string, value: unknown, id: string) => Promise<void>;
   applyingId: string | null;
   appliedIds: Set<string>;
+  setActivePhase: (phase: Phase) => void;
+  runPhase: (phase: Phase) => void;
 }) {
   const gradeColors: Record<string, string> = {
     A: 'from-emerald-500 to-green-500',
@@ -934,7 +1129,7 @@ function ActionResults({ data, applyToProfile, applyingId, appliedIds }: {
         <p className="text-white/70 text-sm">{data.career_trajectory}</p>
       </motion.div>
 
-      {/* Critical actions */}
+      {/* Critical actions with executable buttons */}
       <div className="space-y-3">
         <h3 className="text-sm font-semibold text-white">Action Plan</h3>
         {data.critical_actions?.map((action, i) => (
@@ -943,31 +1138,42 @@ function ActionResults({ data, applyToProfile, applyingId, appliedIds }: {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.4 + i * 0.1, type: 'spring' }}
-            className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-4 flex items-start gap-4"
+            className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-4"
           >
-            <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
-              action.impact === 'high' ? 'bg-red-500/20 text-red-400' :
-              action.impact === 'medium' ? 'bg-amber-500/20 text-amber-400' :
-              'bg-blue-500/20 text-blue-400'
-            }`}>
-              {i + 1}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium">{action.action}</p>
-              <p className="text-white/40 text-xs mt-1">{action.reason}</p>
-              <div className="flex gap-2 mt-2">
-                <span className={`px-2 py-0.5 text-xs rounded-full ${
-                  action.impact === 'high' ? 'bg-red-500/10 text-red-400' :
-                  action.impact === 'medium' ? 'bg-amber-500/10 text-amber-400' :
-                  'bg-blue-500/10 text-blue-400'
-                }`}>
-                  {action.impact} impact
-                </span>
-                <span className="px-2 py-0.5 text-xs rounded-full bg-white/5 text-white/40">
-                  {action.effort} effort
-                </span>
+            <div className="flex items-start gap-4">
+              <div className={`flex-shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold ${
+                action.impact === 'high' ? 'bg-red-500/20 text-red-400' :
+                action.impact === 'medium' ? 'bg-amber-500/20 text-amber-400' :
+                'bg-blue-500/20 text-blue-400'
+              }`}>
+                {i + 1}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-white text-sm font-medium">{action.action}</p>
+                <p className="text-white/40 text-xs mt-1">{action.reason}</p>
+                <div className="flex gap-2 mt-2">
+                  <span className={`px-2 py-0.5 text-xs rounded-full ${
+                    action.impact === 'high' ? 'bg-red-500/10 text-red-400' :
+                    action.impact === 'medium' ? 'bg-amber-500/10 text-amber-400' :
+                    'bg-blue-500/10 text-blue-400'
+                  }`}>
+                    {action.impact} impact
+                  </span>
+                  <span className="px-2 py-0.5 text-xs rounded-full bg-white/5 text-white/40">
+                    {action.effort} effort
+                  </span>
+                </div>
               </div>
             </div>
+            <ActionExecuteButton
+              action={action}
+              index={i}
+              applyToProfile={applyToProfile}
+              applyingId={applyingId}
+              appliedIds={appliedIds}
+              setActivePhase={setActivePhase}
+              runPhase={runPhase}
+            />
           </motion.div>
         ))}
       </div>

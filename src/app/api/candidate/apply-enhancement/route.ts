@@ -108,6 +108,55 @@ export async function POST(request: Request) {
         break;
       }
 
+      case 'visa_status': {
+        const allowed = ['citizen', 'permanent_resident', 'work_visa', 'needs_sponsorship'];
+        if (typeof value !== 'string' || !allowed.includes(value)) {
+          return NextResponse.json({ error: 'visa_status must be one of: citizen, permanent_resident, work_visa, needs_sponsorship' }, { status: 400 });
+        }
+        update.visa_status = value;
+        break;
+      }
+
+      case 'is_public':
+        if (typeof value !== 'boolean') return NextResponse.json({ error: 'is_public must be a boolean' }, { status: 400 });
+        update.is_public = value;
+        break;
+
+      case 'photo_url':
+        if (typeof value !== 'string') return NextResponse.json({ error: 'photo_url must be a string' }, { status: 400 });
+        update.photo_url = value;
+        break;
+
+      case 'certifications':
+        if (!Array.isArray(value)) return NextResponse.json({ error: 'certifications must be an array' }, { status: 400 });
+        // Merge with existing certifications (no duplicates)
+        {
+          const { data: candidate } = await supabase
+            .from('candidates')
+            .select('certifications')
+            .eq('user_id', user.id)
+            .single();
+          const existing = candidate?.certifications || [];
+          const merged = [...new Set([...existing, ...value])];
+          update.certifications = merged;
+        }
+        break;
+
+      case 'languages':
+        if (!Array.isArray(value)) return NextResponse.json({ error: 'languages must be an array' }, { status: 400 });
+        // Merge with existing languages (no duplicates)
+        {
+          const { data: candidate } = await supabase
+            .from('candidates')
+            .select('languages')
+            .eq('user_id', user.id)
+            .single();
+          const existing = candidate?.languages || [];
+          const merged = [...new Set([...existing, ...value])];
+          update.languages = merged;
+        }
+        break;
+
       default:
         return NextResponse.json({ error: `Unknown field: ${field}` }, { status: 400 });
     }
