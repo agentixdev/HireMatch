@@ -44,10 +44,10 @@ const intlMiddleware = createMiddleware({
 });
 
 // ---------------------------------------------------------------------------
-// Main middleware
+// Main proxy (renamed from middleware per Next.js 16 convention)
 // ---------------------------------------------------------------------------
 
-export default function middleware(request: NextRequest): NextResponse {
+export default function proxy(request: NextRequest): NextResponse {
   const { pathname } = request.nextUrl;
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
 
