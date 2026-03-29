@@ -239,11 +239,21 @@ export default function RecruiterOnboarding() {
   const [completed, setCompleted] = useState(false);
   const bioDebounce = useRef<ReturnType<typeof setTimeout>>(undefined);
 
-  // Auth check
+  // Auth check + redirect if already onboarded
   useEffect(() => {
     async function checkAuth() {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/auth?mode=signin');
+      if (!user) { router.push('/auth?mode=signin'); return; }
+
+      // If already onboarded, skip to dashboard
+      const { data: rec } = await supabase
+        .from('recruiters')
+        .select('onboarding_completed_at')
+        .eq('user_id', user.id)
+        .single();
+      if (rec?.onboarding_completed_at) {
+        router.push('/dashboard/recruiter');
+      }
     }
     checkAuth();
   }, []);

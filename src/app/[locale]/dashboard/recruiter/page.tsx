@@ -151,7 +151,7 @@ export default function RecruiterDashboard() {
       if (!user) { router.push('/auth?mode=signin'); return; }
 
       const { data: rec } = await supabase.from('recruiters').select('*').eq('user_id', user.id).single();
-      if (!rec) { router.push('/dashboard/recruiter/onboarding'); return; }
+      if (!rec || !rec.onboarding_completed_at) { router.push('/dashboard/recruiter/onboarding'); return; }
       setRecruiter(rec as unknown as Recruiter);
 
       const { data: jobList } = await supabase.from('jobs').select('*').eq('recruiter_id', rec.id).order('created_at', { ascending: false });
