@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import { TIER_CONFIG, type BillingTier } from '@/lib/stripe';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('billing/usage');
 
 export async function GET() {
   try {
@@ -44,18 +47,18 @@ export async function GET() {
         .eq('id', recruiter.id);
     }
 
-    // Count active jobs
-    const { count: activeJobs } = await admin
-      .from('jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('recruiter_id', recruiter.id)
-      .eq('is_active', true);
-
-    // Count total jobs
-    const { count: totalJobs } = await admin
-      .from('jobs')
-      .select('*', { count: 'exact', head: true })
-      .eq('recruiter_id', recruiter.id);
+    // Count active jobs and total jobs in parallel (was sequential — waterfall fix)
+    const [{ count: activeJobs }, { count: totalJobs }] = await Promise.all([
+      admin
+        .from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('recruiter_id', recruiter.id)
+        .eq('is_active', true),
+      admin
+        .from('jobs')
+        .select('*', { count: 'exact', head: true })
+        .eq('recruiter_id', recruiter.id),
+    ]);
 
     return NextResponse.json({
       tier,
@@ -67,7 +70,7 @@ export async function GET() {
       billingPeriodEnd: recruiter.billing_period_end,
     });
   } catch (error) {
-    console.error('[billing/usage] Error:', error);
+    log.error('Failed to fetch usage', { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to fetch usage' },
       { status: 500 }

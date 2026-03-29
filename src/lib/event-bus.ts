@@ -1,6 +1,10 @@
 import crypto from 'crypto';
 import { createHmac } from 'node:crypto';
 import { createServiceClient } from './supabase-server';
+import { decryptSecret } from './crypto';
+import { createLogger } from './logger';
+
+const log = createLogger('event-bus');
 
 /**
  * All event types supported by the HireMatch event bus.
@@ -196,7 +200,7 @@ export async function publishEvent(
     .single();
 
   if (eventError || !event) {
-    console.error('[event-bus] Failed to log event:', eventError);
+    log.error('Failed to log event', { error: eventError?.message });
     // Continue with delivery even if logging fails
   }
 
@@ -214,7 +218,7 @@ export async function publishEvent(
     .eq('is_active', true);
 
   if (configError) {
-    console.error('[event-bus] Failed to query webhook configs:', configError);
+    log.error('Failed to query webhook configs', { error: configError.message });
     return { eventId, deliveryCount: 0 };
   }
 
@@ -253,10 +257,13 @@ export async function publishEvent(
     });
 
     try {
+      // Decrypt webhook secret before delivery
+      const plainSecret = decryptSecret(config.secret);
+
       const result = await deliverWithRetries(
         config.url,
         webhookEvent,
-        config.secret,
+        plainSecret,
         deliveryId,
         3,
         30_000
@@ -279,7 +286,7 @@ export async function publishEvent(
       if (result.success) deliveryCount++;
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Unknown delivery error';
-      console.error(`[event-bus] Delivery failed for ${config.url}:`, errorMsg);
+      log.error('Delivery failed', { url: config.url, error: errorMsg });
 
       await supabase
         .from('webhook_deliveries')

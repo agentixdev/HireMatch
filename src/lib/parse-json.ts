@@ -3,6 +3,10 @@
  * Handles markdown fences, comments, and trailing commas that Gemini sometimes returns.
  */
 
+import { createLogger } from './logger';
+
+const log = createLogger('parse-json');
+
 /** Strip markdown fences, single-line comments, and trailing commas from raw LLM output. */
 export function cleanJson(raw: string): string {
   return raw
@@ -23,13 +27,13 @@ export function parseLLMJson<T = unknown>(text: string): T {
   } catch {
     const match = cleaned.match(/[\[{][\s\S]*[\]}]/);
     if (!match) {
-      console.error('No JSON found in LLM response:', text.slice(0, 500));
+      log.error('No JSON found in LLM response', { preview: text.slice(0, 200) });
       throw new Error('LLM returned no valid JSON');
     }
     try {
       return JSON.parse(match[0]);
     } catch (e) {
-      console.error('Failed to parse extracted JSON:', match[0].slice(0, 500));
+      log.error('Failed to parse extracted JSON', { preview: match[0].slice(0, 200) });
       throw new Error('LLM returned malformed JSON');
     }
   }

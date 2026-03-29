@@ -1,5 +1,7 @@
 import { createServiceClient } from './supabase-server';
+import { createLogger } from './logger';
 
+const log = createLogger('webhook-cleanup');
 const DEFAULT_RETENTION_DAYS = 30;
 
 /**
@@ -24,7 +26,7 @@ export async function cleanupOldDeliveries(
     .select('id');
 
   if (deliveryError) {
-    console.error('[webhook-cleanup] Failed to delete old deliveries:', deliveryError);
+    log.error('Failed to delete old deliveries', { error: deliveryError.message });
   }
 
   const deletedDeliveries = deletedDeliveryRows?.length ?? 0;
@@ -37,14 +39,12 @@ export async function cleanupOldDeliveries(
     .select('id');
 
   if (eventError) {
-    console.error('[webhook-cleanup] Failed to delete old events:', eventError);
+    log.error('Failed to delete old events', { error: eventError.message });
   }
 
   const deletedEvents = deletedEventRows?.length ?? 0;
 
-  console.log(
-    `[webhook-cleanup] Cleaned up ${deletedDeliveries} deliveries and ${deletedEvents} events older than ${retentionDays} days`
-  );
+  log.info('Cleanup complete', { deletedDeliveries, deletedEvents, retentionDays });
 
   return { deletedDeliveries, deletedEvents };
 }

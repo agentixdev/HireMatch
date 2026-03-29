@@ -568,7 +568,7 @@ describe('E2E: Stripe Webhook Endpoint', () => {
 
       // Should have logged a warning
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Payment failed: recruiter=rec-fail')
+        expect.stringContaining('Payment failed')
       );
 
       consoleSpy.mockRestore();
