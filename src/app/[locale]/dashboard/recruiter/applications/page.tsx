@@ -478,6 +478,8 @@ export default function RecruiterApplicationsPage() {
         .eq('user_id', user.id)
         .single();
 
+      if (cancelled) return;
+
       if (!rec) {
         router.push('/dashboard/recruiter/onboarding');
         return;
@@ -485,17 +487,20 @@ export default function RecruiterApplicationsPage() {
 
       setRecruiterId(rec.id);
 
-      // Load recruiter's jobs for filter dropdown
-      const { data: jobList } = await supabase
-        .from('jobs')
-        .select('*')
-        .eq('recruiter_id', rec.id)
-        .eq('is_active', true)
-        .order('title');
+      // Load jobs and applications in parallel (both depend on rec.id)
+      const [jobResult] = await Promise.all([
+        supabase
+          .from('jobs')
+          .select('*')
+          .eq('recruiter_id', rec.id)
+          .eq('is_active', true)
+          .order('title'),
+        loadApplications(rec.id),
+      ]);
 
-      setJobs((jobList || []) as unknown as Job[]);
+      if (cancelled) return;
 
-      await loadApplications(rec.id);
+      setJobs((jobResult.data || []) as unknown as Job[]);
       setLoading(false);
     }
     init();

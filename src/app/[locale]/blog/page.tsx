@@ -27,6 +27,9 @@ export async function generateMetadata({
     },
     alternates: {
       canonical: `${SITE_URL}/${locale}/blog`,
+      types: {
+        'application/rss+xml': `${SITE_URL}/feed.xml`,
+      },
     },
   };
 }

@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getStripe, tierFromPriceId } from '@/lib/stripe';
 import { createServiceClient } from '@/lib/supabase-server';
+import { createLogger } from '@/lib/logger';
 import type Stripe from 'stripe';
+
+const log = createLogger('stripe-webhook');
 
 export const maxDuration = 60;
 
@@ -32,6 +35,13 @@ async function getRawBody(request: Request): Promise<Buffer> {
   return Buffer.from(arrayBuffer);
 }
 
+/** Safely extract customer ID string from Stripe objects */
+function customerId(customer: string | Stripe.Customer | Stripe.DeletedCustomer | null): string {
+  if (!customer) return '';
+  if (typeof customer === 'string') return customer;
+  return customer.id;
+}
+
 export async function POST(request: Request) {
   const rawBody = await getRawBody(request);
   const signature = request.headers.get('stripe-signature');
@@ -42,7 +52,7 @@ export async function POST(request: Request) {
 
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
   if (!webhookSecret) {
-    console.error('[stripe-webhook] Missing STRIPE_WEBHOOK_SECRET');
+    log.error('Missing STRIPE_WEBHOOK_SECRET');
     return NextResponse.json({ error: 'Webhook secret not configured' }, { status: 500 });
   }
 
@@ -50,7 +60,7 @@ export async function POST(request: Request) {
   try {
     event = getStripe().webhooks.constructEvent(rawBody, signature, webhookSecret);
   } catch (err) {
-    console.error('[stripe-webhook] Signature verification failed:', err);
+    log.error('Signature verification failed', { error: String(err) });
     return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
   }
 
@@ -58,14 +68,14 @@ export async function POST(request: Request) {
   cleanupProcessedEvents();
 
   if (processedEvents.has(event.id)) {
-    console.log(`[stripe-webhook] Duplicate event ${event.id}, skipping`);
+    log.info('Duplicate event, skipping', { eventId: event.id });
     return NextResponse.json({ received: true, duplicate: true });
   }
 
   // --- Event age validation: reject events older than 5 minutes ---
   const eventAgeMs = Date.now() - event.created * 1000;
   if (eventAgeMs > EVENT_MAX_AGE_MS) {
-    console.warn(`[stripe-webhook] Stale event ${event.id} (age: ${(eventAgeMs / 1000).toFixed(0)}s), rejecting`);
+    log.warn('Stale event, rejecting', { eventId: event.id, ageSeconds: Math.round(eventAgeMs / 1000) });
     return NextResponse.json({ error: 'Event too old' }, { status: 400 });
   }
 
@@ -85,14 +95,17 @@ export async function POST(request: Request) {
         const tier = session.metadata?.tier;
 
         if (!recruiterId) {
-          console.error('[stripe-webhook] No recruiter_id in session metadata');
+          log.error('No recruiter_id in session metadata');
           break;
         }
 
         // Expand the subscription to get period end
-        const subscriptionId = session.subscription as string;
+        const subscriptionId = typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription?.id;
+
         if (!subscriptionId) {
-          console.error('[stripe-webhook] No subscription ID in checkout session');
+          log.error('No subscription ID in checkout session');
           break;
         }
         const subscription = await getStripe().subscriptions.retrieve(subscriptionId, {
@@ -100,20 +113,20 @@ export async function POST(request: Request) {
         });
 
         // Support both clover (subscription-level) and dahlia (item-level) API versions
-        const periodEnd = (subscription as any).current_period_end ?? subscription.items.data[0]?.current_period_end;
+        const periodEnd = subscription.items.data[0]?.current_period_end;
 
         await admin
           .from('recruiters')
           .update({
             tier: tier || 'pro',
-            stripe_customer_id: session.customer as string,
+            stripe_customer_id: customerId(session.customer),
             stripe_subscription_id: subscriptionId,
             billing_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
             updated_at: new Date().toISOString(),
           })
           .eq('id', recruiterId);
 
-        console.log(`[stripe-webhook] Checkout completed: recruiter=${recruiterId} tier=${tier || 'pro'}`);
+        log.info('Checkout completed', { recruiterId, tier: tier || 'pro' });
         break;
       }
 
@@ -123,20 +136,20 @@ export async function POST(request: Request) {
       case 'customer.subscription.updated': {
         const subscription = event.data.object as Stripe.Subscription;
         const recruiterId = subscription.metadata?.recruiter_id;
-        const subPeriodEnd = (subscription as any).current_period_end ?? subscription.items.data[0]?.current_period_end;
+        const subPeriodEnd = subscription.items.data[0]?.current_period_end;
         const billingEnd = subPeriodEnd ? new Date(subPeriodEnd * 1000).toISOString() : null;
 
         if (!recruiterId) {
           // Try to find recruiter by customer ID
-          const customerId = subscription.customer as string;
+          const custId = customerId(subscription.customer);
           const { data: rec } = await admin
             .from('recruiters')
             .select('id')
-            .eq('stripe_customer_id', customerId)
+            .eq('stripe_customer_id', custId)
             .single();
 
           if (!rec) {
-            console.error('[stripe-webhook] Cannot find recruiter for subscription update');
+            log.error('Cannot find recruiter for subscription update', { customerId: custId });
             break;
           }
 
@@ -153,7 +166,7 @@ export async function POST(request: Request) {
             })
             .eq('id', rec.id);
 
-          console.log(`[stripe-webhook] Subscription updated: recruiter=${rec.id} tier=${newTier}`);
+          log.info('Subscription updated', { recruiterId: rec.id, tier: newTier });
           break;
         }
 
@@ -170,7 +183,7 @@ export async function POST(request: Request) {
           })
           .eq('id', recruiterId);
 
-        console.log(`[stripe-webhook] Subscription updated: recruiter=${recruiterId} tier=${newTier}`);
+        log.info('Subscription updated', { recruiterId, tier: newTier });
         break;
       }
 
@@ -179,13 +192,13 @@ export async function POST(request: Request) {
       // ---------------------------------------------------------------
       case 'customer.subscription.deleted': {
         const subscription = event.data.object as Stripe.Subscription;
-        const customerId = subscription.customer as string;
+        const custId = customerId(subscription.customer);
 
         // Find recruiter by customer ID
         const { data: rec } = await admin
           .from('recruiters')
           .select('id')
-          .eq('stripe_customer_id', customerId)
+          .eq('stripe_customer_id', custId)
           .single();
 
         if (rec) {
@@ -199,7 +212,7 @@ export async function POST(request: Request) {
             })
             .eq('id', rec.id);
 
-          console.log(`[stripe-webhook] Subscription deleted: recruiter=${rec.id} downgraded to free`);
+          log.info('Subscription deleted, downgraded to free', { recruiterId: rec.id });
         }
         break;
       }
@@ -209,29 +222,25 @@ export async function POST(request: Request) {
       // ---------------------------------------------------------------
       case 'invoice.payment_failed': {
         const invoice = event.data.object as Stripe.Invoice;
-        const customerId = invoice.customer as string;
+        const custId = customerId(invoice.customer);
 
         const { data: rec } = await admin
           .from('recruiters')
           .select('id, user_id')
-          .eq('stripe_customer_id', customerId)
+          .eq('stripe_customer_id', custId)
           .single();
 
         if (rec) {
-          // Log the payment failure. In production you'd also send an email notification.
-          console.warn(`[stripe-webhook] Payment failed: recruiter=${rec.id} invoice=${invoice.id}`);
-
-          // After multiple failures, Stripe will eventually cancel the subscription,
-          // which triggers customer.subscription.deleted and downgrades to free.
+          log.warn('Payment failed', { recruiterId: rec.id, invoiceId: invoice.id });
         }
         break;
       }
 
       default:
-        console.log(`[stripe-webhook] Unhandled event type: ${event.type}`);
+        log.info('Unhandled event type', { type: event.type });
     }
   } catch (error) {
-    console.error(`[stripe-webhook] Error handling ${event.type}:`, error);
+    log.error(`Error handling ${event.type}`, { error: String(error) });
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 

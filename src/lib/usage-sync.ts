@@ -1,5 +1,8 @@
 import { getStripe, TIER_CONFIG, type BillingTier } from '@/lib/stripe';
 import { createClient } from '@supabase/supabase-js';
+import { createLogger } from '@/lib/logger';
+
+const log = createLogger('usage-sync');
 
 // ---------------------------------------------------------------------------
 // Supabase service client (standalone — this module may run in cron context)
@@ -39,7 +42,7 @@ export async function syncUsageToStripe(orgId: string): Promise<{
   if (org.stripe_subscription_id) {
     try {
       const sub = await stripe.subscriptions.retrieve(org.stripe_subscription_id, { expand: ['items.data'] });
-      const start = (sub as any).current_period_start ?? sub.items.data[0]?.current_period_start;
+      const start = sub.items.data[0]?.current_period_start;
       periodStart = start ? new Date(start * 1000).toISOString() : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     } catch {
       periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
@@ -48,21 +51,21 @@ export async function syncUsageToStripe(orgId: string): Promise<{
     periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   }
 
-  // Count API calls
-  const { count: apiCalls } = await db
-    .from('api_usage' as string)
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .gte('created_at', periodStart);
-
-  // Count candidate views
-  const { count: candidateViews } = await db
-    .from('api_usage' as string)
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .like('path', '%/candidates/%')
-    .eq('method', 'GET')
-    .gte('created_at', periodStart);
+  // Count API calls and candidate views in parallel
+  const [{ count: apiCalls }, { count: candidateViews }] = await Promise.all([
+    db
+      .from('api_usage' as string)
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .gte('created_at', periodStart),
+    db
+      .from('api_usage' as string)
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .like('path', '%/candidates/%')
+      .eq('method', 'GET')
+      .gte('created_at', periodStart),
+  ]);
 
   const apiCount = apiCalls ?? 0;
   const viewCount = candidateViews ?? 0;
@@ -72,7 +75,7 @@ export async function syncUsageToStripe(orgId: string): Promise<{
     const timestamp = Math.floor(Date.now() / 1000);
 
     if (apiCount > 0) {
-      await (stripe as any).billing.meterEvents.create({
+      await stripe.billing.meterEvents.create({
         event_name: 'api_calls',
         payload: {
           stripe_customer_id: org.stripe_customer_id,
@@ -83,7 +86,7 @@ export async function syncUsageToStripe(orgId: string): Promise<{
     }
 
     if (viewCount > 0) {
-      await (stripe as any).billing.meterEvents.create({
+      await stripe.billing.meterEvents.create({
         event_name: 'candidate_views',
         payload: {
           stripe_customer_id: org.stripe_customer_id,
@@ -93,7 +96,7 @@ export async function syncUsageToStripe(orgId: string): Promise<{
       });
     }
   } catch (err) {
-    console.error(`Failed to report usage to Stripe for org ${orgId}:`, err);
+    log.error('Failed to report usage to Stripe', { orgId, error: String(err) });
     return { apiCalls: apiCount, candidateViews: viewCount, reported: false };
   }
 
@@ -131,7 +134,7 @@ export async function checkUsageLimits(orgId: string): Promise<{
     try {
       const stripe = getStripe();
       const sub = await stripe.subscriptions.retrieve(org.stripe_subscription_id, { expand: ['items.data'] });
-      const start = (sub as any).current_period_start ?? sub.items.data[0]?.current_period_start;
+      const start = sub.items.data[0]?.current_period_start;
       periodStart = start ? new Date(start * 1000).toISOString() : new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
     } catch {
       periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
@@ -140,20 +143,21 @@ export async function checkUsageLimits(orgId: string): Promise<{
     periodStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
   }
 
-  // Count current usage
-  const { count: candidateViews } = await db
-    .from('api_usage' as string)
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .like('path', '%/candidates/%')
-    .eq('method', 'GET')
-    .gte('created_at', periodStart);
-
-  const { count: activeJobs } = await db
-    .from('jobs' as string)
-    .select('*', { count: 'exact', head: true })
-    .eq('org_id', orgId)
-    .eq('is_active', true);
+  // Count current usage in parallel
+  const [{ count: candidateViews }, { count: activeJobs }] = await Promise.all([
+    db
+      .from('api_usage' as string)
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .like('path', '%/candidates/%')
+      .eq('method', 'GET')
+      .gte('created_at', periodStart),
+    db
+      .from('jobs' as string)
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId)
+      .eq('is_active', true),
+  ]);
 
   const viewCount = candidateViews ?? 0;
   const jobCount = activeJobs ?? 0;

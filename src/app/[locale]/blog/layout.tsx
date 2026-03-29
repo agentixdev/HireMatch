@@ -1,4 +1,13 @@
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  alternates: {
+    types: {
+      'application/rss+xml': '/api/blog/feed',
+    },
+  },
+};
 
 export default async function BlogLayout({
   children,
