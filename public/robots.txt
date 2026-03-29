@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://www.hirematch.com/sitemap.xml

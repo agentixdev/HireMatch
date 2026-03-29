@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { sendWelcomeEmail } from '@/lib/email';
+import { rateLimit } from '@/lib/rate-limit';
 
 /**
  * Custom signup endpoint that creates a user and auto-confirms them.
@@ -15,6 +16,16 @@ import { sendWelcomeEmail } from '@/lib/email';
 export async function POST(request: Request) {
   try {
     const { email, password, fullName, role } = await request.json();
+
+    // Rate limit: 5 signups per minute per email
+    const rlKey = `signup:${(email || '').toLowerCase().trim()}`;
+    const rl = rateLimit(rlKey, 5, 60_000);
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429 },
+      );
+    }
 
     if (!email || !password || !role) {
       return NextResponse.json({ error: 'Email, password, and role are required' }, { status: 400 });
@@ -85,7 +96,7 @@ export async function POST(request: Request) {
     }
 
     // Send welcome email (non-blocking — don't fail signup if email fails)
-    sendWelcomeEmail(email, fullName || '', role).catch(() => {});
+    sendWelcomeEmail(email, fullName || '', role).catch((err) => console.error('[auth/signup] Email send failed:', err));
 
     return NextResponse.json({
       success: true,

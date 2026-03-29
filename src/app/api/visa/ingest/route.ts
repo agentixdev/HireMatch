@@ -3,26 +3,18 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createServiceClient } from '@/lib/supabase-server';
 import { VISA_SOURCES } from '@/lib/visa-scraper';
 import { publishEvent } from '@/lib/event-bus';
+import { parseLLMJson } from '@/lib/parse-json';
+import { rateLimit } from '@/lib/rate-limit';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error('Missing GEMINI_API_KEY environment variable');
+
+const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   generationConfig: { responseMimeType: 'application/json' },
 });
 
-/**
- * Parse JSON safely, handling markdown-wrapped responses.
- */
-function parseJSON<T>(text: string): T {
-  try {
-    return JSON.parse(text);
-  } catch {
-    const stripped = text.replace(/```json\s*/g, '').replace(/```\s*/g, '');
-    const match = stripped.match(/\[[\s\S]*\]|\{[\s\S]*\}/);
-    if (!match) throw new Error('No JSON found in response');
-    return JSON.parse(match[0]);
-  }
-}
 
 /**
  * Use Gemini to structure scraped HTML content into visa rules.
@@ -67,7 +59,7 @@ ${scrapedText}`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
-  return parseJSON(text);
+  return parseLLMJson(text);
 }
 
 /**
@@ -83,6 +75,18 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
+  // Rate limit: 5 requests per minute per IP
+  const ip = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim()
+    || request.headers.get('x-real-ip')
+    || 'unknown';
+  const { success, remaining } = rateLimit(`visa-ingest:${ip}`, 5, 60_000);
+  if (!success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'X-RateLimit-Remaining': String(remaining) } }
+    );
+  }
+
   try {
     const body = await request.json();
     const { country_code, url, html } = body;
@@ -91,6 +95,15 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'country_code and html are required' },
         { status: 400 }
+      );
+    }
+
+    // Reject oversized HTML payloads (> 500KB)
+    const MAX_HTML_SIZE = 500 * 1024;
+    if (typeof html === 'string' && html.length > MAX_HTML_SIZE) {
+      return NextResponse.json(
+        { error: `HTML payload too large (${(html.length / 1024).toFixed(0)}KB). Max allowed: 500KB.` },
+        { status: 413 }
       );
     }
 
@@ -109,6 +122,8 @@ export async function POST(request: Request) {
     // Upsert into visa_rules table
     const supabase = await createServiceClient();
     let upsertCount = 0;
+    let failedCount = 0;
+    const failedVisaTypes: string[] = [];
 
     for (const visa of visaData) {
       const { error } = await supabase
@@ -130,7 +145,13 @@ export async function POST(request: Request) {
           { onConflict: 'country_code,visa_type' }
         );
 
-      if (!error) upsertCount++;
+      if (error) {
+        failedCount++;
+        failedVisaTypes.push(visa.visa_type);
+        console.error(`Failed to upsert visa rule ${visa.visa_type} for ${countryCode}:`, error);
+      } else {
+        upsertCount++;
+      }
     }
 
     // Publish event bus events
@@ -148,6 +169,8 @@ export async function POST(request: Request) {
       country_code: countryCode,
       rules_parsed: visaData.length,
       rules_upserted: upsertCount,
+      rules_failed: failedCount,
+      ...(failedVisaTypes.length > 0 && { failed_visa_types: failedVisaTypes }),
     });
   } catch (error) {
     console.error('Visa ingest error:', error);

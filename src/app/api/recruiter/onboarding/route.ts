@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseLLMJson } from '@/lib/parse-json';
 
 export const maxDuration = 60;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error('Missing GEMINI_API_KEY environment variable');
+
+const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   generationConfig: { responseMimeType: 'application/json' },
@@ -69,8 +73,8 @@ Rules:
 - culture_temperature: best-fit based on description`;
         const result = await model.generateContent(suggestPrompt);
         const text = result.response.text();
-        const parsed = JSON.parse(text.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
-        suggestions = { ...suggestions, ...parsed };
+        const parsed = parseLLMJson<Record<string, unknown>>(text);
+        suggestions = { ...suggestions, ...parsed } as typeof suggestions;
       } catch {
         // Fallback: return empty suggestions
       }
@@ -118,8 +122,8 @@ Rules:
     try {
       const result = await model.generateContent(prompt);
       const text = result.response.text();
-      const parsed = JSON.parse(text.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
-      aiResult = { ...aiResult, ...parsed };
+      const parsed = parseLLMJson<Record<string, unknown>>(text);
+      aiResult = { ...aiResult, ...parsed } as typeof aiResult;
     } catch (aiErr) {
       console.error('Gemini onboarding analysis error:', aiErr);
       // Fallback: generate basic tags from available data

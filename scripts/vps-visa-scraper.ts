@@ -256,6 +256,10 @@ function randomDelay(minMs: number, maxMs: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 // ── Fetch a single page's HTML ───────────────────────────────────────
 async function fetchPageHTML(url: string): Promise<string | null> {
   try {
@@ -296,41 +300,69 @@ async function fetchPageHTML(url: string): Promise<string | null> {
 }
 
 // ── POST HTML to HireMatch ingest API ────────────────────────────────
+const RETRY_DELAYS_MS = [2000, 4000, 8000];
+
+function isRetryableStatus(status: number): boolean {
+  return status === 429 || (status >= 500 && status <= 599);
+}
+
 async function postToIngest(countryCode: string, url: string, html: string): Promise<boolean> {
-  try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60_000);
+  const maxAttempts = RETRY_DELAYS_MS.length + 1;
 
-    const res = await fetch(INGEST_ENDPOINT, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${SECRET}`,
-      },
-      body: JSON.stringify({
-        country_code: countryCode,
-        url,
-        html,
-      }),
-      signal: controller.signal,
-    });
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60_000);
 
-    clearTimeout(timeout);
+      const res = await fetch(INGEST_ENDPOINT, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SECRET}`,
+        },
+        body: JSON.stringify({
+          country_code: countryCode,
+          url,
+          html,
+        }),
+        signal: controller.signal,
+      });
 
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      logError(`Ingest API returned ${res.status} for ${countryCode} ${url}: ${body.slice(0, 200)}`);
+      clearTimeout(timeout);
+
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        logError(`Ingest API returned ${res.status} for ${countryCode} ${url} (attempt ${attempt}/${maxAttempts}): ${body.slice(0, 200)}`);
+
+        if (isRetryableStatus(res.status) && attempt < maxAttempts) {
+          const delay = RETRY_DELAYS_MS[attempt - 1];
+          log(`  Retrying in ${delay}ms...`);
+          await sleep(delay);
+          continue;
+        }
+
+        return false;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      log(`  Ingested ${countryCode} ${url} — API response: ${JSON.stringify(data)}`);
+      return true;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logError(`Ingest POST failed for ${countryCode} ${url} (attempt ${attempt}/${maxAttempts}): ${msg}`);
+
+      if (attempt < maxAttempts) {
+        const delay = RETRY_DELAYS_MS[attempt - 1];
+        log(`  Retrying in ${delay}ms...`);
+        await sleep(delay);
+        continue;
+      }
+
       return false;
     }
-
-    const data = await res.json().catch(() => ({}));
-    log(`  Ingested ${countryCode} ${url} — API response: ${JSON.stringify(data)}`);
-    return true;
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logError(`Ingest POST failed for ${countryCode} ${url}: ${msg}`);
-    return false;
   }
+
+  return false;
 }
 
 // ── Process a single country ─────────────────────────────────────────

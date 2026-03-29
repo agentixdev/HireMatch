@@ -20,7 +20,7 @@ export function organizationJsonLd() {
   };
 }
 
-export function webSiteJsonLd() {
+export function webSiteJsonLd(locale: string = 'en') {
   return {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -31,14 +31,14 @@ export function webSiteJsonLd() {
       '@type': 'SearchAction',
       target: {
         '@type': 'EntryPoint',
-        urlTemplate: `${SITE_URL}/en/jobs?q={search_term_string}`,
+        urlTemplate: `${SITE_URL}/${locale}/jobs?q={search_term_string}`,
       },
       'query-input': 'required name=search_term_string',
     },
   };
 }
 
-export function jobPostingJsonLd(job: Job, companyName?: string) {
+export function jobPostingJsonLd(job: Job, companyName?: string, locale: string = 'en') {
   return {
     '@context': 'https://schema.org',
     '@type': 'JobPosting',
@@ -75,7 +75,7 @@ export function jobPostingJsonLd(job: Job, companyName?: string) {
         }
       : {}),
     skills: job.skills_required?.join(', '),
-    url: `${SITE_URL}/en/jobs/${job.id}`,
+    url: `${SITE_URL}/${locale}/jobs/${job.id}`,
   };
 }
 
@@ -90,7 +90,7 @@ function mapJobType(type: string): string {
   return map[type] || 'FULL_TIME';
 }
 
-export function personJsonLd(candidate: Candidate) {
+export function personJsonLd(candidate: Candidate, locale: string = 'en') {
   return {
     '@context': 'https://schema.org',
     '@type': 'Person',
@@ -98,7 +98,7 @@ export function personJsonLd(candidate: Candidate) {
     jobTitle: candidate.headline || undefined,
     description: candidate.bio || undefined,
     knowsAbout: candidate.skills,
-    url: `${SITE_URL}/en/candidates/${candidate.id}`,
+    url: `${SITE_URL}/${locale}/candidates/${candidate.id}`,
     image: candidate.photo_url || undefined,
     address: {
       '@type': 'PostalAddress',
@@ -108,7 +108,7 @@ export function personJsonLd(candidate: Candidate) {
   };
 }
 
-export function articleJsonLd(post: BlogPost) {
+export function articleJsonLd(post: BlogPost, locale: string = 'en') {
   return {
     '@context': 'https://schema.org',
     '@type': 'Article',
@@ -132,10 +132,10 @@ export function articleJsonLd(post: BlogPost) {
     },
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `${SITE_URL}/en/blog/${post.slug}`,
+      '@id': `${SITE_URL}/${locale}/blog/${post.slug}`,
     },
     keywords: post.tags?.join(', '),
-    url: `${SITE_URL}/en/blog/${post.slug}`,
+    url: `${SITE_URL}/${locale}/blog/${post.slug}`,
   };
 }
 

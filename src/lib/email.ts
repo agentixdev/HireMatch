@@ -2,6 +2,16 @@ import { Resend } from 'resend';
 
 let _resend: Resend | null = null;
 
+/** Escape user-supplied values before interpolating into HTML email templates. */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 function getResend(): Resend | null {
   if (!process.env.RESEND_API_KEY) return null;
   if (!_resend) _resend = new Resend(process.env.RESEND_API_KEY);
@@ -60,7 +70,7 @@ export async function sendWelcomeEmail(to: string, name: string, role: 'candidat
   const roleLabel = role === 'candidate' ? 'candidate' : 'recruiter';
 
   const html = layout('Welcome to HireMatch!', `
-    ${text(`Hi ${name || 'there'},`)}
+    ${text(`Hi ${escapeHtml(name || 'there')},`)}
     ${text(`Your ${roleLabel} account is ready. ${
       role === 'candidate'
         ? 'Upload your CV and let our AI match you with the perfect opportunities across 29 countries.'
@@ -71,7 +81,7 @@ export async function sendWelcomeEmail(to: string, name: string, role: 'candidat
   `);
 
   try {
-    await resend.emails.send({ from: FROM, to, subject: `Welcome to HireMatch, ${name || 'there'}!`, html });
+    await resend.emails.send({ from: FROM, to, subject: `Welcome to HireMatch, ${escapeHtml(name || 'there')}!`, html });
     return true;
   } catch (err) {
     console.error('[email] Welcome email failed:', err);
@@ -116,13 +126,13 @@ export async function sendApplicationNotification(
   const viewUrl = `${APP_URL}/dashboard/recruiter/applications`;
 
   const html = layout('New Application Received', `
-    ${text(`<strong>${candidateName}</strong> just applied for <strong>${jobTitle}</strong>.`)}
+    ${text(`<strong>${escapeHtml(candidateName)}</strong> just applied for <strong>${escapeHtml(jobTitle)}</strong>.`)}
     ${button('View Application', viewUrl)}
     ${text('Review their profile and respond to keep top candidates engaged.')}
   `);
 
   try {
-    await resend.emails.send({ from: FROM, to, subject: `New application: ${candidateName} applied for ${jobTitle}`, html });
+    await resend.emails.send({ from: FROM, to, subject: `New application: ${escapeHtml(candidateName)} applied for ${escapeHtml(jobTitle)}`, html });
     return true;
   } catch (err) {
     console.error('[email] Application notification failed:', err);
@@ -147,17 +157,17 @@ export async function sendStatusUpdateEmail(
   };
 
   const html = layout('Application Update', `
-    ${text(`Hi ${candidateName},`)}
-    ${text(`Your application for <strong>${jobTitle}</strong> has been updated.`)}
+    ${text(`Hi ${escapeHtml(candidateName)},`)}
+    ${text(`Your application for <strong>${escapeHtml(jobTitle)}</strong> has been updated.`)}
     <div style="text-align:center;margin:20px 0;padding:16px;background:rgba(99,102,241,0.1);border:1px solid rgba(99,102,241,0.2);border-radius:8px;">
-      <span style="color:#818cf8;font-size:16px;font-weight:600;">Status: ${status.charAt(0).toUpperCase() + status.slice(1)}</span>
+      <span style="color:#818cf8;font-size:16px;font-weight:600;">Status: ${escapeHtml(status.charAt(0).toUpperCase() + status.slice(1))}</span>
     </div>
-    ${text(statusMessages[status] || `Your status has been updated to: ${status}`)}
+    ${text(statusMessages[status] || `Your status has been updated to: ${escapeHtml(status)}`)}
     ${button('View Applications', `${APP_URL}/dashboard/candidate/applications`)}
   `);
 
   try {
-    await resend.emails.send({ from: FROM, to, subject: `Application update: ${jobTitle}`, html });
+    await resend.emails.send({ from: FROM, to, subject: `Application update: ${escapeHtml(jobTitle)}`, html });
     return true;
   } catch (err) {
     console.error('[email] Status update email failed:', err);

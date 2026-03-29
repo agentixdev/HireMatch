@@ -14,13 +14,27 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   for (const locale of locales) {
     for (const page of staticPages) {
+      const languages: Record<string, string> = {};
+      for (const loc of locales) {
+        languages[loc] = `${SITE_URL}/${loc}${page}`;
+      }
       entries.push({
         url: `${SITE_URL}/${locale}${page}`,
         lastModified: new Date(),
         changeFrequency: page === '/blog' ? 'daily' : 'weekly',
         priority: page === '' ? 1.0 : 0.8,
+        alternates: { languages },
       });
     }
+  }
+
+  // Helper: build alternates.languages map for a given path
+  function buildAlternates(path: string) {
+    const languages: Record<string, string> = {};
+    for (const loc of locales) {
+      languages[loc] = `${SITE_URL}/${loc}${path}`;
+    }
+    return { languages };
   }
 
   // Job listings
@@ -33,12 +47,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (jobs) {
     for (const job of jobs) {
-      entries.push({
-        url: `${SITE_URL}/en/jobs/${job.id}`,
-        lastModified: new Date(job.updated_at),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      });
+      for (const locale of locales) {
+        entries.push({
+          url: `${SITE_URL}/${locale}/jobs/${job.id}`,
+          lastModified: new Date(job.updated_at),
+          changeFrequency: 'weekly',
+          priority: 0.7,
+          alternates: buildAlternates(`/jobs/${job.id}`),
+        });
+      }
     }
   }
 
@@ -52,12 +69,15 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (candidates) {
     for (const candidate of candidates) {
-      entries.push({
-        url: `${SITE_URL}/en/candidates/${candidate.id}`,
-        lastModified: new Date(candidate.updated_at),
-        changeFrequency: 'weekly',
-        priority: 0.6,
-      });
+      for (const locale of locales) {
+        entries.push({
+          url: `${SITE_URL}/${locale}/candidates/${candidate.id}`,
+          lastModified: new Date(candidate.updated_at),
+          changeFrequency: 'weekly',
+          priority: 0.6,
+          alternates: buildAlternates(`/candidates/${candidate.id}`),
+        });
+      }
     }
   }
 
@@ -71,22 +91,28 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   if (posts && posts.length > 0) {
     for (const post of posts) {
-      entries.push({
-        url: `${SITE_URL}/${post.locale || 'en'}/blog/${post.slug}`,
-        lastModified: new Date(post.updated_at),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      });
+      for (const locale of locales) {
+        entries.push({
+          url: `${SITE_URL}/${locale}/blog/${post.slug}`,
+          lastModified: new Date(post.updated_at),
+          changeFrequency: 'weekly',
+          priority: 0.7,
+          alternates: buildAlternates(`/blog/${post.slug}`),
+        });
+      }
     }
   } else {
     // Fallback: include sample blog posts so crawlers find them immediately
     for (const post of sampleBlogPosts) {
-      entries.push({
-        url: `${SITE_URL}/en/blog/${post.slug}`,
-        lastModified: new Date(post.updated_at),
-        changeFrequency: 'weekly',
-        priority: 0.7,
-      });
+      for (const locale of locales) {
+        entries.push({
+          url: `${SITE_URL}/${locale}/blog/${post.slug}`,
+          lastModified: new Date(post.updated_at),
+          changeFrequency: 'weekly',
+          priority: 0.7,
+          alternates: buildAlternates(`/blog/${post.slug}`),
+        });
+      }
     }
   }
 

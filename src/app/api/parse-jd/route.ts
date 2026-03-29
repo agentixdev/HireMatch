@@ -1,11 +1,20 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseLLMJson } from '@/lib/parse-json';
+import { rateLimit } from '@/lib/rate-limit';
 
 export const maxDuration = 60;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error('Missing GEMINI_API_KEY environment variable');
+
+const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+
+/** Sanitise user-supplied text: cap length & strip control chars. */
+const sanitize = (s: string, max = 500) =>
+  s.slice(0, max).replace(/[\x00-\x1F\x7F]/g, '');
 
 const JOB_SCHEMA = `{
   "title": "string",
@@ -29,9 +38,7 @@ const JOB_SCHEMA = `{
 async function callGemini(prompt: string) {
   const result = await model.generateContent(prompt);
   const text = result.response.text();
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error('AI did not return valid JSON');
-  return JSON.parse(jsonMatch[0]);
+  return parseLLMJson(text);
 }
 
 /**
@@ -47,6 +54,15 @@ export async function POST(request: Request) {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  // Rate limit: 10 requests per minute per user
+  const { success, remaining } = rateLimit(`parse-jd:${user.id}`, 10, 60_000);
+  if (!success) {
+    return NextResponse.json(
+      { error: 'Too many requests. Please try again later.' },
+      { status: 429, headers: { 'X-RateLimit-Remaining': String(remaining) } }
+    );
   }
 
   const { data: recruiter } = await supabase
@@ -71,6 +87,8 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'Job description too short' }, { status: 400 });
       }
 
+      const sanitizedText = sanitize(text, 10000);
+
       parsed = await callGemini(
         `You are an expert job description parser. Extract structured data from this job description.
 
@@ -80,7 +98,7 @@ ${JOB_SCHEMA}
 Extract as much as possible. For match_tags, generate lowercase tags useful for matching candidates.
 
 JOB DESCRIPTION:
-${text}`
+${sanitizedText}`
       );
     } else if (mode === 'generate') {
       const { context } = body;
@@ -95,7 +113,7 @@ ${text}`
         context.industry && `Industry: ${context.industry}`,
         context.skills?.length && `Key Skills: ${context.skills.join(', ')}`,
         context.workMode && `Work Mode: ${context.workMode}`,
-        context.notes && `Additional Notes: ${context.notes}`,
+        context.notes && `Additional Notes: ${sanitize(context.notes)}`,
       ].filter(Boolean).join('\n');
 
       parsed = await callGemini(
@@ -128,7 +146,7 @@ CURRENT JOB DATA:
 ${JSON.stringify(context, null, 2)}
 
 RECRUITER FEEDBACK:
-"${feedback}"
+"${sanitize(feedback, 1000)}"
 
 Apply the feedback to improve the job posting. Only change fields that are relevant to the feedback. Keep everything else the same.
 

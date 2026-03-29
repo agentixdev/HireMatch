@@ -15,8 +15,10 @@ const bebas = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL('https://www.hirematch.com'),
   title: "HireMatch — AI-Powered Recruitment Platform",
   description: "Find your perfect career match with AI-powered recruitment across 29+ countries. Upload your CV, take the matchmaker quiz, and get matched instantly.",
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({

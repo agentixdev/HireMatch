@@ -2,21 +2,72 @@
 
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
-import { useState } from 'react';
+import { useState, useMemo, useCallback } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
+
+interface NavItem {
+  href: string;
+  label: string;
+  iconBold: string;
+  iconLinear: string;
+}
+
+const NavLink = React.memo(function NavLink({ item }: { item: NavItem }) {
+  return (
+    <Link
+      href={item.href}
+      className="group relative flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-all text-sm"
+    >
+      <Icon icon={item.iconLinear} className="w-4 h-4" />
+      {item.label}
+      <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-200" />
+    </Link>
+  );
+});
+
+const MobileNavLink = React.memo(function MobileNavLink({
+  item,
+  index,
+  onClose,
+}: {
+  item: NavItem;
+  index: number;
+  onClose: () => void;
+}) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
+    >
+      <Link
+        href={item.href}
+        className="flex items-center gap-3 px-3 py-2.5 text-white/70 hover:text-white hover:bg-white/5 rounded-lg"
+        onClick={onClose}
+      >
+        <Icon icon={item.iconLinear} className="w-5 h-5" />
+        {item.label}
+      </Link>
+    </motion.div>
+  );
+});
 
 export default function Header() {
   const t = useTranslations('common');
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const navItems = [
+  const navItems = useMemo<NavItem[]>(() => [
     { href: '/jobs', label: t('jobs'), iconBold: 'solar:suitcase-bold', iconLinear: 'solar:suitcase-linear' },
     { href: '/candidates', label: t('candidates'), iconBold: 'solar:users-group-rounded-bold', iconLinear: 'solar:users-group-rounded-linear' },
     { href: '/matchmaker', label: t('matchmaker'), iconBold: 'solar:heart-pulse-bold', iconLinear: 'solar:heart-pulse-linear' },
     { href: '/pricing', label: t('pricing'), iconBold: 'solar:tag-price-bold', iconLinear: 'solar:tag-price-linear' },
     { href: '/visa', label: t('visa'), iconBold: 'solar:passport-bold', iconLinear: 'solar:passport-linear' },
-  ];
+  ], [t]);
+
+  const toggleMenu = useCallback(() => setMenuOpen((prev) => !prev), []);
+  const closeMenu = useCallback(() => setMenuOpen(false), []);
 
   return (
     <header className="sticky top-0 z-50 bg-[#0d0f1a]/90 backdrop-blur-md border-b border-white/[0.06]">
@@ -33,15 +84,7 @@ export default function Header() {
           {/* Desktop Nav */}
           <nav className="hidden md:flex items-center gap-1">
             {navItems.map((item) => (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="group relative flex items-center gap-2 px-3 py-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-all text-sm"
-              >
-                <Icon icon={item.iconLinear} className="w-4 h-4" />
-                {item.label}
-                <span className="absolute bottom-0 left-3 right-3 h-[2px] bg-blue-500 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform origin-left duration-200" />
-              </Link>
+              <NavLink key={item.href} item={item} />
             ))}
           </nav>
 
@@ -63,7 +106,7 @@ export default function Header() {
 
           {/* Mobile menu toggle */}
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
+            onClick={toggleMenu}
             className="md:hidden p-2 text-white/70 hover:text-white hover:bg-white/5 rounded-lg"
             aria-label="Toggle menu"
           >
@@ -83,21 +126,7 @@ export default function Header() {
             >
               <div className="pb-4 space-y-1 border-t border-white/[0.06] pt-3">
                 {navItems.map((item, i) => (
-                  <motion.div
-                    key={item.href}
-                    initial={{ opacity: 0, x: -20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: i * 0.05, type: 'spring', stiffness: 300, damping: 25 }}
-                  >
-                    <Link
-                      href={item.href}
-                      className="flex items-center gap-3 px-3 py-2.5 text-white/70 hover:text-white hover:bg-white/5 rounded-lg"
-                      onClick={() => setMenuOpen(false)}
-                    >
-                      <Icon icon={item.iconLinear} className="w-5 h-5" />
-                      {item.label}
-                    </Link>
-                  </motion.div>
+                  <MobileNavLink key={item.href} item={item} index={i} onClose={closeMenu} />
                 ))}
                 <div className="border-t border-white/[0.06] pt-3 mt-3 space-y-2">
                   <Link href="/auth?mode=signin" className="block px-3 py-2.5 text-white/70 hover:text-white hover:bg-white/5 rounded-lg">

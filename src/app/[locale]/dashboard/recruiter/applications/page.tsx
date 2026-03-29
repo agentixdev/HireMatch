@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
@@ -177,6 +177,16 @@ function ApplicationCard({
   const [expanded, setExpanded] = useState(false);
   const [sparkle, setSparkle] = useState(false);
   const [checkmark, setCheckmark] = useState(false);
+  const sparkleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkmarkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Clean up timers on unmount
+  useEffect(() => {
+    return () => {
+      if (sparkleTimerRef.current) clearTimeout(sparkleTimerRef.current);
+      if (checkmarkTimerRef.current) clearTimeout(checkmarkTimerRef.current);
+    };
+  }, []);
 
   const initials = app.candidate_name
     .split(' ')
@@ -192,11 +202,15 @@ function ApplicationCard({
   const rejectOption = COLUMNS.find((c) => c.status === 'rejected')!;
 
   function handleStatusChange(newStatus: ApplicationStatus) {
+    // Clear any existing timers before starting new ones
+    if (sparkleTimerRef.current) clearTimeout(sparkleTimerRef.current);
+    if (checkmarkTimerRef.current) clearTimeout(checkmarkTimerRef.current);
+
     setSparkle(true);
-    setTimeout(() => {
+    sparkleTimerRef.current = setTimeout(() => {
       setSparkle(false);
       setCheckmark(true);
-      setTimeout(() => {
+      checkmarkTimerRef.current = setTimeout(() => {
         setCheckmark(false);
         onStatusChange(app.id, newStatus);
       }, 400);

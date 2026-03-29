@@ -1,14 +1,31 @@
 import { NextResponse } from 'next/server';
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseLLMJson } from '@/lib/parse-json';
 
 export const maxDuration = 60;
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error('Missing GEMINI_API_KEY environment variable');
+
+const genAI = new GoogleGenerativeAI(apiKey);
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   generationConfig: { responseMimeType: 'application/json' },
 });
+
+interface AIScore {
+  index: number;
+  overall_score: number;
+  skills_score: number;
+  experience_score: number;
+  culture_score: number;
+  values_score: number;
+  location_score: number;
+  explanation: string;
+  highlights: string[];
+  concerns: string[];
+}
 
 interface CandidateRow {
   id: string;
@@ -213,24 +230,14 @@ Score criteria:
     try {
       const result = await model.generateContent(scoringPrompt);
       const text = result.response.text();
-      const parsed = JSON.parse(text.replace(/```json\s*/g, '').replace(/```\s*/g, ''));
+
+      const parsed = parseLLMJson<{ scores?: AIScore[] }>(text);
 
       const scores = parsed.scores || [];
 
       scoredCandidates = scores
-        .filter((s: { index: number }) => s.index >= 0 && s.index < candidatesForAI.length)
-        .map((s: {
-          index: number;
-          overall_score: number;
-          skills_score: number;
-          experience_score: number;
-          culture_score: number;
-          values_score: number;
-          location_score: number;
-          explanation: string;
-          highlights: string[];
-          concerns: string[];
-        }) => {
+        .filter((s) => s.index >= 0 && s.index < candidatesForAI.length)
+        .map((s) => {
           const c = candidatesForAI[s.index];
           return {
             candidate_id: c.id,

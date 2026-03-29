@@ -1,19 +1,15 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { parseLLMJson } from './parse-json';
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
+const apiKey = process.env.GEMINI_API_KEY;
+if (!apiKey) throw new Error('Missing GEMINI_API_KEY environment variable');
+
+const genAI = new GoogleGenerativeAI(apiKey);
 
 const model = genAI.getGenerativeModel({
   model: 'gemini-2.5-flash',
   generationConfig: { responseMimeType: 'application/json' },
 });
-
-/** Clean JSON response from Gemini — strip fences, comments, trailing commas */
-function cleanJson(raw: string): string {
-  return raw
-    .replace(/```json\s*/g, '').replace(/```\s*/g, '')  // strip markdown fences
-    .replace(/\/\/[^\n]*/g, '')                          // strip single-line comments
-    .replace(/,\s*([}\]])/g, '$1');                      // strip trailing commas
-}
 
 /** Return type for CV parsing */
 export type ParsedCV = {
@@ -64,16 +60,7 @@ Return ONLY valid JSON with this EXACT structure (use these exact key names):
 }`;
 
 function parseJsonResponse(text: string): ParsedCV {
-  try {
-    return JSON.parse(cleanJson(text));
-  } catch {
-    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('Gemini CV parse response (no JSON found):', text.slice(0, 500));
-      throw new Error('Failed to parse CV: no JSON in response');
-    }
-    return JSON.parse(jsonMatch[0]);
-  }
+  return parseLLMJson<ParsedCV>(text);
 }
 
 /**
@@ -162,16 +149,7 @@ ${jdText}`;
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
-  try {
-    return JSON.parse(cleanJson(text));
-  } catch {
-    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('Gemini JD parse response (no JSON found):', text.slice(0, 500));
-      throw new Error('Failed to parse JD: no JSON in response');
-    }
-    return JSON.parse(jsonMatch[0]);
-  }
+  return parseLLMJson(text);
 }
 
 /**
@@ -209,14 +187,5 @@ Return ONLY valid JSON:
 
   const result = await model.generateContent(prompt);
   const text = result.response.text();
-  try {
-    return JSON.parse(cleanJson(text));
-  } catch {
-    const jsonMatch = cleanJson(text).match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('Gemini match response (no JSON found):', text.slice(0, 500));
-      throw new Error('Failed to compute match');
-    }
-    return JSON.parse(jsonMatch[0]);
-  }
+  return parseLLMJson(text);
 }

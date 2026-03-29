@@ -1079,6 +1079,7 @@ export default function MatchmakerPage() {
                           width: '100%',
                           animation:
                             i === step ? 'barGrow 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)' : undefined,
+                          boxShadow: i < step ? '0 0 8px ' + q.colorHex + '40' : undefined,
                         }}
                       >
                         {i === step && (
@@ -1115,19 +1116,27 @@ export default function MatchmakerPage() {
                   >
                     {/* Topic label */}
                     <div className="mt-4">
-                      <span
-                        className="text-[11px] font-black uppercase tracking-[3px]"
+                      <motion.span
+                        className="text-[11px] font-black uppercase tracking-[3px] inline-block"
                         style={{ color: question.colorHex }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       >
                         {question.topic}
-                      </span>
+                      </motion.span>
                     </div>
 
                     {/* Question */}
                     <div className="mb-6 sm:mb-8 mt-4">
-                      <h2 className="text-2xl sm:text-3xl font-bold text-white leading-[1.15] whitespace-pre-line">
+                      <motion.h2
+                        className="text-2xl sm:text-3xl font-bold text-white leading-[1.15] whitespace-pre-line"
+                        initial={{ opacity: 0, y: 20, filter: 'blur(4px)' }}
+                        animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      >
                         {question.q}
-                      </h2>
+                      </motion.h2>
                     </div>
 
                     {/* Options - CNN-style */}
@@ -1140,9 +1149,9 @@ export default function MatchmakerPage() {
                           <motion.button
                             key={i}
                             onClick={() => handleAnswer(i)}
-                            initial={{ opacity: 0, y: 12 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.3, delay: i * 0.06 }}
+                            initial={{ opacity: 0, y: 16, filter: 'blur(8px)' }}
+                            animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                            transition={{ duration: 0.3, delay: i * 0.1 }}
                             whileHover={selectedOption === null ? { x: 4 } : {}}
                             whileTap={selectedOption === null ? { scale: 0.98 } : {}}
                             disabled={selectedOption !== null}
@@ -1205,7 +1214,7 @@ export default function MatchmakerPage() {
                                   borderColor: isSelected
                                     ? question.colorHex
                                     : 'rgba(255,255,255,0.08)',
-                                  transform: isSelected ? 'scale(1.15)' : 'scale(1)',
+                                  transform: isSelected ? 'scale(1.15) rotate(360deg)' : 'scale(1)',
                                   transition: 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
                                 }}
                               >
@@ -1269,6 +1278,8 @@ export default function MatchmakerPage() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         transition={{ delay: 0.3 }}
+                        whileHover={{ x: -3 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={handleBack}
                         className="mt-6 text-[11px] text-white/25 hover:text-white/50 transition-colors cursor-pointer flex items-center gap-1.5 uppercase tracking-[2px] font-bold"
                       >
@@ -1353,6 +1364,29 @@ export default function MatchmakerPage() {
                 }}
               />
             ))}
+            {/* Data stream lines */}
+            {[...Array(12)].map((_, i) => (
+              <motion.div
+                key={`stream-${i}`}
+                className="absolute w-px"
+                style={{
+                  left: `${8 + i * 8}%`,
+                  top: '-20%',
+                  height: '30%',
+                  background: `linear-gradient(180deg, transparent, ${topColor}30, transparent)`,
+                }}
+                animate={{
+                  y: ['-20vh', '120vh'],
+                  opacity: [0, 0.6, 0],
+                }}
+                transition={{
+                  duration: 2 + (i % 3) * 0.5,
+                  repeat: Infinity,
+                  delay: i * 0.25,
+                  ease: 'linear',
+                }}
+              />
+            ))}
           </div>
 
           <motion.div
@@ -1379,6 +1413,17 @@ export default function MatchmakerPage() {
               animate={{ rotate: 360 }}
               transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
             >
+              {/* Breathing glow ring */}
+              <motion.div
+                className="absolute -inset-3 rounded-full"
+                style={{ border: `1px solid ${topColor}20` }}
+                animate={{
+                  scale: [1, 1.15, 1],
+                  opacity: [0.3, 0.6, 0.3],
+                  borderColor: [`${topColor}20`, `${topColor}50`, `${topColor}20`],
+                }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+              />
               <div
                 className="absolute inset-0 rounded-full border-2 border-transparent"
                 style={{ borderTopColor: topColor, borderRightColor: `${topColor}40` }}
@@ -1443,7 +1488,7 @@ export default function MatchmakerPage() {
                             strokeWidth={2.5}
                             initial={{ scale: 0, rotate: -90 }}
                             animate={{ scale: 1, rotate: 0 }}
-                            transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                            transition={{ type: 'spring', stiffness: 600, damping: 12 }}
                           >
                             <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                           </motion.svg>
@@ -1477,6 +1522,7 @@ export default function MatchmakerPage() {
                               ? 'text-white/80'
                               : 'text-white/20'
                         }`}
+                        style={processingStage === i ? { textShadow: `0 0 20px ${topColor}60` } : undefined}
                       >
                         {stage.label}
                       </span>
@@ -1504,7 +1550,7 @@ export default function MatchmakerPage() {
             </div>
 
             {/* Progress bar */}
-            <motion.div className="mt-8 h-1 rounded-full bg-white/[0.06] overflow-hidden">
+            <motion.div className="mt-8 h-1 rounded-full bg-white/[0.06] overflow-hidden relative">
               <motion.div
                 className="h-full rounded-full"
                 style={{ backgroundColor: topColor }}
@@ -1514,18 +1560,30 @@ export default function MatchmakerPage() {
                 }}
                 transition={{ type: 'spring', stiffness: 100, damping: 20 }}
               />
+              <motion.div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.3) 50%, transparent 100%)',
+                  backgroundSize: '200% 100%',
+                }}
+                animate={{ backgroundPosition: ['-200% 0', '200% 0'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
             </motion.div>
 
             {/* Progress percentage */}
-            <motion.p
-              className="mt-2 text-xs font-mono text-white/40"
-              key={progressPercent}
-              initial={{ opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              {progressPercent}%
-            </motion.p>
+            <AnimatePresence mode="wait">
+              <motion.p
+                className="mt-2 text-xs font-mono text-white/40"
+                key={progressPercent}
+                initial={{ opacity: 0, y: 10, filter: 'blur(4px)' }}
+                animate={{ opacity: 1, y: 0, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, y: -10, filter: 'blur(4px)' }}
+                transition={{ duration: 0.3 }}
+              >
+                {progressPercent}%
+              </motion.p>
+            </AnimatePresence>
           </motion.div>
         </div>
       </>
@@ -1660,7 +1718,7 @@ export default function MatchmakerPage() {
             {[...Array(40)].map((_, i) => (
               <motion.div
                 key={i}
-                className="absolute w-2 h-2 rounded-sm"
+                className={`absolute ${i % 3 === 0 ? 'w-3 h-1' : i % 3 === 1 ? 'w-2 h-2' : 'w-1 h-3'} rounded-sm`}
                 style={{
                   backgroundColor: ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b', '#ec4899', '#06b6d4'][
                     i % 6
@@ -1788,15 +1846,19 @@ export default function MatchmakerPage() {
               }}
             />
 
-            {/* Edge glow in brand color */}
+            {/* Edge glow in brand color — breathing */}
             <motion.div
               className="absolute inset-0 rounded-2xl pointer-events-none z-[5]"
               initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.8, duration: 1.2 }}
-              style={{
-                boxShadow: `inset 0 0 80px ${topMatch.brandColor}25, 0 0 60px ${topMatch.brandColor}15, 0 0 120px ${topMatch.brandColor}08`,
+              animate={{
+                opacity: [0, 1, 0.7, 1],
+                boxShadow: [
+                  `inset 0 0 60px ${topMatch.brandColor}15, 0 0 40px ${topMatch.brandColor}08`,
+                  `inset 0 0 100px ${topMatch.brandColor}30, 0 0 80px ${topMatch.brandColor}18`,
+                  `inset 0 0 60px ${topMatch.brandColor}15, 0 0 40px ${topMatch.brandColor}08`,
+                ]
               }}
+              transition={{ delay: 0.8, duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             />
 
             <div className="relative bg-white/[0.03] ring-1 ring-white/10 rounded-2xl overflow-hidden">
@@ -1881,10 +1943,24 @@ export default function MatchmakerPage() {
                     Culture Alignment
                   </p>
                   <motion.div
+                    className="relative"
                     initial={{ scale: 0.5, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: 0.7, type: 'spring', stiffness: 200, damping: 15 }}
                   >
+                    {/* Score glow */}
+                    <motion.div
+                      className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                      animate={{
+                        opacity: [0.3, 0.6, 0.3],
+                      }}
+                      transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                    >
+                      <div
+                        className="w-32 h-32 rounded-full blur-[40px]"
+                        style={{ backgroundColor: topMatch.brandColor + '30' }}
+                      />
+                    </motion.div>
                     <span
                       className={`text-[72px] sm:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
                       style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '2px' }}
@@ -1929,9 +2005,9 @@ export default function MatchmakerPage() {
                   {topMatch.cultureTags.map((tag, i) => (
                     <motion.span
                       key={i}
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: 0.9 + i * 0.08 }}
+                      initial={{ opacity: 0, scale: 0, rotate: -10 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      transition={{ delay: 0.9 + i * 0.08, type: 'spring', stiffness: 500, damping: 15 }}
                       className="px-3 py-1.5 text-[12px] font-medium rounded-full bg-white/[0.06] text-white/60 ring-1 ring-white/[0.08]"
                     >
                       {tag}
@@ -1948,9 +2024,9 @@ export default function MatchmakerPage() {
                 >
                   <div className="relative">
                     <svg width="240" height="240" viewBox="0 0 240 240">
-                      {/* Background grid rings */}
+                      {/* Background grid rings — sequential draw */}
                       {[0.25, 0.5, 0.75, 1].map((ring) => (
-                        <polygon
+                        <motion.polygon
                           key={ring}
                           points={radarAxes
                             .map((_, i) => {
@@ -1961,13 +2037,16 @@ export default function MatchmakerPage() {
                           fill="none"
                           stroke="rgba(255,255,255,0.06)"
                           strokeWidth="1"
+                          initial={{ pathLength: 0, opacity: 0 }}
+                          animate={{ pathLength: 1, opacity: 1 }}
+                          transition={{ delay: 1.0 + ring * 0.15, duration: 0.4 }}
                         />
                       ))}
-                      {/* Axis lines */}
+                      {/* Axis lines — sequential draw */}
                       {radarAxes.map((_, i) => {
                         const p = radarPoint(i, 1);
                         return (
-                          <line
+                          <motion.line
                             key={i}
                             x1={radarCx}
                             y1={radarCy}
@@ -1975,6 +2054,9 @@ export default function MatchmakerPage() {
                             y2={p.y}
                             stroke="rgba(255,255,255,0.06)"
                             strokeWidth="1"
+                            initial={{ pathLength: 0, opacity: 0 }}
+                            animate={{ pathLength: 1, opacity: 1 }}
+                            transition={{ delay: 1.0 + i * 0.08, duration: 0.3 }}
                           />
                         );
                       })}
@@ -2047,8 +2129,8 @@ export default function MatchmakerPage() {
                     {topMatch.whyMatch.map((reason, i) => (
                       <motion.div
                         key={i}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0, x: -15, filter: 'blur(4px)' }}
+                        animate={{ opacity: 1, x: 0, filter: 'blur(0px)' }}
                         transition={{ delay: 1.4 + i * 0.1 }}
                         className="flex items-start gap-2"
                       >

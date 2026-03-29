@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import sanitize from 'sanitize-html';
 import { createServiceClient } from '@/lib/supabase-server';
 import { articleJsonLd, breadcrumbJsonLd } from '@/lib/structured-data';
 import { sampleBlogPosts, readingTime } from '@/lib/blog-data';
@@ -82,7 +83,7 @@ export default async function BlogPostPage({
     { name: blogPost.title, url: `${SITE_URL}/${locale}/blog/${slug}` },
   ]);
 
-  const article = articleJsonLd(blogPost);
+  const article = articleJsonLd(blogPost, locale);
   const readTime = readingTime(blogPost.content);
 
   return (
@@ -155,6 +156,7 @@ export default async function BlogPostPage({
               src={blogPost.cover_image_url}
               alt={blogPost.title}
               fill
+              sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 720px"
               className="object-cover"
               priority
             />
@@ -174,7 +176,18 @@ export default async function BlogPostPage({
             prose-code:text-blue-300 prose-code:bg-white/5 prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded
             prose-pre:bg-[#0B1120] prose-pre:ring-1 prose-pre:ring-white/10
             prose-img:rounded-xl prose-img:ring-1 prose-img:ring-white/10"
-          dangerouslySetInnerHTML={{ __html: blogPost.content }}
+          dangerouslySetInnerHTML={{ __html: sanitize(blogPost.content, {
+            allowedTags: sanitize.defaults.allowedTags.concat(['img', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'figure', 'figcaption', 'picture', 'source', 'video', 'iframe']),
+            allowedAttributes: {
+              ...sanitize.defaults.allowedAttributes,
+              img: ['src', 'alt', 'title', 'width', 'height', 'loading'],
+              a: ['href', 'title', 'target', 'rel'],
+              iframe: ['src', 'width', 'height', 'frameborder', 'allowfullscreen'],
+              source: ['src', 'type', 'srcset', 'media'],
+              video: ['src', 'width', 'height', 'controls', 'poster'],
+            },
+            allowedSchemes: ['http', 'https', 'mailto'],
+          }) }}
         />
       </article>
     </>
