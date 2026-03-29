@@ -129,18 +129,59 @@ export default async function VisaRulesPage({
 
       <main className="min-h-screen">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-          {/* Header */}
-          <div className="text-center mb-12">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 ring-1 ring-blue-500/20 text-blue-400 text-xs font-medium mb-4">
-              Visa & Work Permit Explorer
+          {/* Hero header with animated gradient */}
+          <div className="text-center mb-12 relative">
+            <div
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full opacity-15 pointer-events-none"
+              style={{
+                background: 'radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 40%, transparent 70%)',
+                animation: 'glowPulse 5s ease-in-out infinite',
+              }}
+            />
+            <div className="relative z-10">
+              <div
+                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 ring-1 ring-blue-500/20 text-blue-400 text-xs font-medium mb-4"
+                style={{ animation: 'blurReveal 0.6s ease-out' }}
+              >
+                Visa & Work Permit Explorer
+              </div>
+              <h1
+                className="text-3xl sm:text-4xl font-bold text-white mb-3"
+                style={{ animation: 'blurReveal 0.6s ease-out 0.1s both' }}
+              >
+                Visa Rules{' '}
+                <span
+                  className="bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400 bg-clip-text text-transparent"
+                  style={{ backgroundSize: '200% 200%', animation: 'gradientShift 4s ease infinite' }}
+                >
+                  by Country
+                </span>
+              </h1>
+              <p
+                className="text-white/50 max-w-xl mx-auto"
+                style={{ animation: 'blurReveal 0.6s ease-out 0.2s both' }}
+              >
+                Browse work visa types, requirements, processing times, and costs across 29 countries.
+                Data is scraped and updated regularly from official sources.
+              </p>
+
+              {/* Stats bar */}
+              <div
+                className="flex items-center justify-center gap-6 mt-6"
+                style={{ animation: 'blurReveal 0.6s ease-out 0.3s both' }}
+              >
+                {[
+                  { value: '29', label: 'Countries' },
+                  { value: String(visaRules.length), label: 'Visa Types' },
+                  { value: String(countriesWithRules.length), label: 'With Data' },
+                ].map((stat) => (
+                  <div key={stat.label} className="text-center">
+                    <p className="text-xl font-bold text-white">{stat.value}</p>
+                    <p className="text-[10px] text-white/30 uppercase tracking-wider">{stat.label}</p>
+                  </div>
+                ))}
+              </div>
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-              Visa Rules by Country
-            </h1>
-            <p className="text-white/50 max-w-xl mx-auto">
-              Browse work visa types, requirements, processing times, and costs across 29 countries.
-              Data is scraped and updated regularly from official sources.
-            </p>
           </div>
 
           {/* Country sections */}
@@ -165,6 +206,7 @@ export default async function VisaRulesPage({
                   name={country.name}
                   rules={grouped[country.code]}
                   locked={!hasPaidAccess && index >= FREE_PREVIEW_COUNT}
+                  index={index}
                 />
               ))}
 

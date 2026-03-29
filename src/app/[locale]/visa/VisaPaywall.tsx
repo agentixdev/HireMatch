@@ -74,6 +74,19 @@ export default function VisaPaywall({
             </div>
           ))}
         </div>
+
+        {/* API cross-sell */}
+        <div className="mt-6 pt-6 border-t border-white/5">
+          <p className="text-white/30 text-xs mb-2">Need visa data in your own product?</p>
+          <Link
+            href={`/${locale}/developers`}
+            className="inline-flex items-center gap-1.5 text-sm text-indigo-400/80 hover:text-indigo-400 transition-colors"
+          >
+            <Icon icon="solar:code-square-linear" className="w-4 h-4" />
+            Explore the Visa Data API
+            <Icon icon="solar:arrow-right-linear" className="w-3.5 h-3.5" />
+          </Link>
+        </div>
       </div>
     </div>
   );

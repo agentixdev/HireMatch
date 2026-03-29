@@ -64,7 +64,8 @@ export default function Header() {
     { href: '/companies', label: t('companies'), iconBold: 'solar:buildings-bold', iconLinear: 'solar:buildings-linear' },
     { href: '/matchmaker', label: t('matchmaker'), iconBold: 'solar:heart-pulse-bold', iconLinear: 'solar:heart-pulse-linear' },
     { href: '/pricing', label: t('pricing'), iconBold: 'solar:tag-price-bold', iconLinear: 'solar:tag-price-linear' },
-    { href: '/visa', label: t('visa'), iconBold: 'solar:passport-bold', iconLinear: 'solar:passport-linear' },
+    { href: '/visa', label: 'Visas', iconBold: 'solar:passport-bold', iconLinear: 'solar:passport-linear' },
+    { href: '/developers', label: 'API', iconBold: 'solar:code-square-bold', iconLinear: 'solar:code-square-linear' },
   ], [t]);
 
   const toggleMenu = useCallback(() => setMenuOpen((prev) => !prev), []);
