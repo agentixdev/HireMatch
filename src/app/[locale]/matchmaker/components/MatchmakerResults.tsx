@@ -96,29 +96,45 @@ function ThreatBadge({ level }: { level: 'low' | 'medium' | 'high' }) {
 
 // ── Boost Profile Button (Stand-out Tip) ────────────────────────
 
-function BoostProfileButton({ isAuthenticated }: { isAuthenticated: boolean }) {
+function BoostProfileButton({
+  isAuthenticated,
+  onBoostComplete,
+}: {
+  isAuthenticated: boolean;
+  onBoostComplete?: (improvements: string[]) => void;
+}) {
   const router = useRouter();
   const [boosting, setBoosting] = useState(false);
   const [boosted, setBoosted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [progress, setProgress] = useState('');
 
   const handleBoost = async () => {
     if (!isAuthenticated) {
-      router.push('/auth?mode=signin&redirect=/dashboard/candidate/ai-coach');
+      router.push('/auth?mode=signin&redirect=/matchmaker');
       return;
     }
 
     setBoosting(true);
+    setError(null);
+    setProgress('Analyzing your profile...');
+
     try {
-      // Call the AI coach to generate resume improvements, then auto-apply them
+      // Step 1: Generate AI improvements
       const res = await fetch('/api/candidate/ai-coach', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'improve-resume' }),
       });
-      if (!res.ok) throw new Error('Failed to generate improvements');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to generate improvements');
+      }
       const { data } = await res.json();
 
-      // Now apply the improvements to the profile
+      setProgress('Applying improvements...');
+
+      // Step 2: Apply improvements to profile
       const applyRes = await fetch('/api/candidate/apply-enhancement', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,16 +149,42 @@ function BoostProfileButton({ isAuthenticated }: { isAuthenticated: boolean }) {
           },
         }),
       });
-      if (!applyRes.ok) throw new Error('Failed to apply');
+      if (!applyRes.ok) {
+        const err = await applyRes.json().catch(() => ({}));
+        throw new Error(err.error || 'Failed to apply improvements');
+      }
 
       setBoosted(true);
-    } catch {
-      // On error, redirect to AI coach for manual application
-      router.push('/dashboard/candidate/ai-coach');
+      const improvements = data.key_improvements || [
+        'Headline optimized',
+        'Bio rewritten with metrics',
+        'Skills expanded',
+      ];
+      onBoostComplete?.(improvements);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
       setBoosting(false);
+      setProgress('');
     }
   };
+
+  if (error) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="text-[10px] text-red-400">{error}</span>
+        <motion.button
+          onClick={handleBoost}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          className="flex-shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold bg-gradient-to-r from-amber-600 to-orange-600 text-white flex items-center gap-1.5"
+        >
+          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+          Retry
+        </motion.button>
+      </div>
+    );
+  }
 
   return (
     <motion.button
@@ -166,7 +208,7 @@ function BoostProfileButton({ isAuthenticated }: { isAuthenticated: boolean }) {
       ) : boosting ? (
         <>
           <div className="w-3 h-3 border-2 border-amber-300/30 border-t-amber-300 rounded-full animate-spin" />
-          Boosting...
+          {progress || 'Boosting...'}
         </>
       ) : (
         <>
@@ -472,6 +514,7 @@ export default function MatchmakerResults({
 }: MatchmakerResultsProps) {
   const router = useRouter();
   const [selectedCompetitor, setSelectedCompetitor] = useState<Competitor | null>(null);
+  const [boostImprovements, setBoostImprovements] = useState<string[] | null>(null);
 
   if (!results || results.length === 0) return null;
 
@@ -1074,15 +1117,56 @@ export default function MatchmakerResults({
             </div>
 
             {/* Stand out tip */}
-            <div className="p-3 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[12px] text-amber-400/80 flex-1">
-                  <span className="font-bold">Stand out tip:</span> Update your profile with leadership
-                  experience to boost your match score by up to 8%
-                </p>
-                <BoostProfileButton isAuthenticated={isAuthenticated} />
-              </div>
-            </div>
+            <AnimatePresence mode="wait">
+              {boostImprovements ? (
+                <motion.div
+                  key="boosted"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-4 rounded-lg bg-emerald-500/10 ring-1 ring-emerald-500/20"
+                >
+                  <div className="flex items-center gap-2 mb-2">
+                    <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-[12px] font-bold text-emerald-400">Profile boosted! Here&apos;s what changed:</span>
+                  </div>
+                  <ul className="space-y-1 ml-6">
+                    {boostImprovements.map((imp, i) => (
+                      <motion.li
+                        key={i}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="text-[11px] text-emerald-400/70 list-disc"
+                      >
+                        {imp}
+                      </motion.li>
+                    ))}
+                  </ul>
+                  <p className="text-[10px] text-emerald-400/40 mt-2">
+                    Retake the quiz to see your updated match scores.
+                  </p>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="tip"
+                  exit={{ opacity: 0, y: -8 }}
+                  className="p-3 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-[12px] text-amber-400/80 flex-1">
+                      <span className="font-bold">Stand out tip:</span> Let AI rewrite your headline, bio, and
+                      skills to boost your match score. One click, instant upgrade.
+                    </p>
+                    <BoostProfileButton
+                      isAuthenticated={isAuthenticated}
+                      onBoostComplete={(improvements) => setBoostImprovements(improvements)}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
 
           {/* ALL RESULTS GRID */}
