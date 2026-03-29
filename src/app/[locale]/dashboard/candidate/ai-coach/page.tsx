@@ -922,14 +922,15 @@ function SocialResults({ data, copyText, copiedId, platform }: { data: SocialDat
             <p className="text-xs text-white/30">Best time: {post.best_time_to_post}</p>
             <div className="flex gap-2">
               {platform === 'linkedin' && (
-                <a
-                  href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent('https://www.hirematch.com')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-1.5 bg-blue-700/20 text-blue-400 text-xs rounded-lg hover:bg-blue-700/30 transition-colors"
+                <button
+                  onClick={() => {
+                    copyText(post.content, 'linkedin-' + i);
+                    window.open('https://www.linkedin.com/feed/?shareActive=true', '_blank');
+                  }}
+                  className="px-3 py-1.5 bg-blue-700/20 text-blue-400 text-xs rounded-lg hover:bg-blue-700/30 transition-colors cursor-pointer"
                 >
-                  Share on LinkedIn
-                </a>
+                  {copiedId === 'linkedin-' + i ? '✓ Copied — paste in LinkedIn' : 'Share on LinkedIn'}
+                </button>
               )}
               {platform === 'twitter' && (
                 <a
