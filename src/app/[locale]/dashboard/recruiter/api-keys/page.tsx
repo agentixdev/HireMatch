@@ -471,6 +471,14 @@ export default function ApiKeysPage() {
               className="mt-8 flex items-center gap-4 justify-center"
             >
               <Link
+                href="/dashboard/recruiter/api-keys/analytics"
+                className="inline-flex items-center gap-1.5 text-sm text-purple-400/70 hover:text-purple-400 transition-colors"
+              >
+                <Icon icon="solar:chart-2-linear" className="w-4 h-4" />
+                Analytics
+              </Link>
+              <span className="text-white/10">|</span>
+              <Link
                 href="/developers"
                 className="inline-flex items-center gap-1.5 text-sm text-indigo-400/70 hover:text-indigo-400 transition-colors"
               >
