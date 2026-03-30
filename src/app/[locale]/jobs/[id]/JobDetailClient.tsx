@@ -299,11 +299,12 @@ function SimilarJobCard({ job, locale }: { job: Job & { recruiter?: Pick<Recruit
 /* ================================================================
    DETAIL APPLY BUTTON — WHB VoteButton "detail" variant wrapper
    ================================================================ */
-function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
+function DetailApplyButton({ jobId, recruiterId, candidateId, theme, externalUrl }: {
   jobId: string;
   recruiterId: string;
   candidateId: string | null;
   theme: ReturnType<typeof getIndustryTheme>;
+  externalUrl?: string | null;
 }) {
   const router = useRouter();
   const supabase = createClient();
@@ -327,6 +328,12 @@ function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
   }, [candidateId, jobId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleApply = useCallback(async () => {
+    // External jobs: open the original listing URL
+    if (externalUrl) {
+      window.open(externalUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+
     if (!candidateId) {
       router.push('/auth?mode=signin');
       return;
@@ -361,7 +368,7 @@ function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
       setTimeout(() => setApplySuccess(false), 3000);
     }
     setApplying(false);
-  }, [candidateId, jobId, recruiterId, router, supabase, theme.hex]);
+  }, [candidateId, jobId, recruiterId, externalUrl, router, supabase, theme.hex]);
 
   return (
     <motion.button
@@ -397,7 +404,7 @@ function DetailApplyButton({ jobId, recruiterId, candidateId, theme }: {
           </motion.span>
         ) : (
           <motion.span key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {candidateId ? 'Apply Now' : 'Sign In to Apply'}
+            {externalUrl ? 'Apply on Source Site' : candidateId ? 'Apply Now' : 'Sign In to Apply'}
           </motion.span>
         )}
       </AnimatePresence>
@@ -485,13 +492,33 @@ function ShareMenu({ job, recruiter, locale }: { job: Job; recruiter: Recruiter;
    ================================================================ */
 interface JobDetailClientProps {
   job: Job;
-  recruiter: Recruiter;
+  recruiter?: Recruiter;
   similarJobs: (Job & { recruiter?: Pick<Recruiter, 'company_name' | 'company_logo_url'> })[];
   locale: string;
 }
 
-export default function JobDetailClient({ job, recruiter, similarJobs, locale }: JobDetailClientProps) {
+export default function JobDetailClient({ job, recruiter: recruiterProp, similarJobs, locale }: JobDetailClientProps) {
   const supabase = createClient();
+
+  // For external jobs (from job-sync cron) that have no recruiter, build a fallback
+  const recruiter: Recruiter = recruiterProp ?? {
+    id: '',
+    user_id: '',
+    company_name: (job as unknown as { company_name?: string }).company_name || 'Company',
+    company_logo_url: (job as unknown as { company_logo?: string }).company_logo || undefined,
+    industry: job.industry,
+    company_size: '',
+    country: job.country,
+    city: job.city,
+    culture_tags: [],
+    tier: 'free' as const,
+    jobs_posted_count: 0,
+    candidate_views_remaining: 0,
+    created_at: job.created_at,
+    updated_at: job.updated_at,
+  };
+  const isExternalJob = !recruiterProp;
+
   const theme = getIndustryTheme(recruiter.industry || job.industry);
 
   // Candidate state (for skill matching + apply)
@@ -796,6 +823,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
               recruiterId={job.recruiter_id}
               candidateId={candidateId}
               theme={theme}
+              externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
             />
           </motion.div>
 
@@ -1199,6 +1227,7 @@ export default function JobDetailClient({ job, recruiter, similarJobs, locale }:
                 recruiterId={job.recruiter_id}
                 candidateId={candidateId}
                 theme={theme}
+                externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
               />
             </motion.div>
 

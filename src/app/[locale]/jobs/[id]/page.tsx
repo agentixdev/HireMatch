@@ -150,7 +150,7 @@ export default async function JobDetailPage({
       <main className="flex-1 bg-transparent">
         <JobDetailClient
           job={jobOnly as Job}
-          recruiter={recruiter ?? undefined}
+          recruiter={recruiter as Recruiter | undefined}
           similarJobs={similarJobs}
           locale={locale}
         />
