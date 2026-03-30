@@ -132,7 +132,7 @@ export default async function VisaRulesPage({
           {/* Hero header with animated gradient */}
           <div className="text-center mb-12 relative">
             <div
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full opacity-15 pointer-events-none"
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[280px] h-[280px] sm:w-[400px] sm:h-[400px] rounded-full opacity-15 pointer-events-none"
               style={{
                 background: 'radial-gradient(circle, rgba(59,130,246,0.4) 0%, rgba(99,102,241,0.2) 40%, transparent 70%)',
                 animation: 'glowPulse 5s ease-in-out infinite',
@@ -167,7 +167,7 @@ export default async function VisaRulesPage({
 
               {/* Stats bar */}
               <div
-                className="flex items-center justify-center gap-6 mt-6"
+                className="flex items-center justify-center gap-4 sm:gap-6 mt-6"
                 style={{ animation: 'blurReveal 0.6s ease-out 0.3s both' }}
               >
                 {[

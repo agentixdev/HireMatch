@@ -70,10 +70,8 @@ export default async function JobDetailPage({
 
   if (!data) notFound();
 
-  const job = data as unknown as Job & { recruiter: Recruiter };
+  const job = data as unknown as Job & { recruiter: Recruiter | null };
   const recruiter = job.recruiter;
-
-  if (!recruiter) notFound();
 
   // Increment view count (fire-and-forget)
   supabase.from('jobs').update({ views_count: job.views_count + 1 }).eq('id', id).then(
@@ -109,9 +107,9 @@ export default async function JobDetailPage({
     employmentType: job.job_type === 'full-time' ? 'FULL_TIME' : job.job_type === 'part-time' ? 'PART_TIME' : job.job_type === 'contract' ? 'CONTRACTOR' : job.job_type === 'internship' ? 'INTERN' : 'OTHER',
     hiringOrganization: {
       '@type': 'Organization',
-      name: recruiter.company_name,
-      ...(recruiter.company_logo_url ? { logo: recruiter.company_logo_url } : {}),
-      ...(recruiter.company_website ? { sameAs: recruiter.company_website } : {}),
+      name: recruiter?.company_name || (job as Record<string, unknown>).company_name as string || 'Company',
+      ...(recruiter?.company_logo_url ? { logo: recruiter.company_logo_url } : {}),
+      ...(recruiter?.company_website ? { sameAs: recruiter.company_website } : {}),
     },
     jobLocation: {
       '@type': 'Place',
@@ -151,7 +149,7 @@ export default async function JobDetailPage({
       <main className="flex-1 bg-transparent">
         <JobDetailClient
           job={jobOnly as Job}
-          recruiter={recruiter}
+          recruiter={recruiter ?? undefined}
           similarJobs={similarJobs}
           locale={locale}
         />

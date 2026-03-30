@@ -142,6 +142,12 @@ export default function CandidateDashboard() {
 
       const { data: cand } = await supabase.from('candidates').select('*').eq('user_id', user.id).single();
       if (!cand) { router.push('/dashboard/candidate/onboarding'); return; }
+      // Gate: if quiz_answers is null/empty, redirect back to onboarding
+      const qa = (cand as Record<string, unknown>).quiz_answers;
+      if (!qa || (typeof qa === 'object' && Object.keys(qa as Record<string, unknown>).length === 0)) {
+        router.push('/dashboard/candidate/onboarding');
+        return;
+      }
       setCandidate(cand as unknown as Candidate);
 
       const { data: apps } = await supabase

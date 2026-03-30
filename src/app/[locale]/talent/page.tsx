@@ -220,7 +220,7 @@ function CandidateDrawer({
         exit={{ x: '100%' }}
         transition={springSmooth}
         onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
+        className="absolute right-0 top-0 bottom-0 w-full sm:max-w-2xl bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
       >
         {/* Close button */}
         <button onClick={onClose} className="absolute top-4 right-4 z-10 text-white/40 hover:text-white p-2 cursor-pointer">
@@ -812,7 +812,7 @@ export default function TalentPage() {
                   key={f}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setFilter(f)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] ${
                     filter === f
                       ? 'bg-blue-600 text-white'
                       : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
@@ -853,7 +853,7 @@ export default function TalentPage() {
               variants={staggerContainer}
               initial="hidden"
               animate="visible"
-              className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3"
+              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3"
             >
               {filtered.map((candidate, i) => (
                 <TalentCard

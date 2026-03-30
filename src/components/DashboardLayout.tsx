@@ -33,6 +33,7 @@ const recruiterNav: NavItem[] = [
   { label: 'Dashboard', href: '/dashboard/recruiter', icon: 'solar:home-2-linear', iconActive: 'solar:home-2-bold' },
   { label: 'Post Job', href: '/dashboard/recruiter/post-job', icon: 'solar:add-circle-linear', iconActive: 'solar:add-circle-bold' },
   { label: 'Applications', href: '/dashboard/recruiter/applications', icon: 'solar:widget-5-linear', iconActive: 'solar:widget-5-bold' },
+  { label: 'Analytics', href: '/dashboard/recruiter/analytics', icon: 'solar:chart-2-linear', iconActive: 'solar:chart-2-bold' },
   { label: 'Search', href: '/dashboard/recruiter/search', icon: 'solar:magnifer-linear', iconActive: 'solar:magnifer-bold' },
   { label: 'Company', href: '/dashboard/recruiter/profile', icon: 'solar:buildings-2-linear', iconActive: 'solar:buildings-2-bold' },
   { label: 'API Keys', href: '/dashboard/recruiter/api-keys', icon: 'solar:key-linear', iconActive: 'solar:key-bold' },

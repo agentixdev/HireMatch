@@ -28,7 +28,7 @@ export default function HomePage() {
         />
 
         {/* How It Works */}
-        <section className="py-20">
+        <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection>
               <h2 className="text-3xl font-bold text-white text-center" style={{ fontFamily: 'var(--font-bebas)' }}>How It Works</h2>
@@ -69,7 +69,7 @@ export default function HomePage() {
         </section>
 
         {/* For Recruiters */}
-        <section className="py-20">
+        <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection className="max-w-3xl mx-auto text-center">
               <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>For Recruiters</h2>
@@ -105,7 +105,7 @@ export default function HomePage() {
         </section>
 
         {/* Testimonials */}
-        <section className="py-20">
+        <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection className="text-center">
               <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>What People Say</h2>
@@ -130,7 +130,7 @@ export default function HomePage() {
         </section>
 
         {/* Countries */}
-        <section className="py-20">
+        <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <AnimatedSection>
               <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>Hire Globally</h2>

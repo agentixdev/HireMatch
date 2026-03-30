@@ -298,7 +298,7 @@ function CompanyDrawer({
         exit={{ x: '100%' }}
         transition={springSmooth}
         onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 bottom-0 w-full max-w-2xl bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
+        className="absolute right-0 top-0 bottom-0 w-full sm:max-w-2xl bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
       >
         {/* Close */}
         <button onClick={onClose} className="absolute top-4 right-4 z-10 text-white/40 hover:text-white p-2 cursor-pointer">
@@ -461,13 +461,13 @@ function CompanyDrawer({
                 exit={{ opacity: 0, y: -10 }}
               >
                 {/* Pipeline stages bar */}
-                <div className="flex gap-1 mb-4 p-1 bg-white/[0.02] rounded-lg">
+                <div className="flex gap-1 mb-4 p-1 bg-white/[0.02] rounded-lg overflow-x-auto">
                   {PIPELINE_STAGES.map((stage) => {
                     const count = shortlisted.filter((c) => c.status === stage.key).length;
                     return (
                       <div
                         key={stage.key}
-                        className="flex-1 text-center py-2 rounded-md"
+                        className="flex-1 min-w-[60px] text-center py-2 rounded-md"
                         style={{ backgroundColor: count > 0 ? stage.color + '10' : 'transparent' }}
                       >
                         <p className="text-xs font-bold" style={{ color: count > 0 ? stage.color : 'rgba(255,255,255,0.15)' }}>
@@ -823,7 +823,7 @@ export default function CompaniesPage() {
                   key={f.key}
                   whileTap={{ scale: 0.95 }}
                   onClick={() => setFilter(f.key)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium cursor-pointer transition-all ${
+                  className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] ${
                     filter === f.key
                       ? 'bg-indigo-600 text-white'
                       : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'

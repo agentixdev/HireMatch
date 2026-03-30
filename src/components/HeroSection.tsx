@@ -91,7 +91,7 @@ function StatCard({
           : '0 0 0 1px rgba(255,255,255,0.07)',
         transition: 'box-shadow 0.35s ease',
       }}
-      className="relative flex flex-col items-center justify-center gap-1 px-6 py-5 rounded-2xl bg-white/[0.04] backdrop-blur-sm cursor-default select-none overflow-hidden"
+      className="relative flex flex-col items-center justify-center gap-1 px-4 sm:px-6 py-4 sm:py-5 rounded-2xl bg-white/[0.04] backdrop-blur-sm cursor-default select-none overflow-hidden"
     >
       {/* Inner glow orb */}
       <motion.div
@@ -103,7 +103,7 @@ function StatCard({
 
       {/* Value */}
       <span
-        className="text-3xl font-extrabold tabular-nums"
+        className="text-2xl sm:text-3xl font-extrabold tabular-nums"
         style={{ color, textShadow: hovered ? `0 0 24px ${color}88` : 'none', transition: 'text-shadow 0.3s ease' }}
       >
         {count.toLocaleString()}{suffix}
@@ -308,7 +308,7 @@ export default function HeroSection({
           transition={{ ...springBouncy, delay: 0.25 }}
         >
           <h1
-            className="text-6xl sm:text-7xl md:text-8xl lg:text-9xl leading-none tracking-tight"
+            className="text-5xl sm:text-7xl md:text-8xl lg:text-9xl leading-none tracking-tight"
             style={{ fontFamily: 'var(--font-bebas)' }}
           >
             <span
@@ -345,7 +345,7 @@ export default function HeroSection({
           {/* Primary CTA — candidate, with pulse rings */}
           <Link
             href="/auth?mode=signup&role=candidate"
-            className="relative inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-white text-base shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-shadow"
+            className="relative inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 rounded-2xl font-semibold text-white text-sm sm:text-base shadow-xl shadow-blue-500/25 hover:shadow-blue-500/40 transition-shadow w-full sm:w-auto"
             style={{
               background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 60%, #a855f7 100%)',
             }}
@@ -371,7 +371,7 @@ export default function HeroSection({
           {/* Secondary CTA — recruiter */}
           <Link
             href="/auth?mode=signup&role=recruiter"
-            className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-2xl font-semibold text-white/80 text-base ring-1 ring-white/[0.15] bg-white/[0.05] hover:bg-white/[0.09] hover:text-white hover:ring-white/25 backdrop-blur-sm transition-all"
+            className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 rounded-2xl font-semibold text-white/80 text-sm sm:text-base ring-1 ring-white/[0.15] bg-white/[0.05] hover:bg-white/[0.09] hover:text-white hover:ring-white/25 backdrop-blur-sm transition-all w-full sm:w-auto"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"

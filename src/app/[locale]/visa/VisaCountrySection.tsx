@@ -79,7 +79,7 @@ export default function VisaCountrySection({
       {/* Country header */}
       <button
         onClick={() => !locked && setOpen(!open)}
-        className={`w-full flex items-center gap-4 px-6 py-5 text-left group ${locked ? 'cursor-not-allowed' : ''}`}
+        className={`w-full flex items-center gap-3 sm:gap-4 px-4 sm:px-6 py-4 sm:py-5 text-left group ${locked ? 'cursor-not-allowed' : ''}`}
       >
         <span
           className="text-3xl transition-transform duration-300"
@@ -130,16 +130,16 @@ export default function VisaCountrySection({
           transition: 'max-height 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease',
         }}
       >
-        <div ref={contentRef} className="px-6 pb-6 space-y-3">
+        <div ref={contentRef} className="px-4 sm:px-6 pb-4 sm:pb-6 space-y-3">
           {rules.map((rule, ruleIdx) => (
             <div
               key={rule.id}
-              className="bg-white/[0.03] hover:bg-white/[0.06] ring-1 ring-white/5 hover:ring-white/10 rounded-xl p-5 transition-all duration-200"
+              className="bg-white/[0.03] hover:bg-white/[0.06] ring-1 ring-white/5 hover:ring-white/10 rounded-xl p-4 sm:p-5 transition-all duration-200"
               style={{
                 animation: open ? `blurReveal 0.4s ease-out ${ruleIdx * 80}ms both` : 'none',
               }}
             >
-              <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 sm:gap-4 mb-3">
                 <div>
                   <h3 className="text-base font-semibold text-white mb-1.5">
                     {rule.title}
@@ -198,7 +198,7 @@ export default function VisaCountrySection({
               </div>
 
               {/* Source + last scraped */}
-              <div className="flex items-center justify-between mt-4 pt-3 border-t border-white/5 text-xs text-white/25">
+              <div className="flex flex-wrap items-center justify-between gap-2 mt-4 pt-3 border-t border-white/5 text-xs text-white/25">
                 <span className="flex items-center gap-1.5">
                   <Icon icon="solar:refresh-linear" className="w-3 h-3" />
                   {new Date(rule.last_scraped_at).toLocaleDateString('en-US', {

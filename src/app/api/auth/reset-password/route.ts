@@ -86,11 +86,11 @@ export async function POST(request: Request) {
 
     // Rate limit: 10 requests per minute per email
     const rlKey = `reset-password:${(email || '').toLowerCase().trim()}`;
-    const rl = rateLimit(rlKey, 10, 60_000);
+    const rl = rateLimit(rlKey, 3, 60_000);
     if (!rl.success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429 },
+        { status: 429, headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' } },
       );
     }
 

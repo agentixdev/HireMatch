@@ -255,7 +255,7 @@ function CompetitorDrawer({
         exit={{ x: '100%' }}
         transition={springSmooth}
         onClick={(e) => e.stopPropagation()}
-        className="absolute right-0 top-0 bottom-0 w-full max-w-lg bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
+        className="absolute right-0 top-0 bottom-0 w-full sm:max-w-lg bg-[#0d0f1a] border-l border-white/10 overflow-y-auto"
       >
         {/* Close button */}
         <button onClick={onClose} className="absolute top-4 right-4 z-10 text-white/40 hover:text-white p-2 cursor-pointer">
@@ -279,8 +279,8 @@ function CompetitorDrawer({
             </motion.div>
 
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <h2 className="text-xl font-bold text-white">{competitor.name}</h2>
+              <div className="flex flex-wrap items-center gap-2 mb-1">
+                <h2 className="text-lg sm:text-xl font-bold text-white">{competitor.name}</h2>
                 <ThreatBadge level={competitor.threatLevel} />
               </div>
               <p className="text-sm" style={{ color: competitor.avatar }}>{competitor.headline}</p>
@@ -734,7 +734,7 @@ export default function MatchmakerResults({
                 }}
               />
 
-              <div className="p-8 sm:p-10">
+              <div className="p-5 sm:p-8 md:p-10">
                 {/* Large Circular Logo with Glow Ring */}
                 <div className="text-center mb-6">
                   <motion.div
@@ -823,7 +823,7 @@ export default function MatchmakerResults({
                       />
                     </motion.div>
                     <span
-                      className={`text-[72px] sm:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
+                      className={`text-[56px] sm:text-[72px] md:text-[88px] font-black leading-none bg-gradient-to-r ${scoreGradient} bg-clip-text text-transparent`}
                       style={{ fontFamily: 'var(--font-bebas)', letterSpacing: '2px' }}
                     >
                       {displayScore}%
@@ -883,8 +883,8 @@ export default function MatchmakerResults({
                   transition={{ delay: 1.0, duration: 0.6 }}
                   className="flex justify-center mb-8"
                 >
-                  <div className="relative">
-                    <svg width="240" height="240" viewBox="0 0 240 240">
+                  <div className="relative w-full max-w-[240px] mx-auto">
+                    <svg className="w-full h-auto" viewBox="0 0 240 240">
                       {/* Background grid rings */}
                       {[0.25, 0.5, 0.75, 1].map((ring) => (
                         <motion.polygon
@@ -1029,21 +1029,21 @@ export default function MatchmakerResults({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: 1.8, type: 'spring' }}
-              className="flex items-center gap-4 p-4 rounded-xl mb-6"
+              className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-xl mb-6"
               style={{ backgroundColor: `${temperatureColor}10`, border: `1px solid ${temperatureColor}20` }}
             >
               <div
-                className="w-12 h-12 rounded-full flex items-center justify-center text-xl font-black"
+                className="w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center text-lg sm:text-xl font-black shrink-0"
                 style={{ backgroundColor: `${temperatureColor}20`, color: temperatureColor }}
               >
                 #{userRank}
               </div>
-              <div>
-                <p className="text-white font-semibold text-[15px]">
+              <div className="min-w-0">
+                <p className="text-white font-semibold text-[13px] sm:text-[15px]">
                   You rank #{userRank} of {totalCandidates} candidates
                 </p>
-                <p className="text-white/40 text-[12px]">
-                  Your score: {topMatch.score}% | Average: {avgCompetitorScore}%
+                <p className="text-white/40 text-[11px] sm:text-[12px]">
+                  Your score: {topMatch.score}% | Avg: {avgCompetitorScore}%
                 </p>
               </div>
             </motion.div>
@@ -1087,9 +1087,9 @@ export default function MatchmakerResults({
                   >
                     {comp.name.charAt(0)}
                   </motion.div>
-                  <div className="flex-1">
+                  <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-0.5">
-                      <span className="text-[11px] text-white/50 group-hover:text-white/70 transition-colors font-medium">
+                      <span className="text-[11px] text-white/50 group-hover:text-white/70 transition-colors font-medium truncate">
                         {comp.name}
                       </span>
                       <ThreatBadge level={comp.threatLevel} />
@@ -1154,7 +1154,7 @@ export default function MatchmakerResults({
                   exit={{ opacity: 0, y: -8 }}
                   className="p-3 rounded-lg bg-amber-500/10 ring-1 ring-amber-500/20"
                 >
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <p className="text-[12px] text-amber-400/80 flex-1">
                       <span className="font-bold">Stand out tip:</span> Let AI rewrite your headline, bio, and
                       skills to boost your match score. One click, instant upgrade.
@@ -1293,7 +1293,7 @@ export default function MatchmakerResults({
             transition={{ delay: 2.5 }}
             className="mb-8"
           >
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex flex-wrap items-center gap-3 mb-2">
               <h3
                 className="text-[28px] sm:text-[36px] text-white tracking-[1px]"
                 style={{ fontFamily: 'var(--font-bebas)' }}
@@ -1378,7 +1378,7 @@ export default function MatchmakerResults({
 
                       <div className="relative">
                         {/* Header row */}
-                        <div className="flex items-start justify-between mb-3">
+                        <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex items-center gap-3 min-w-0 flex-1">
                             <div
                               className="w-10 h-10 rounded-lg flex items-center justify-center text-lg font-bold flex-shrink-0"

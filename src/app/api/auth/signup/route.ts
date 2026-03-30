@@ -23,7 +23,7 @@ export async function POST(request: Request) {
     if (!rl.success) {
       return NextResponse.json(
         { error: 'Too many requests. Please try again later.' },
-        { status: 429 },
+        { status: 429, headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': '0' } },
       );
     }
 

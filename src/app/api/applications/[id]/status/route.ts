@@ -3,6 +3,7 @@ import { createServerSupabase, createServiceClient } from '@/lib/supabase-server
 import { createLogger } from '@/lib/logger';
 import { fireWebhooks } from '@/lib/webhooks';
 import { sendStatusUpdateEmail } from '@/lib/email';
+import { createNotification } from '@/lib/notifications';
 import type { ApplicationStatus, StatusChange } from '@/types';
 
 const log = createLogger('api/applications/[id]/status');
@@ -140,6 +141,37 @@ export async function PATCH(
         );
       } catch (err) {
         log.error('Failed to send status update email', { error: String(err) });
+      }
+    })();
+
+    // Create in-app notification for candidate (non-blocking)
+    (async () => {
+      try {
+        const { data: candidate } = await service
+          .from('candidates')
+          .select('user_id, full_name')
+          .eq('id', application.candidate_id)
+          .single();
+
+        if (candidate) {
+          const { data: job } = await service
+            .from('jobs')
+            .select('title')
+            .eq('id', application.job_id)
+            .single();
+
+          const statusLabel = status.replace(/_/g, ' ');
+          await createNotification(
+            candidate.user_id,
+            'application_update',
+            `Application ${statusLabel}`,
+            `Your application for ${job?.title || 'a position'} has been updated to "${statusLabel}"`,
+            '/dashboard/candidate/applications',
+            { application_id: id, status, old_status: oldStatus },
+          );
+        }
+      } catch (err) {
+        log.error('Failed to create candidate notification', { error: String(err) });
       }
     })();
 

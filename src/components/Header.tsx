@@ -6,6 +6,7 @@ import { useState, useMemo, useCallback } from 'react';
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icon } from '@iconify/react';
+import NotificationBell from './NotificationBell';
 
 interface NavItem {
   href: string;
@@ -90,8 +91,9 @@ export default function Header() {
             ))}
           </nav>
 
-          {/* Auth Buttons */}
+          {/* Notification Bell + Auth Buttons */}
           <div className="hidden md:flex items-center gap-2">
+            <NotificationBell />
             <Link
               href="/auth?mode=signin"
               className="px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/5 rounded-lg transition-all"
@@ -131,6 +133,10 @@ export default function Header() {
                   <MobileNavLink key={item.href} item={item} index={i} onClose={closeMenu} />
                 ))}
                 <div className="border-t border-white/[0.06] pt-3 mt-3 space-y-2">
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    <NotificationBell />
+                    <span className="text-sm text-white/70">Notifications</span>
+                  </div>
                   <Link href="/auth?mode=signin" className="block px-3 py-2.5 text-white/70 hover:text-white hover:bg-white/5 rounded-lg">
                     {t('signIn')}
                   </Link>

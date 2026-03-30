@@ -3,6 +3,7 @@ import { createServerSupabase, createServiceClient } from '@/lib/supabase-server
 import { createLogger } from '@/lib/logger';
 import { fireWebhooks } from '@/lib/webhooks';
 import { sendApplicationNotification } from '@/lib/email';
+import { createNotification } from '@/lib/notifications';
 import type { ApplicationStatus, StatusChange } from '@/types';
 
 const log = createLogger('api/applications');
@@ -149,6 +150,30 @@ export async function POST(request: Request) {
         }
       } catch (err) {
         log.error('Failed to send application notification email', { error: String(err) });
+      }
+    })();
+
+    // Create in-app notification for recruiter (non-blocking)
+    (async () => {
+      try {
+        const { data: recruiter } = await service
+          .from('recruiters')
+          .select('user_id')
+          .eq('id', job.recruiter_id)
+          .single();
+
+        if (recruiter) {
+          await createNotification(
+            recruiter.user_id,
+            'application_update',
+            `New application for ${job.title}`,
+            `${candidate.full_name} applied for ${job.title}`,
+            '/dashboard/recruiter/applications',
+            { application_id: application.id, candidate_id: candidate.id, job_id },
+          );
+        }
+      } catch (err) {
+        log.error('Failed to create recruiter notification', { error: String(err) });
       }
     })();
 

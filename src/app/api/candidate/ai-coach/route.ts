@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { createServerSupabase } from '@/lib/supabase-server';
 import { parseLLMJson } from '@/lib/parse-json';
+import { rateLimit } from '@/lib/rate-limit';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 const model = genAI.getGenerativeModel({
@@ -15,6 +16,15 @@ export async function POST(request: Request) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Rate limit: 15 requests per minute per user
+    const { success, remaining } = rateLimit(`ai-coach:${user.id}`, 15, 60_000);
+    if (!success) {
+      return NextResponse.json(
+        { error: 'Too many requests. Please try again later.' },
+        { status: 429, headers: { 'Retry-After': '60', 'X-RateLimit-Remaining': String(remaining) } },
+      );
     }
 
     const { action, jobDescription, platform } = await request.json();

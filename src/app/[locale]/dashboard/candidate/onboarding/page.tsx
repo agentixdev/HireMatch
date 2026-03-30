@@ -65,7 +65,52 @@ const STAGE_COLORS = [
   { bg: 'rgba(34,197,94,0.12)', core: '#22C55E', ring: 'rgba(34,197,94,0.3)' },
 ];
 
-type OnboardingStep = 'choose-path' | 'resume-upload' | 'resume-processing' | 'manual-basic' | 'manual-skills' | 'manual-prefs' | 'review' | 'done';
+/* ─── Culture & Work-Style Constants ─── */
+
+const CULTURE_VALUES = [
+  { id: 'innovation', label: 'Innovation', icon: '💡' },
+  { id: 'collaboration', label: 'Collaboration', icon: '🤝' },
+  { id: 'work-life-balance', label: 'Work-Life Balance', icon: '⚖️' },
+  { id: 'growth', label: 'Growth', icon: '📈' },
+  { id: 'autonomy', label: 'Autonomy', icon: '🎯' },
+  { id: 'stability', label: 'Stability', icon: '🏛️' },
+  { id: 'diversity', label: 'Diversity', icon: '🌍' },
+  { id: 'impact', label: 'Impact', icon: '🚀' },
+  { id: 'excellence', label: 'Excellence', icon: '⭐' },
+  { id: 'mentorship', label: 'Mentorship', icon: '🧑‍🏫' },
+];
+
+const WORK_STYLES = [
+  { id: 'fast-paced', label: 'Fast-Paced', icon: '⚡' },
+  { id: 'structured', label: 'Structured', icon: '📋' },
+  { id: 'flexible', label: 'Flexible', icon: '🔄' },
+  { id: 'creative', label: 'Creative', icon: '🎨' },
+  { id: 'data-driven', label: 'Data-Driven', icon: '📊' },
+  { id: 'people-first', label: 'People-First', icon: '❤️' },
+];
+
+const INDUSTRY_PREFS = [
+  { id: 'technology', label: 'Technology', icon: '💻' },
+  { id: 'finance', label: 'Finance', icon: '💰' },
+  { id: 'healthcare', label: 'Healthcare', icon: '🏥' },
+  { id: 'education', label: 'Education', icon: '📚' },
+  { id: 'media', label: 'Media', icon: '🎬' },
+  { id: 'retail', label: 'Retail', icon: '🛍️' },
+  { id: 'consulting', label: 'Consulting', icon: '📎' },
+  { id: 'manufacturing', label: 'Manufacturing', icon: '🏭' },
+  { id: 'energy', label: 'Energy', icon: '⚡' },
+  { id: 'legal', label: 'Legal', icon: '⚖️' },
+];
+
+const COMPANY_SIZES = [
+  { id: 'startup', label: 'Startup', desc: '1-50 employees', icon: '🌱' },
+  { id: 'scaleup', label: 'Scaleup', desc: '51-200 employees', icon: '🌿' },
+  { id: 'mid-size', label: 'Mid-size', desc: '201-1,000 employees', icon: '🌳' },
+  { id: 'enterprise', label: 'Enterprise', desc: '1,000+ employees', icon: '🏢' },
+  { id: 'any', label: 'Any Size', desc: 'No preference', icon: '🌐' },
+];
+
+type OnboardingStep = 'choose-path' | 'resume-upload' | 'resume-processing' | 'manual-basic' | 'manual-skills' | 'manual-prefs' | 'culture-prefs' | 'review' | 'done';
 
 interface ParsedCV {
   full_name: string;
@@ -179,16 +224,26 @@ export default function CandidateOnboarding() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [saving, setSaving] = useState(false);
 
+  // Culture preferences
+  const [cultureValues, setCultureValues] = useState<string[]>([]);
+  const [workStyles, setWorkStyles] = useState<string[]>([]);
+  const [industryPrefs, setIndustryPrefs] = useState<string[]>([]);
+  const [companySizePref, setCompanySizePref] = useState<string>('any');
+
   // Inline edit tracking for review
   const [editingField, setEditingField] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Auth check
+  // Auth check + skip if already completed
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) router.push('/auth?mode=signin');
+      if (!user) { router.push('/auth?mode=signin'); return; }
+      const { data: cand } = await supabase.from('candidates').select('quiz_answers').eq('user_id', user.id).single();
+      if (cand?.quiz_answers && Object.keys(cand.quiz_answers as Record<string, unknown>).length > 0) {
+        router.push('/dashboard/candidate');
+      }
     })();
   }, []);
 
@@ -291,7 +346,7 @@ export default function CandidateOnboarding() {
 
       // Brief pause to show all green checks before advancing
       await new Promise((r) => setTimeout(r, 500));
-      goTo('review');
+      goTo('culture-prefs');
     } catch {
       setError('Upload failed. Please try again.');
       goTo('resume-upload', -1);
@@ -344,7 +399,17 @@ export default function CandidateOnboarding() {
         salary_max: salaryMax ? parseInt(salaryMax) : null,
         experience_years: experienceYears ? parseInt(experienceYears) : null,
         photo_url: photoUrl || null,
-        match_tags: skills.map((s) => s.toLowerCase()),
+        match_tags: [
+          ...skills.map((s) => s.toLowerCase()),
+          ...cultureValues,
+          ...workStyles,
+        ],
+        quiz_answers: {
+          culture_values: cultureValues,
+          work_styles: workStyles,
+          industry_prefs: industryPrefs,
+          company_size_pref: companySizePref,
+        },
         updated_at: new Date().toISOString(),
       };
 
@@ -379,9 +444,9 @@ export default function CandidateOnboarding() {
 
   /* ─── Step index for progress bar ─── */
 
-  const stepOrder: OnboardingStep[] = ['choose-path', 'resume-upload', 'review', 'done'];
-  const manualStepOrder: OnboardingStep[] = ['choose-path', 'manual-basic', 'manual-skills', 'manual-prefs', 'review', 'done'];
-  const isManualPath = step.startsWith('manual-');
+  const stepOrder: OnboardingStep[] = ['choose-path', 'resume-upload', 'culture-prefs', 'review', 'done'];
+  const manualStepOrder: OnboardingStep[] = ['choose-path', 'manual-basic', 'manual-skills', 'manual-prefs', 'culture-prefs', 'review', 'done'];
+  const isManualPath = step.startsWith('manual-') || step === 'culture-prefs';
   const currentSteps = isManualPath || (!parsed && step === 'review') ? manualStepOrder : stepOrder;
   const currentStepIdx = currentSteps.indexOf(step);
 
@@ -415,6 +480,7 @@ export default function CandidateOnboarding() {
                   'manual-basic': 'Info',
                   'manual-skills': 'Skills',
                   'manual-prefs': 'Prefs',
+                  'culture-prefs': 'Culture',
                   'review': 'Review',
                   'done': 'Done',
                 };
@@ -1046,9 +1112,234 @@ export default function CandidateOnboarding() {
                       Back
                     </button>
                     <motion.button
-                      onClick={() => goTo('review')}
+                      onClick={() => goTo('culture-prefs')}
                       className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 font-medium"
                       whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} transition={springTransition}
+                    >
+                      Continue
+                    </motion.button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+
+            {/* ═══ STEP: Culture & Work-Style Preferences ═══ */}
+            {step === 'culture-prefs' && (
+              <motion.div
+                key="culture-prefs"
+                custom={direction} variants={slideVariants}
+                initial="enter" animate="center" exit="exit"
+                transition={springTransition}
+              >
+                <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl p-8 sm:p-10 relative overflow-hidden">
+                  {/* Temperature background that shifts with selections */}
+                  <motion.div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ filter: 'blur(100px)' }}
+                    animate={{
+                      backgroundColor: cultureValues.length + workStyles.length + industryPrefs.length > 6
+                        ? 'rgba(34,197,94,0.08)'
+                        : cultureValues.length + workStyles.length > 3
+                          ? 'rgba(59,130,246,0.08)'
+                          : 'rgba(168,85,247,0.05)',
+                    }}
+                    transition={{ duration: 1, ease: 'easeInOut' }}
+                  />
+
+                  <div className="relative">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-2xl font-bold text-white">Culture & Work Style</h2>
+                      <motion.span
+                        className="px-3 py-1 bg-amber-500/10 text-amber-400 text-xs font-medium rounded-full"
+                        initial={{ opacity: 0, scale: 0.8 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.3, ...springTransition }}
+                      >
+                        Almost there!
+                      </motion.span>
+                    </div>
+                    <p className="text-white/50 mt-1 mb-8">Help us match you with companies that share your values</p>
+
+                    {/* Culture Values (pick 3-5) */}
+                    <div className="mb-8">
+                      <label className="block text-sm font-medium text-white/70 mb-1">
+                        What do you value most? <span className="text-white/30">(pick 3-5)</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {CULTURE_VALUES.map((val) => {
+                          const selected = cultureValues.includes(val.id);
+                          const atMax = cultureValues.length >= 5 && !selected;
+                          return (
+                            <motion.button
+                              key={val.id}
+                              type="button"
+                              disabled={atMax}
+                              onClick={() => {
+                                if (selected) setCultureValues(prev => prev.filter(v => v !== val.id));
+                                else setCultureValues(prev => [...prev, val.id]);
+                              }}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
+                                selected
+                                  ? 'bg-blue-500/20 text-blue-300 ring-2 ring-blue-500/50 shadow-lg shadow-blue-500/10'
+                                  : atMax
+                                    ? 'bg-white/[0.02] text-white/20 cursor-not-allowed'
+                                    : 'bg-white/[0.04] text-white/60 ring-1 ring-white/10 hover:ring-blue-500/30 hover:text-blue-400'
+                              }`}
+                              whileHover={!atMax ? { scale: 1.05 } : {}}
+                              whileTap={!atMax ? { scale: 0.92 } : {}}
+                              animate={selected ? { scale: [1, 1.12, 1] } : {}}
+                              transition={springTransition}
+                            >
+                              <span>{val.icon}</span>
+                              <span>{val.label}</span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Work Styles (pick 2-3) */}
+                    <div className="mb-8">
+                      <label className="block text-sm font-medium text-white/70 mb-1">
+                        How do you work best? <span className="text-white/30">(pick 2-3)</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {WORK_STYLES.map((ws) => {
+                          const selected = workStyles.includes(ws.id);
+                          const atMax = workStyles.length >= 3 && !selected;
+                          return (
+                            <motion.button
+                              key={ws.id}
+                              type="button"
+                              disabled={atMax}
+                              onClick={() => {
+                                if (selected) setWorkStyles(prev => prev.filter(v => v !== ws.id));
+                                else setWorkStyles(prev => [...prev, ws.id]);
+                              }}
+                              className={`px-4 py-2.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
+                                selected
+                                  ? 'bg-purple-500/20 text-purple-300 ring-2 ring-purple-500/50 shadow-lg shadow-purple-500/10'
+                                  : atMax
+                                    ? 'bg-white/[0.02] text-white/20 cursor-not-allowed'
+                                    : 'bg-white/[0.04] text-white/60 ring-1 ring-white/10 hover:ring-purple-500/30 hover:text-purple-400'
+                              }`}
+                              whileHover={!atMax ? { scale: 1.05 } : {}}
+                              whileTap={!atMax ? { scale: 0.92 } : {}}
+                              animate={selected ? { scale: [1, 1.12, 1] } : {}}
+                              transition={springTransition}
+                            >
+                              <span>{ws.icon}</span>
+                              <span>{ws.label}</span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Industry Preferences (pick up to 3) */}
+                    <div className="mb-8">
+                      <label className="block text-sm font-medium text-white/70 mb-1">
+                        Preferred industries <span className="text-white/30">(up to 3)</span>
+                      </label>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        {INDUSTRY_PREFS.map((ind) => {
+                          const selected = industryPrefs.includes(ind.id);
+                          const atMax = industryPrefs.length >= 3 && !selected;
+                          return (
+                            <motion.button
+                              key={ind.id}
+                              type="button"
+                              disabled={atMax}
+                              onClick={() => {
+                                if (selected) setIndustryPrefs(prev => prev.filter(v => v !== ind.id));
+                                else setIndustryPrefs(prev => [...prev, ind.id]);
+                              }}
+                              className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
+                                selected
+                                  ? 'bg-emerald-500/20 text-emerald-300 ring-2 ring-emerald-500/50 shadow-lg shadow-emerald-500/10'
+                                  : atMax
+                                    ? 'bg-white/[0.02] text-white/20 cursor-not-allowed'
+                                    : 'bg-white/[0.04] text-white/60 ring-1 ring-white/10 hover:ring-emerald-500/30 hover:text-emerald-400'
+                              }`}
+                              whileHover={!atMax ? { scale: 1.05 } : {}}
+                              whileTap={!atMax ? { scale: 0.92 } : {}}
+                              animate={selected ? { scale: [1, 1.12, 1] } : {}}
+                              transition={springTransition}
+                            >
+                              <span>{ind.icon}</span>
+                              <span>{ind.label}</span>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Ideal Company Size */}
+                    <div className="mb-6">
+                      <label className="block text-sm font-medium text-white/70 mb-3">Ideal company size</label>
+                      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                        {COMPANY_SIZES.map((cs) => (
+                          <motion.button
+                            key={cs.id}
+                            type="button"
+                            onClick={() => setCompanySizePref(cs.id)}
+                            className={`p-3 rounded-xl border-2 text-center transition-all ${
+                              companySizePref === cs.id
+                                ? 'border-amber-500/60 bg-amber-500/10 shadow-lg shadow-amber-500/10'
+                                : 'border-white/[0.06] hover:border-white/20'
+                            }`}
+                            whileHover={{ scale: 1.05, y: -2 }}
+                            whileTap={{ scale: 0.95 }}
+                            animate={companySizePref === cs.id ? { scale: [1, 1.05, 1] } : {}}
+                            transition={springTransition}
+                          >
+                            <div className="text-xl mb-1">{cs.icon}</div>
+                            <div className={`text-xs font-semibold ${companySizePref === cs.id ? 'text-amber-300' : 'text-white/60'}`}>{cs.label}</div>
+                            <div className="text-[10px] text-white/30 mt-0.5">{cs.desc}</div>
+                          </motion.button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Selection progress indicator */}
+                    <motion.div
+                      className="mt-4 p-3 rounded-lg bg-white/[0.03] ring-1 ring-white/[0.06] flex items-center justify-between"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                    >
+                      <div className="flex items-center gap-4 text-xs text-white/40">
+                        <span className={cultureValues.length >= 3 ? 'text-green-400' : ''}>Values: {cultureValues.length}/3-5</span>
+                        <span className={workStyles.length >= 2 ? 'text-green-400' : ''}>Styles: {workStyles.length}/2-3</span>
+                        <span className={industryPrefs.length >= 1 ? 'text-green-400' : ''}>Industries: {industryPrefs.length}/3</span>
+                      </div>
+                      {cultureValues.length >= 3 && workStyles.length >= 2 && (
+                        <motion.span
+                          className="text-xs text-green-400 font-medium"
+                          initial={{ opacity: 0, scale: 0 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={springTransition}
+                        >
+                          Ready to continue!
+                        </motion.span>
+                      )}
+                    </motion.div>
+                  </div>
+
+                  <div className="relative mt-8 flex justify-between">
+                    <button
+                      onClick={() => goTo(parsed ? 'resume-upload' : 'manual-prefs', -1)}
+                      className="px-6 py-2.5 text-white/50 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors"
+                    >
+                      Back
+                    </button>
+                    <motion.button
+                      onClick={() => goTo('review')}
+                      disabled={cultureValues.length < 3 || workStyles.length < 2}
+                      className="px-6 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                      whileHover={cultureValues.length >= 3 && workStyles.length >= 2 ? { scale: 1.03 } : {}}
+                      whileTap={cultureValues.length >= 3 && workStyles.length >= 2 ? { scale: 0.97 } : {}}
+                      transition={springTransition}
                     >
                       Review Profile
                     </motion.button>
@@ -1256,6 +1547,76 @@ export default function CandidateOnboarding() {
                         </div>
                       </div>
                     )}
+                    {/* Culture & Work-Style Preferences */}
+                    {(cultureValues.length > 0 || workStyles.length > 0 || industryPrefs.length > 0) && (
+                      <div className="mt-5 pt-5 border-t border-white/[0.06]">
+                        <label className="text-xs text-white/30 uppercase tracking-wider mb-3 block">Culture & Work Preferences</label>
+                        <div className="space-y-3">
+                          {cultureValues.length > 0 && (
+                            <div>
+                              <span className="text-[10px] text-white/30 uppercase tracking-wider">Values</span>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {cultureValues.map((v, i) => (
+                                  <motion.span
+                                    key={v}
+                                    className="px-2.5 py-1 bg-blue-500/10 text-blue-400 text-xs rounded-full"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.05, ...springTransition }}
+                                  >
+                                    {CULTURE_VALUES.find(c => c.id === v)?.icon} {CULTURE_VALUES.find(c => c.id === v)?.label}
+                                  </motion.span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {workStyles.length > 0 && (
+                            <div>
+                              <span className="text-[10px] text-white/30 uppercase tracking-wider">Work Style</span>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {workStyles.map((v, i) => (
+                                  <motion.span
+                                    key={v}
+                                    className="px-2.5 py-1 bg-purple-500/10 text-purple-400 text-xs rounded-full"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.05, ...springTransition }}
+                                  >
+                                    {WORK_STYLES.find(c => c.id === v)?.icon} {WORK_STYLES.find(c => c.id === v)?.label}
+                                  </motion.span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {industryPrefs.length > 0 && (
+                            <div>
+                              <span className="text-[10px] text-white/30 uppercase tracking-wider">Industries</span>
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {industryPrefs.map((v, i) => (
+                                  <motion.span
+                                    key={v}
+                                    className="px-2.5 py-1 bg-emerald-500/10 text-emerald-400 text-xs rounded-full"
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    transition={{ delay: i * 0.05, ...springTransition }}
+                                  >
+                                    {INDUSTRY_PREFS.find(c => c.id === v)?.icon} {INDUSTRY_PREFS.find(c => c.id === v)?.label}
+                                  </motion.span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-[10px] text-white/30 uppercase tracking-wider">Company Size</span>
+                            <div className="mt-1">
+                              <span className="px-2.5 py-1 bg-amber-500/10 text-amber-400 text-xs rounded-full">
+                                {COMPANY_SIZES.find(c => c.id === companySizePref)?.icon} {COMPANY_SIZES.find(c => c.id === companySizePref)?.label}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* AI Suggestions */}
@@ -1291,7 +1652,7 @@ export default function CandidateOnboarding() {
 
                   <div className="mt-8 flex justify-between">
                     <button
-                      onClick={() => goTo(parsed ? 'resume-upload' : 'manual-prefs', -1)}
+                      onClick={() => goTo('culture-prefs', -1)}
                       className="px-6 py-2.5 text-white/50 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors"
                     >
                       Back
@@ -1324,65 +1685,122 @@ export default function CandidateOnboarding() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ ...springTransition, delay: 0.1 }}
               >
-                <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl p-12 sm:p-16 text-center">
+                <div className="bg-[#0F172A] ring-1 ring-white/10 rounded-2xl p-12 sm:p-16 text-center relative overflow-hidden">
+                  {/* Celebration gradient background */}
                   <motion.div
-                    className="text-7xl mb-6"
-                    initial={{ scale: 0, rotate: -180 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
-                  >
-                    &#x1F389;
-                  </motion.div>
+                    className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-purple-600/10 to-emerald-600/10 pointer-events-none"
+                    animate={{ opacity: [0, 0.5, 0.3] }}
+                    transition={{ duration: 2, ease: 'easeOut' }}
+                  />
 
-                  <motion.h2
-                    className="text-3xl font-bold text-white mb-3"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.4, ...springTransition }}
-                  >
-                    Your profile is live!
-                  </motion.h2>
-
-                  <motion.p
-                    className="text-white/50 text-lg mb-10"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.6 }}
-                  >
-                    Recruiters can now discover you. What&apos;s next?
-                  </motion.p>
-
-                  <motion.div
-                    className="flex flex-col sm:flex-row items-center justify-center gap-4"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.8, ...springTransition }}
-                  >
-                    <motion.button
-                      onClick={() => router.push('/dashboard/candidate/matchmaker')}
-                      className="px-8 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl shadow-lg shadow-blue-500/25 font-semibold text-lg"
-                      whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                  <div className="relative">
+                    <motion.div
+                      className="text-7xl mb-6"
+                      initial={{ scale: 0, rotate: -180 }}
+                      animate={{ scale: 1, rotate: 0 }}
+                      transition={{ type: 'spring', stiffness: 200, damping: 15, delay: 0.2 }}
                     >
-                      Take the Matchmaker Quiz
-                    </motion.button>
-                    <motion.button
-                      onClick={() => router.push('/jobs')}
-                      className="px-8 py-3 ring-1 ring-white/10 text-white/70 rounded-xl hover:bg-white/5 font-medium"
-                      whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
-                    >
-                      Browse Jobs
-                    </motion.button>
-                  </motion.div>
+                      &#x1F389;
+                    </motion.div>
 
-                  <motion.button
-                    onClick={() => router.push('/dashboard/candidate')}
-                    className="mt-6 text-sm text-white/30 hover:text-white/50 transition-colors"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 1 }}
-                  >
-                    Go to Dashboard
-                  </motion.button>
+                    <motion.h2
+                      className="text-3xl font-bold text-white mb-3"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.4, ...springTransition }}
+                    >
+                      Your profile is live!
+                    </motion.h2>
+
+                    <motion.p
+                      className="text-white/50 text-lg mb-6"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 0.6 }}
+                    >
+                      Recruiters can now discover you based on your unique profile.
+                    </motion.p>
+
+                    {/* Display top preferences */}
+                    {(cultureValues.length > 0 || workStyles.length > 0) && (
+                      <motion.div
+                        className="mb-8 p-4 bg-white/[0.03] rounded-xl ring-1 ring-white/[0.06] max-w-md mx-auto"
+                        initial={{ opacity: 0, y: 15 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: 0.7, ...springTransition }}
+                      >
+                        <p className="text-xs text-white/30 uppercase tracking-wider mb-3">Your match profile</p>
+                        <div className="flex flex-wrap justify-center gap-1.5">
+                          {cultureValues.slice(0, 3).map((v, i) => (
+                            <motion.span
+                              key={v}
+                              className="px-2.5 py-1 bg-blue-500/15 text-blue-300 text-xs rounded-full font-medium"
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.8 + i * 0.08, ...springTransition }}
+                            >
+                              {CULTURE_VALUES.find(c => c.id === v)?.icon} {CULTURE_VALUES.find(c => c.id === v)?.label}
+                            </motion.span>
+                          ))}
+                          {workStyles.slice(0, 2).map((v, i) => (
+                            <motion.span
+                              key={v}
+                              className="px-2.5 py-1 bg-purple-500/15 text-purple-300 text-xs rounded-full font-medium"
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 1.0 + i * 0.08, ...springTransition }}
+                            >
+                              {WORK_STYLES.find(c => c.id === v)?.icon} {WORK_STYLES.find(c => c.id === v)?.label}
+                            </motion.span>
+                          ))}
+                          {industryPrefs.slice(0, 2).map((v, i) => (
+                            <motion.span
+                              key={v}
+                              className="px-2.5 py-1 bg-emerald-500/15 text-emerald-300 text-xs rounded-full font-medium"
+                              initial={{ opacity: 0, scale: 0 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 1.1 + i * 0.08, ...springTransition }}
+                            >
+                              {INDUSTRY_PREFS.find(c => c.id === v)?.icon} {INDUSTRY_PREFS.find(c => c.id === v)?.label}
+                            </motion.span>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+
+                    <motion.div
+                      className="flex flex-col sm:flex-row items-center justify-center gap-4"
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.9, ...springTransition }}
+                    >
+                      <motion.button
+                        onClick={() => router.push('/dashboard/candidate')}
+                        className="px-10 py-3.5 bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white rounded-xl shadow-lg shadow-blue-500/25 font-semibold text-lg"
+                        whileHover={{ scale: 1.05, boxShadow: '0 12px 40px rgba(99, 102, 241, 0.3)' }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        Find My Matches
+                      </motion.button>
+                      <motion.button
+                        onClick={() => router.push('/jobs')}
+                        className="px-8 py-3 ring-1 ring-white/10 text-white/70 rounded-xl hover:bg-white/5 font-medium"
+                        whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                      >
+                        Browse Jobs
+                      </motion.button>
+                    </motion.div>
+
+                    <motion.button
+                      onClick={() => router.push('/dashboard/candidate')}
+                      className="mt-6 text-sm text-white/30 hover:text-white/50 transition-colors"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: 1.2 }}
+                    >
+                      Go to Dashboard
+                    </motion.button>
+                  </div>
                 </div>
               </motion.div>
             )}
