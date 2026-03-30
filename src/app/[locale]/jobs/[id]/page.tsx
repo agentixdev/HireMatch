@@ -17,7 +17,7 @@ export async function generateMetadata({
 
   const { data } = await supabase
     .from('jobs')
-    .select('title, description, industry, city, country, recruiter:recruiters(company_name, company_logo_url)')
+    .select('title, description, industry, city, country, company_name, company_logo, recruiter:recruiters(company_name, company_logo_url)')
     .eq('id', id)
     .eq('is_active', true)
     .single();
@@ -25,7 +25,8 @@ export async function generateMetadata({
   if (!data) return { title: 'Job Not Found | HireMatch' };
 
   const rec = data.recruiter as unknown as Pick<Recruiter, 'company_name' | 'company_logo_url'> | null;
-  const title = `${data.title} at ${rec?.company_name || 'Company'} | HireMatch`;
+  const companyName = rec?.company_name || (data as unknown as { company_name?: string }).company_name || 'Company';
+  const title = `${data.title} at ${companyName} | HireMatch`;
   const description = data.description
     ? data.description.slice(0, 155).replace(/\s+\S*$/, '') + '...'
     : `${data.title} — ${data.industry} role${data.city ? ` in ${data.city}` : ''}. Apply on HireMatch.`;
@@ -107,7 +108,7 @@ export default async function JobDetailPage({
     employmentType: job.job_type === 'full-time' ? 'FULL_TIME' : job.job_type === 'part-time' ? 'PART_TIME' : job.job_type === 'contract' ? 'CONTRACTOR' : job.job_type === 'internship' ? 'INTERN' : 'OTHER',
     hiringOrganization: {
       '@type': 'Organization',
-      name: recruiter?.company_name || (job as Record<string, unknown>).company_name as string || 'Company',
+      name: recruiter?.company_name || (job as unknown as { company_name?: string }).company_name || 'Company',
       ...(recruiter?.company_logo_url ? { logo: recruiter.company_logo_url } : {}),
       ...(recruiter?.company_website ? { sameAs: recruiter.company_website } : {}),
     },
