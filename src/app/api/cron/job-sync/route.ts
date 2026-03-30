@@ -23,65 +23,63 @@ const ADZUNA_COUNTRIES: Record<string, string> = {
 // ---------------------------------------------------------------------------
 
 const COUNTRY_NAME_TO_CODE: Record<string, string> = {
-  'united states': 'US', 'usa': 'US', 'us': 'US', 'u.s.': 'US', 'u.s.a.': 'US',
-  'united kingdom': 'GB', 'uk': 'GB', 'england': 'GB', 'scotland': 'GB', 'wales': 'GB',
-  'germany': 'DE', 'deutschland': 'DE',
-  'france': 'FR',
-  'spain': 'ES', 'españa': 'ES',
-  'italy': 'IT', 'italia': 'IT',
-  'netherlands': 'NL', 'holland': 'NL', 'the netherlands': 'NL',
-  'belgium': 'BE', 'belgique': 'BE',
-  'austria': 'AT', 'österreich': 'AT',
-  'portugal': 'PT',
-  'ireland': 'IE',
-  'sweden': 'SE', 'sverige': 'SE',
-  'denmark': 'DK', 'danmark': 'DK',
-  'norway': 'NO', 'norge': 'NO',
-  'finland': 'FI', 'suomi': 'FI',
-  'poland': 'PL', 'polska': 'PL',
-  'czech republic': 'CZ', 'czechia': 'CZ',
-  'romania': 'RO',
-  'switzerland': 'CH', 'schweiz': 'CH', 'suisse': 'CH',
-  'canada': 'CA',
-  'india': 'IN',
-  'mexico': 'MX', 'méxico': 'MX',
-  'brazil': 'BR', 'brasil': 'BR',
-  'argentina': 'AR',
-  'china': 'CN',
-  'japan': 'JP',
-  'south korea': 'KR', 'korea': 'KR',
-  'vietnam': 'VN', 'viet nam': 'VN',
-  'philippines': 'PH',
-  'australia': 'AU',
-  'new zealand': 'NZ',
-  'singapore': 'SG',
-  'israel': 'IL',
-  'turkey': 'TR', 'türkiye': 'TR',
-  'worldwide': 'US',
-  'anywhere': 'US',
-  'global': 'US',
-  'remote': 'US',
-  'europe': 'DE',
-  'european union': 'DE',
-  'eu': 'DE',
-  'latin america': 'BR',
-  'latam': 'BR',
-  'asia': 'SG',
+  'united states': 'us', 'usa': 'us', 'us': 'us', 'u.s.': 'us', 'u.s.a.': 'us',
+  'united kingdom': 'gb', 'uk': 'gb', 'england': 'gb', 'scotland': 'gb', 'wales': 'gb',
+  'germany': 'de', 'deutschland': 'de',
+  'france': 'fr',
+  'spain': 'es', 'españa': 'es',
+  'italy': 'it', 'italia': 'it',
+  'netherlands': 'nl', 'holland': 'nl', 'the netherlands': 'nl',
+  'belgium': 'be', 'belgique': 'be',
+  'austria': 'at', 'österreich': 'at',
+  'portugal': 'pt',
+  'ireland': 'ie',
+  'sweden': 'se', 'sverige': 'se',
+  'denmark': 'dk', 'danmark': 'dk',
+  'norway': 'no', 'norge': 'no',
+  'finland': 'fi', 'suomi': 'fi',
+  'poland': 'pl', 'polska': 'pl',
+  'czech republic': 'cz', 'czechia': 'cz',
+  'romania': 'ro',
+  'switzerland': 'ch', 'schweiz': 'ch', 'suisse': 'ch',
+  'canada': 'ca',
+  'india': 'in',
+  'mexico': 'mx', 'méxico': 'mx',
+  'brazil': 'br', 'brasil': 'br',
+  'argentina': 'ar',
+  'china': 'cn',
+  'japan': 'jp',
+  'south korea': 'kr', 'korea': 'kr',
+  'vietnam': 'vn', 'viet nam': 'vn',
+  'philippines': 'ph',
+  'australia': 'us', 'new zealand': 'us',
+  'singapore': 'us', 'israel': 'us',
+  'turkey': 'us', 'türkiye': 'us',
+  'worldwide': 'us',
+  'anywhere': 'us',
+  'global': 'us',
+  'remote': 'us',
+  'europe': 'de',
+  'european union': 'de',
+  'eu': 'de',
+  'latin america': 'br',
+  'latam': 'br',
+  'asia': 'jp',
 };
 
 /**
  * Try to extract a 2-letter country code from a free-form location string.
  * Falls back to defaultCode if nothing matches.
  */
-function parseCountryFromLocation(location: string | null | undefined, defaultCode = 'US'): string {
+function parseCountryFromLocation(location: string | null | undefined, defaultCode = 'us'): string {
   if (!location) return defaultCode;
 
   const loc = location.trim();
 
   // Already a 2-letter code at the end, e.g. "Berlin, DE"
-  const trailingCode = loc.match(/\b([A-Z]{2})$/);
+  const trailingCode = loc.match(/\b([A-Za-z]{2})$/);
   if (trailingCode) {
-    return trailingCode[1];
+    return trailingCode[1].toLowerCase();
   }
 
   // Check each known country name (longest match first by iterating)
@@ -203,7 +201,7 @@ function normalizeJSearchJob(job: JSearchJob): NormalizedJob {
   return {
     title: job.job_title,
     description: job.job_description?.slice(0, 10000) || '',
-    country: (job.job_country || '').toUpperCase().slice(0, 2),
+    country: (job.job_country || '').toLowerCase().slice(0, 2),
     city: job.job_city || null,
     job_type: normalizeEmploymentType(job.job_employment_type),
     work_mode: job.job_is_remote ? 'remote' : 'onsite',
@@ -285,7 +283,7 @@ function normalizeAdzunaJob(job: AdzunaJob, country: string): NormalizedJob {
   return {
     title: job.title,
     description: job.description?.slice(0, 10000) || '',
-    country: country.toUpperCase(),
+    country: country.toLowerCase(),
     city,
     job_type: 'full-time',
     work_mode: 'onsite',
@@ -381,7 +379,7 @@ function normalizeRemotiveJobType(raw: string | undefined): string {
 
 function normalizeRemotiveJob(job: RemotiveJob): NormalizedJob {
   const salary = parseSalaryString(job.salary);
-  const country = parseCountryFromLocation(job.candidate_required_location, 'US');
+  const country = parseCountryFromLocation(job.candidate_required_location, 'us');
 
   return {
     title: job.title,
@@ -454,7 +452,7 @@ interface ArbeitnowJob {
 }
 
 function normalizeArbeitnowJob(job: ArbeitnowJob): NormalizedJob {
-  const country = parseCountryFromLocation(job.location, 'DE');
+  const country = parseCountryFromLocation(job.location, 'de');
   const city = job.location?.split(',')[0]?.trim() || null;
 
   // Map job_types
@@ -531,7 +529,7 @@ interface RemoteOKJob {
 }
 
 function normalizeRemoteOKJob(job: RemoteOKJob): NormalizedJob {
-  const country = parseCountryFromLocation(job.location, 'US');
+  const country = parseCountryFromLocation(job.location, 'us');
 
   return {
     title: job.position,
@@ -647,7 +645,7 @@ function normalizeWWRItem(item: WWRParsedItem): NormalizedJob {
   return {
     title: jobTitle,
     description: item.description || '',
-    country: 'US',
+    country: 'us',
     city: null,
     job_type: 'full-time',
     work_mode: 'remote',
