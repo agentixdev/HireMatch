@@ -67,6 +67,13 @@ const COUNTRY_NAME_TO_CODE: Record<string, string> = {
   'asia': 'jp',
 };
 
+/** Valid country codes in our DB */
+const VALID_COUNTRY_CODES = new Set([
+  'us', 'ca', 'gb', 'ch', 'de', 'fr', 'es', 'it', 'nl', 'be',
+  'at', 'pt', 'ie', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro',
+  'in', 'mx', 'br', 'ar', 'cn', 'jp', 'kr', 'vn', 'ph',
+]);
+
 /**
  * Try to extract a 2-letter country code from a free-form location string.
  * Falls back to defaultCode if nothing matches.
@@ -77,9 +84,13 @@ function parseCountryFromLocation(location: string | null | undefined, defaultCo
   const loc = location.trim();
 
   // Already a 2-letter code at the end, e.g. "Berlin, DE"
+  // Only accept if it's a valid country code (not a US state like NY, TX, CA)
   const trailingCode = loc.match(/\b([A-Za-z]{2})$/);
   if (trailingCode) {
-    return trailingCode[1].toLowerCase();
+    const code = trailingCode[1].toLowerCase();
+    if (VALID_COUNTRY_CODES.has(code)) {
+      return code;
+    }
   }
 
   // Check each known country name (longest match first by iterating)
@@ -702,13 +713,30 @@ const UPSERT_BATCH_SIZE = 100;
 async function upsertJobs(
   supabase: Awaited<ReturnType<typeof createServiceClient>>,
   jobs: NormalizedJob[]
-): Promise<number> {
-  if (jobs.length === 0) return 0;
+): Promise<{ upserted: number; errors: string[] }> {
+  if (jobs.length === 0) return { upserted: 0, errors: [] };
 
   let upserted = 0;
+  const errors: string[] = [];
 
-  for (let i = 0; i < jobs.length; i += UPSERT_BATCH_SIZE) {
-    const batch = jobs.slice(i, i + UPSERT_BATCH_SIZE);
+  // Validate and sanitize before upserting
+  const validJobs = jobs
+    .filter((j) => {
+      if (!VALID_COUNTRY_CODES.has(j.country)) {
+        console.warn(`Skipping job with invalid country "${j.country}": ${j.title}`);
+        return false;
+      }
+      return true;
+    })
+    .map((j) => ({
+      ...j,
+      // DB columns are integer, ensure no decimals
+      salary_min: j.salary_min != null ? Math.round(j.salary_min) : null,
+      salary_max: j.salary_max != null ? Math.round(j.salary_max) : null,
+    }));
+
+  for (let i = 0; i < validJobs.length; i += UPSERT_BATCH_SIZE) {
+    const batch = validJobs.slice(i, i + UPSERT_BATCH_SIZE);
 
     const { error, data } = await supabase
       .from('jobs')
@@ -716,13 +744,15 @@ async function upsertJobs(
       .select('id');
 
     if (error) {
-      console.error(`Upsert batch error (offset ${i}):`, error.message);
+      const msg = `Upsert batch error (offset ${i}, ${batch.length} jobs): ${error.message}`;
+      console.error(msg);
+      errors.push(msg);
     } else {
       upserted += data?.length ?? batch.length;
     }
   }
 
-  return upserted;
+  return { upserted, errors };
 }
 
 // ---------------------------------------------------------------------------
@@ -851,12 +881,20 @@ export async function GET(request: Request) {
     // -----------------------------------------------------------------------
     // 4. Upsert all sources
     // -----------------------------------------------------------------------
-    stats.jsearch.upserted = await upsertJobs(supabase, uniqueJSearch);
-    stats.adzuna.upserted = await upsertJobs(supabase, uniqueAdzuna);
-    stats.remotive.upserted = await upsertJobs(supabase, uniqueRemotive);
-    stats.arbeitnow.upserted = await upsertJobs(supabase, uniqueArbeitnow);
-    stats.remoteok.upserted = await upsertJobs(supabase, uniqueRemoteOK);
-    stats.weworkremotely.upserted = await upsertJobs(supabase, uniqueWWR);
+    const allErrors: string[] = [];
+
+    const upsertAndTrack = async (source: string, jobs: NormalizedJob[]) => {
+      const result = await upsertJobs(supabase, jobs);
+      stats[source].upserted = result.upserted;
+      if (result.errors.length > 0) allErrors.push(...result.errors);
+    };
+
+    await upsertAndTrack('jsearch', uniqueJSearch);
+    await upsertAndTrack('adzuna', uniqueAdzuna);
+    await upsertAndTrack('remotive', uniqueRemotive);
+    await upsertAndTrack('arbeitnow', uniqueArbeitnow);
+    await upsertAndTrack('remoteok', uniqueRemoteOK);
+    await upsertAndTrack('weworkremotely', uniqueWWR);
 
     // -----------------------------------------------------------------------
     // 5. Log summary
@@ -872,6 +910,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       total: { fetched: totalFetched, upserted: totalUpserted },
+      ...(allErrors.length > 0 ? { errors: allErrors } : {}),
       jsearch: stats.jsearch,
       adzuna: stats.adzuna,
       remotive: stats.remotive,
