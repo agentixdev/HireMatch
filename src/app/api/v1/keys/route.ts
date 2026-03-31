@@ -36,7 +36,7 @@ export async function GET() {
     .eq('recruiter_id', recruiter.id)
     .order('created_at', { ascending: false });
 
-  return NextResponse.json({ ok: true, keys: keys || [] });
+  return NextResponse.json({ ok: true, keys: keys || [], tier: recruiter.tier || 'free' });
 }
 
 export async function POST(request: Request) {
