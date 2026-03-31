@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     const supabase = await createServerSupabase();
     const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
     if (!user) {
-      // Return empty notifications for unauthenticated users (bell component calls on every page)
+      // Return empty for unauthenticated users — NotificationBell calls on every page load
       return NextResponse.json({ notifications: [], unread_count: 0 });
     }
 
