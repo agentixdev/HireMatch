@@ -124,6 +124,7 @@ export interface Job {
   is_featured: boolean;
   views_count: number;
   applications_count: number;
+  posted_at?: string;
   created_at: string;
   updated_at: string;
   expires_at?: string;

@@ -258,7 +258,7 @@ export default function JobsList({
                     </div>
                   )}
                   <div className="text-xs text-white/40 mt-1">
-                    {timeAgo(job.created_at)}
+                    {timeAgo(job.posted_at || job.created_at)}
                   </div>
                   {job.external_url && (
                     <div className="text-xs text-blue-400 mt-1.5 flex items-center gap-1 justify-end">

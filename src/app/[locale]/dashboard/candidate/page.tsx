@@ -184,10 +184,13 @@ export default function CandidateDashboard() {
       const res = await fetch('/api/candidate/matched-jobs');
       const json = await res.json();
       if (!res.ok) throw new Error(json.error);
-      setMatchedJobs(json.matches || []);
+      const matches = json.matches || [];
+      setMatchedJobs(matches);
       setMatchesLoaded(true);
+      // Update match counter (matches are now persisted server-side)
+      setMatchCount(prev => Math.max(prev, matches.length));
 
-      if (json.matches?.length > 0) {
+      if (matches.length > 0) {
         confetti({ particleCount: 80, spread: 70, origin: { y: 0.5 }, colors: ['#3b82f6', '#10b981', '#f59e0b'] });
       }
       setTimeout(() => matchesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);

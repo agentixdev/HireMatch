@@ -103,7 +103,7 @@ export default async function JobDetailPage({
     '@type': 'JobPosting',
     title: job.title,
     description: job.description,
-    datePosted: job.created_at,
+    datePosted: job.posted_at || job.created_at,
     ...(job.expires_at ? { validThrough: job.expires_at } : {}),
     employmentType: job.job_type === 'full-time' ? 'FULL_TIME' : job.job_type === 'part-time' ? 'PART_TIME' : job.job_type === 'contract' ? 'CONTRACTOR' : job.job_type === 'internship' ? 'INTERN' : 'OTHER',
     hiringOrganization: {

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import type { Job, Recruiter, MatchBreakdown } from '@/types';
 import confetti from 'canvas-confetti';
+import ApplyModal from '@/components/ApplyModal';
 
 /* ================================================================
    INDUSTRY THEMING — maps industry to accent colors
@@ -299,18 +300,18 @@ function SimilarJobCard({ job, locale }: { job: Job & { recruiter?: Pick<Recruit
 /* ================================================================
    DETAIL APPLY BUTTON — WHB VoteButton "detail" variant wrapper
    ================================================================ */
-function DetailApplyButton({ jobId, recruiterId, candidateId, theme, externalUrl }: {
-  jobId: string;
+function DetailApplyButton({ job, recruiterId, candidateId, theme, externalUrl, companyName }: {
+  job: Job;
   recruiterId: string;
   candidateId: string | null;
   theme: ReturnType<typeof getIndustryTheme>;
   externalUrl?: string | null;
+  companyName?: string;
 }) {
   const router = useRouter();
   const supabase = createClient();
   const [applied, setApplied] = useState(false);
-  const [applying, setApplying] = useState(false);
-  const [applySuccess, setApplySuccess] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
 
   // Check existing application
   useEffect(() => {
@@ -320,95 +321,85 @@ function DetailApplyButton({ jobId, recruiterId, candidateId, theme, externalUrl
         .from('applications')
         .select('id')
         .eq('candidate_id', candidateId!)
-        .eq('job_id', jobId)
+        .eq('job_id', job.id)
         .single();
       if (app) setApplied(true);
     }
     check();
-  }, [candidateId, jobId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [candidateId, job.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleApply = useCallback(async () => {
-    // External jobs: open the original listing URL
-    if (externalUrl) {
-      window.open(externalUrl, '_blank', 'noopener,noreferrer');
-      return;
-    }
-
+  const handleClick = useCallback(() => {
     if (!candidateId) {
       router.push('/auth?mode=signin');
       return;
     }
+    if (applied) return;
+    setModalOpen(true);
+  }, [candidateId, applied, router]);
 
-    setApplying(true);
-    const { error } = await supabase
-      .from('applications')
-      .insert({
-        candidate_id: candidateId,
-        job_id: jobId,
-        recruiter_id: recruiterId,
-        status: 'applied',
-        status_history: [{ status: 'applied', changed_at: new Date().toISOString(), changed_by: candidateId }],
-      });
-
-    if (!error) {
-      setApplied(true);
-      setApplySuccess(true);
-
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.7 },
-        colors: [theme.hex, '#ffffff', '#6366f1'],
-      });
-
-      supabase.rpc('increment_applications', { job_id: jobId }).then(
-        () => {},
-        (err: unknown) => console.error('[job-apply] Failed to increment applications:', err)
-      );
-      setTimeout(() => setApplySuccess(false), 3000);
-    }
-    setApplying(false);
-  }, [candidateId, jobId, recruiterId, externalUrl, router, supabase, theme.hex]);
+  const handleApplied = useCallback(() => {
+    setApplied(true);
+    setModalOpen(false);
+    confetti({
+      particleCount: 100,
+      spread: 70,
+      origin: { y: 0.7 },
+      colors: [theme.hex, '#ffffff', '#6366f1'],
+    });
+  }, [theme.hex]);
 
   return (
-    <motion.button
-      onClick={handleApply}
-      disabled={applied || applying}
-      whileHover={!applied ? { scale: 1.015 } : undefined}
-      whileTap={!applied ? { scale: 0.985 } : undefined}
-      transition={{ type: 'spring', stiffness: 400, damping: 17 }}
-      className={`w-full py-4 lg:py-5 rounded-xl font-semibold text-lg lg:text-xl transition-all industry-glow ${
-        applied
-          ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
-          : applying
-          ? 'bg-white/10 text-white/50 cursor-wait'
-          : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-indigo-500/25 cursor-pointer'
-      }`}
-    >
-      <AnimatePresence mode="wait">
-        {applied ? (
-          <motion.span
-            key="applied"
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            className="flex items-center justify-center gap-2"
-          >
-            <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            {applySuccess ? 'Application Sent!' : 'Applied'}
-          </motion.span>
-        ) : applying ? (
-          <motion.span key="applying" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            Applying...
-          </motion.span>
-        ) : (
-          <motion.span key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            {externalUrl ? 'Apply on Source Site' : candidateId ? 'Apply Now' : 'Sign In to Apply'}
-          </motion.span>
-        )}
-      </AnimatePresence>
-    </motion.button>
+    <>
+      <motion.button
+        onClick={handleClick}
+        disabled={applied}
+        whileHover={!applied ? { scale: 1.015 } : undefined}
+        whileTap={!applied ? { scale: 0.985 } : undefined}
+        transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+        className={`w-full py-4 lg:py-5 rounded-xl font-semibold text-lg lg:text-xl transition-all industry-glow ${
+          applied
+            ? 'bg-green-500/20 text-green-400 border border-green-500/30 cursor-default'
+            : 'bg-gradient-to-r from-indigo-600 via-blue-600 to-indigo-600 text-white hover:shadow-xl hover:shadow-indigo-500/25 cursor-pointer'
+        }`}
+      >
+        <AnimatePresence mode="wait">
+          {applied ? (
+            <motion.span
+              key="applied"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex items-center justify-center gap-2"
+            >
+              <svg className="w-5 h-5 lg:w-6 lg:h-6" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Applied
+            </motion.span>
+          ) : (
+            <motion.span key="apply" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+              {candidateId ? 'Apply Now' : 'Sign In to Apply'}
+            </motion.span>
+          )}
+        </AnimatePresence>
+      </motion.button>
+
+      <ApplyModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        job={{
+          id: job.id,
+          title: job.title,
+          description: job.description,
+          skills_required: job.skills_required,
+          industry: job.industry,
+          company_name: companyName,
+        }}
+        candidateId={candidateId}
+        externalUrl={externalUrl}
+        recruiterId={recruiterId}
+        onApplied={handleApplied}
+      />
+    </>
   );
 }
 
@@ -562,7 +553,8 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
 
   // Computed values
   const [now] = useState(() => Date.now());
-  const daysPosted = Math.max(1, Math.floor((now - new Date(job.created_at).getTime()) / 86400000));
+  const postedDate = job.posted_at || job.created_at;
+  const daysPosted = Math.max(1, Math.floor((now - new Date(postedDate).getTime()) / 86400000));
   const formatSalary = (n: number) => {
     if (n >= 1000) return `${Math.round(n / 1000)}k`;
     return n.toString();
@@ -819,11 +811,12 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
           {/* Apply Button — full width, WHB VoteButton detail variant */}
           <motion.div variants={fadeOnly} className="mb-6">
             <DetailApplyButton
-              jobId={job.id}
+              job={job}
               recruiterId={job.recruiter_id}
               candidateId={candidateId}
               theme={theme}
               externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
+              companyName={recruiter.company_name}
             />
           </motion.div>
 
@@ -1003,7 +996,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
               <div className="pt-4 border-t border-white/[0.06] space-y-1.5 text-[12px]">
                 <div className="flex justify-between">
                   <span className="text-white/40">Posted</span>
-                  <span className="text-white/60">{new Date(job.created_at).toLocaleDateString()}</span>
+                  <span className="text-white/60">{new Date(postedDate).toLocaleDateString()}</span>
                 </div>
                 {job.expires_at && (
                   <div className="flex justify-between">
@@ -1223,11 +1216,12 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
               transition={{ duration: 0.5 }}
             >
               <DetailApplyButton
-                jobId={job.id}
+                job={job}
                 recruiterId={job.recruiter_id}
                 candidateId={candidateId}
                 theme={theme}
                 externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
+                companyName={recruiter.company_name}
               />
             </motion.div>
 

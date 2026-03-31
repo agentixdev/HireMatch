@@ -1,21 +1,31 @@
 import { NextResponse } from 'next/server';
 import { createServiceClient } from '@/lib/supabase-server';
 
-export const maxDuration = 120;
+export const maxDuration = 300;
 
-// Search queries by country — top tech roles
-const SEARCH_QUERIES = [
-  { query: 'software engineer', countries: ['us', 'gb', 'de', 'ca', 'fr', 'nl'] },
-  { query: 'data scientist', countries: ['us', 'gb', 'de', 'ch'] },
-  { query: 'product manager', countries: ['us', 'gb', 'de'] },
-  { query: 'devops engineer', countries: ['us', 'gb', 'de', 'nl'] },
-  { query: 'frontend developer', countries: ['us', 'gb', 'de', 'fr', 'es'] },
+// Search queries — top tech roles
+const SEARCH_QUERIES_LIST = [
+  'software engineer', 'data scientist', 'product manager', 'devops engineer', 'frontend developer',
+  'backend developer', 'full stack developer', 'mobile developer', 'AI engineer', 'machine learning engineer',
+  'security engineer', 'QA engineer', 'data engineer', 'cloud architect', 'UX designer',
+  'technical writer', 'engineering manager', 'solutions architect', 'site reliability engineer',
+  'blockchain developer',
 ];
+
+// Countries to search across for paid APIs
+const SEARCH_COUNTRIES = ['us', 'gb', 'de', 'ca', 'fr', 'nl', 'ch', 'es', 'au', 'sg', 'ae', 'jp'];
+
+// Build query/country combos for paid sources
+const SEARCH_QUERIES = SEARCH_QUERIES_LIST.map((query) => ({
+  query,
+  countries: SEARCH_COUNTRIES,
+}));
 
 // Map Adzuna country codes
 const ADZUNA_COUNTRIES: Record<string, string> = {
   us: 'us', gb: 'gb', de: 'de', fr: 'fr', nl: 'nl',
   ca: 'ca', it: 'it', br: 'br', in: 'in', pl: 'pl',
+  au: 'au', sg: 'sg', at: 'at',
 };
 
 // ---------------------------------------------------------------------------
@@ -173,6 +183,7 @@ interface NormalizedJob {
   company_name: string | null;
   company_logo: string | null;
   source: string;
+  posted_at: string;
   expires_at: string;
   updated_at: string;
 }
@@ -227,6 +238,7 @@ function normalizeJSearchJob(job: JSearchJob): NormalizedJob {
     company_name: job.employer_name || null,
     company_logo: job.employer_logo || null,
     source: 'jsearch',
+    posted_at: job.job_posted_at_datetime_utc || new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -239,7 +251,7 @@ async function fetchJSearch(query: string, country: string): Promise<NormalizedJ
   const params = new URLSearchParams({
     query: `${query} in ${country}`,
     page: '1',
-    num_pages: '1',
+    num_pages: '3',
     date_posted: 'month',
   });
 
@@ -309,6 +321,7 @@ function normalizeAdzunaJob(job: AdzunaJob, country: string): NormalizedJob {
     company_name: job.company?.display_name || null,
     company_logo: null,
     source: 'adzuna',
+    posted_at: job.created || new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -322,32 +335,44 @@ async function fetchAdzuna(query: string, country: string): Promise<NormalizedJo
   const adzunaCountry = ADZUNA_COUNTRIES[country];
   if (!adzunaCountry) return [];
 
-  const params = new URLSearchParams({
-    app_id: appId,
-    app_key: apiKey,
-    results_per_page: '50',
-    what: query,
-  });
+  const allJobs: NormalizedJob[] = [];
+  const ADZUNA_PAGES = [1, 2, 3];
 
-  const url = `https://api.adzuna.com/v1/api/jobs/${adzunaCountry}/search/1?${params}`;
+  for (const page of ADZUNA_PAGES) {
+    try {
+      const params = new URLSearchParams({
+        app_id: appId,
+        app_key: apiKey,
+        results_per_page: '100',
+        what: query,
+      });
 
-  try {
-    const res = await fetch(url, {
-      signal: AbortSignal.timeout(15000),
-    });
+      const url = `https://api.adzuna.com/v1/api/jobs/${adzunaCountry}/search/${page}?${params}`;
 
-    if (!res.ok) {
-      console.warn(`Adzuna API error ${res.status} for "${query}" in ${country}`);
-      return [];
+      const res = await fetch(url, {
+        signal: AbortSignal.timeout(15000),
+      });
+
+      if (!res.ok) {
+        console.warn(`Adzuna API error ${res.status} for "${query}" in ${country} page ${page}`);
+        break; // Stop paginating on error
+      }
+
+      const json = await res.json();
+      const results: AdzunaJob[] = json?.results ?? [];
+      if (results.length === 0) break; // No more results
+
+      allJobs.push(...results.map((job) => normalizeAdzunaJob(job, country)));
+
+      // Small delay between pages to respect rate limits
+      if (page < ADZUNA_PAGES[ADZUNA_PAGES.length - 1]) await delay(300);
+    } catch (err) {
+      console.warn(`Adzuna fetch failed for "${query}" in ${country} page ${page}:`, err);
+      break;
     }
-
-    const json = await res.json();
-    const results: AdzunaJob[] = json?.results ?? [];
-    return results.map((job) => normalizeAdzunaJob(job, country));
-  } catch (err) {
-    console.warn(`Adzuna fetch failed for "${query}" in ${country}:`, err);
-    return [];
   }
+
+  return allJobs;
 }
 
 // ---------------------------------------------------------------------------
@@ -410,37 +435,36 @@ function normalizeRemotiveJob(job: RemotiveJob): NormalizedJob {
     company_name: job.company_name || null,
     company_logo: job.company_logo || null,
     source: 'remotive',
+    posted_at: job.publication_date || new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
 }
 
 async function fetchRemotive(): Promise<NormalizedJob[]> {
-  const allJobs: NormalizedJob[] = [];
-
-  for (const category of REMOTIVE_CATEGORIES) {
-    try {
-      const url = `https://remotive.com/api/remote-jobs?category=${category}&limit=100`;
+  const results = await Promise.allSettled(
+    REMOTIVE_CATEGORIES.map(async (category) => {
+      const url = `https://remotive.com/api/remote-jobs?category=${category}&limit=500`;
       const res = await fetch(url, {
         headers: COMMON_HEADERS,
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(20000),
       });
 
       if (!res.ok) {
         console.warn(`Remotive API error ${res.status} for category "${category}"`);
-        continue;
+        return [] as NormalizedJob[];
       }
 
       const json = await res.json();
       const jobs: RemotiveJob[] = json?.jobs ?? [];
-      allJobs.push(...jobs.map(normalizeRemotiveJob));
+      console.log(`Remotive category "${category}": ${jobs.length} jobs`);
+      return jobs.map(normalizeRemotiveJob);
+    })
+  );
 
-      // Small delay between requests to be polite
-      await delay(500);
-    } catch (err) {
-      console.warn(`Remotive fetch failed for category "${category}":`, err);
-    }
-  }
+  const allJobs = results
+    .filter((r): r is PromiseFulfilledResult<NormalizedJob[]> => r.status === 'fulfilled')
+    .flatMap((r) => r.value);
 
   return allJobs;
 }
@@ -493,31 +517,38 @@ function normalizeArbeitnowJob(job: ArbeitnowJob): NormalizedJob {
     company_name: job.company_name || null,
     company_logo: null,
     source: 'arbeitnow',
+    posted_at: job.created_at || new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
 }
 
 async function fetchArbeitnow(): Promise<NormalizedJob[]> {
-  try {
-    const url = 'https://www.arbeitnow.com/api/job-board-api';
-    const res = await fetch(url, {
-      headers: COMMON_HEADERS,
-      signal: AbortSignal.timeout(15000),
-    });
+  const ARBEITNOW_PAGES = [1, 2, 3, 4, 5];
 
-    if (!res.ok) {
-      console.warn(`Arbeitnow API error ${res.status}`);
-      return [];
-    }
+  const results = await Promise.allSettled(
+    ARBEITNOW_PAGES.map(async (page) => {
+      const url = `https://www.arbeitnow.com/api/job-board-api?page=${page}`;
+      const res = await fetch(url, {
+        headers: COMMON_HEADERS,
+        signal: AbortSignal.timeout(15000),
+      });
 
-    const json = await res.json();
-    const jobs: ArbeitnowJob[] = json?.data ?? [];
-    return jobs.map(normalizeArbeitnowJob);
-  } catch (err) {
-    console.warn('Arbeitnow fetch failed:', err);
-    return [];
-  }
+      if (!res.ok) {
+        console.warn(`Arbeitnow API error ${res.status} for page ${page}`);
+        return [] as NormalizedJob[];
+      }
+
+      const json = await res.json();
+      const jobs: ArbeitnowJob[] = json?.data ?? [];
+      console.log(`Arbeitnow page ${page}: ${jobs.length} jobs`);
+      return jobs.map(normalizeArbeitnowJob);
+    })
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<NormalizedJob[]> => r.status === 'fulfilled')
+    .flatMap((r) => r.value);
 }
 
 // ---------------------------------------------------------------------------
@@ -560,6 +591,7 @@ function normalizeRemoteOKJob(job: RemoteOKJob): NormalizedJob {
     company_name: job.company || null,
     company_logo: job.logo || null,
     source: 'remoteok',
+    posted_at: job.date || new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -671,6 +703,7 @@ function normalizeWWRItem(item: WWRParsedItem): NormalizedJob {
     company_name: companyName,
     company_logo: null,
     source: 'weworkremotely',
+    posted_at: item.pubDate ? new Date(item.pubDate).toISOString() : new Date().toISOString(),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -808,26 +841,37 @@ export async function GET(request: Request) {
 
     // -----------------------------------------------------------------------
     // 1. Fetch paid sources (JSearch + Adzuna) — query/country combos
+    //    Process in batches to avoid hitting rate limits
     // -----------------------------------------------------------------------
+    const PAID_CONCURRENCY = 4; // max concurrent requests per batch
+
     for (const { query, countries } of SEARCH_QUERIES) {
-      const countryPromises = countries.map(async (country) => {
-        if (hasJSearch) {
-          const jobs = await fetchJSearch(query, country);
-          if (jobs.length > 0) {
-            allJSearchJobs.push(...jobs);
+      // Process countries in batches of PAID_CONCURRENCY
+      for (let i = 0; i < countries.length; i += PAID_CONCURRENCY) {
+        const batch = countries.slice(i, i + PAID_CONCURRENCY);
+        const countryPromises = batch.map(async (country) => {
+          if (hasJSearch) {
+            const jobs = await fetchJSearch(query, country);
+            if (jobs.length > 0) {
+              allJSearchJobs.push(...jobs);
+            }
           }
-        }
 
-        if (hasAdzuna) {
-          const jobs = await fetchAdzuna(query, country);
-          if (jobs.length > 0) {
-            allAdzunaJobs.push(...jobs);
+          if (hasAdzuna) {
+            const jobs = await fetchAdzuna(query, country);
+            if (jobs.length > 0) {
+              allAdzunaJobs.push(...jobs);
+            }
           }
-        }
-      });
+        });
 
-      await Promise.all(countryPromises);
+        await Promise.all(countryPromises);
+        // Small delay between batches for rate-limit politeness
+        await delay(200);
+      }
     }
+
+    console.log(`Paid sources: JSearch ${allJSearchJobs.length} jobs, Adzuna ${allAdzunaJobs.length} jobs`);
 
     stats.jsearch.fetched = allJSearchJobs.length;
     stats.adzuna.fetched = allAdzunaJobs.length;

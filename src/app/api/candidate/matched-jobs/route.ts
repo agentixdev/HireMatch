@@ -34,7 +34,7 @@ export async function GET() {
       .select('id, title, description, industry, skills_required, match_tags, city, country, work_mode, salary_min, salary_max, salary_currency, job_type, experience_min, experience_max, recruiter:recruiters(company_name, company_logo_url)')
       .eq('is_active', true)
       .order('created_at', { ascending: false })
-      .limit(80);
+      .limit(200);
 
     if (!jobs || jobs.length === 0) {
       return NextResponse.json({ ok: true, matches: [] });
@@ -90,6 +90,27 @@ Return JSON:
         ...m,
         job: jobs[m.job_index],
       }));
+
+    // Persist matches to DB so counters and history work
+    if (enriched.length > 0) {
+      const matchRows = enriched.map(m => ({
+        candidate_id: candidate.id,
+        job_id: m.job.id,
+        score: Math.round(m.score),
+        breakdown: {
+          skills_match: m.skills_match,
+          experience_match: m.experience_match,
+          culture_match: m.culture_match,
+        },
+        explanation: m.why,
+      }));
+
+      // Upsert — update score if match already exists
+      service.from('matches').upsert(matchRows, { onConflict: 'candidate_id,job_id' }).then(
+        ({ error }) => { if (error) console.error('[matched-jobs] Failed to persist matches:', error.message); },
+        (err: unknown) => console.error('[matched-jobs] Failed to persist matches:', err),
+      );
+    }
 
     return NextResponse.json({ ok: true, matches: enriched });
   } catch (err) {
