@@ -214,6 +214,7 @@ export default function CandidateCard({ candidate, priority }: CandidateCardProp
 
   return (
     <motion.div
+      data-testid={`candidate-card-${candidate.id}`}
       whileHover={{ y: -2, scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300, damping: 25 }}
       className="overflow-hidden rounded-2xl bg-[#161929] border border-[#1e2235] group"

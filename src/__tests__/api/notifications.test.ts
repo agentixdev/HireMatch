@@ -4,7 +4,7 @@
  * Unit tests for GET/POST /api/notifications
  *
  * Covers:
- * - Unauthenticated users get empty notifications (not 401/500)
+ * - Unauthenticated users get empty notifications (GET polls on all pages)
  * - Authenticated users get their notifications
  * - Unread count is returned
  * - POST mark-all-read
@@ -92,7 +92,7 @@ describe('GET /api/notifications', () => {
     jest.clearAllMocks();
   });
 
-  it('returns empty notifications for unauthenticated users (no 401/500)', async () => {
+  it('returns empty notifications for unauthenticated users', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null } });
 
     const res = await GET(makeRequest('GET', 'http://localhost/api/notifications?limit=10'));

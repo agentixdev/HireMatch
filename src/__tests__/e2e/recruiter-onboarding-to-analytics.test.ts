@@ -1121,7 +1121,7 @@ describe('E2E: Recruiter Journey', () => {
       expect(json.ok).toBe(true);
     });
 
-    it('returns 401 for unauthenticated user', async () => {
+    it('returns empty notifications for unauthenticated user (GET gracefully degrades)', async () => {
       unauthenticateUser();
 
       const res = await notificationsGET(
@@ -1129,8 +1129,9 @@ describe('E2E: Recruiter Journey', () => {
       );
       const json = await res.json();
 
-      expect(res.status).toBe(401);
-      expect(json.error).toBe('Unauthorized');
+      expect(res.status).toBe(200);
+      expect(json.notifications).toEqual([]);
+      expect(json.unread_count).toBe(0);
     });
   });
 });

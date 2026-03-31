@@ -71,6 +71,12 @@ jest.mock('@/lib/supabase', () => ({
   }),
 }));
 
+// The search page uses fetch('/api/candidates/search') instead of supabase directly
+const mockFetch = jest.fn().mockResolvedValue({
+  ok: true,
+  json: async () => ({ candidates: mockCandidates, total: 2 }),
+});
+
 jest.mock('framer-motion', () => ({
   motion: new Proxy({}, {
     get: (_, tag) => React.forwardRef(({ children, ...props }: any, ref: any) => {
@@ -118,12 +124,16 @@ import RecruiterSearchPage from '@/app/[locale]/dashboard/recruiter/search/page'
 jest.useFakeTimers();
 
 describe('Recruiter Search', () => {
+  const originalFetch = global.fetch;
+
   beforeEach(() => {
     jest.clearAllMocks();
+    global.fetch = mockFetch;
   });
 
   afterEach(() => {
     jest.runOnlyPendingTimers();
+    global.fetch = originalFetch;
   });
 
   it('renders search interface', async () => {

@@ -327,8 +327,8 @@ export function PricingSection() {
         <motion.p
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
-          viewport={{ once: true }}
-          transition={{ delay: 1, duration: 0.6 }}
+          viewport={{ once: true, amount: 0.1 }}
+          transition={{ delay: 0.4, duration: 0.6 }}
           className="text-center mt-8 text-sm text-white/30"
         >
           All plans include SSL encryption, GDPR compliance, and 99.9% uptime SLA
