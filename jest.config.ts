@@ -17,6 +17,7 @@ const config: Config = {
   transformIgnorePatterns: [
     'node_modules/(?!(jose|@upstash)/)',
   ],
+  maxWorkers: 4,
   collectCoverageFrom: [
     'src/**/*.{ts,tsx}',
     '!src/**/*.d.ts',

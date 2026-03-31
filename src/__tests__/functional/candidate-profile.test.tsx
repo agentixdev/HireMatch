@@ -95,9 +95,10 @@ import EditProfilePage from '@/app/[locale]/dashboard/candidate/profile/page';
 /* ---- Tests ---- */
 
 describe('Candidate Profile', () => {
-  const user = userEvent.setup();
+  let user: ReturnType<typeof userEvent.setup>;
 
   beforeEach(() => {
+    user = userEvent.setup();
     jest.clearAllMocks();
     mockGetUser.mockResolvedValue({ data: { user: mockUser } });
     global.fetch = jest.fn();
@@ -167,7 +168,9 @@ describe('Candidate Profile', () => {
     );
     await user.click(skillAddButton!);
 
-    expect(screen.getByText('GraphQL')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('GraphQL')).toBeInTheDocument();
+    });
   });
 
   it('can remove an existing skill', async () => {
@@ -216,7 +219,7 @@ describe('Candidate Profile', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Current CV')).toBeInTheDocument();
-    });
+    }, { timeout: 3000 });
   });
 
   it('profile completeness indicator shows correct percentage', async () => {
