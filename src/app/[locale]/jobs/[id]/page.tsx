@@ -108,7 +108,7 @@ export default async function JobDetailPage({
     employmentType: job.job_type === 'full-time' ? 'FULL_TIME' : job.job_type === 'part-time' ? 'PART_TIME' : job.job_type === 'contract' ? 'CONTRACTOR' : job.job_type === 'internship' ? 'INTERN' : 'OTHER',
     hiringOrganization: {
       '@type': 'Organization',
-      name: recruiter?.company_name || (job as unknown as { company_name?: string }).company_name || 'Company',
+      name: recruiter?.company_name || (data as unknown as Record<string, unknown>).company_name as string || 'Company',
       ...(recruiter?.company_logo_url ? { logo: recruiter.company_logo_url } : {}),
       ...(recruiter?.company_website ? { sameAs: recruiter.company_website } : {}),
     },
@@ -150,7 +150,7 @@ export default async function JobDetailPage({
       <main className="flex-1 bg-transparent">
         <JobDetailClient
           job={jobOnly as Job}
-          recruiter={recruiter as Recruiter | undefined}
+          recruiter={recruiter ?? undefined}
           similarJobs={similarJobs}
           locale={locale}
         />
