@@ -1,5 +1,4 @@
 import { useTranslations } from 'next-intl';
-import Link from 'next/link';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import HeroSection from '@/components/HeroSection';
@@ -11,6 +10,14 @@ import {
   FeatureCard,
   TestimonialCard,
 } from '@/components/AnimatedSection';
+import {
+  PlatformShowcase,
+  SocialProofBar,
+  TwoSidedValue,
+  PricingSection,
+  IntegrationsTrust,
+  FinalCTA,
+} from '@/components/LandingSections';
 
 export default function HomePage() {
   const t = useTranslations();
@@ -27,11 +34,19 @@ export default function HomePage() {
           recruiterCta={t('hero.recruiterCta')}
         />
 
+        {/* Social Proof Metrics — animated counters */}
+        <SocialProofBar />
+
         {/* How It Works */}
         <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <AnimatedSection>
-              <h2 className="text-3xl font-bold text-white text-center" style={{ fontFamily: 'var(--font-bebas)' }}>How It Works</h2>
+            <AnimatedSection className="text-center">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-purple-500/10 ring-1 ring-purple-500/20 text-purple-400 text-xs font-semibold tracking-wider uppercase mb-4">
+                How It Works
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
+                Three Steps to Your Perfect Match
+              </h2>
             </AnimatedSection>
             <StaggerSection className="mt-14 grid md:grid-cols-3 gap-8">
               {[
@@ -68,47 +83,23 @@ export default function HomePage() {
           </div>
         </section>
 
-        {/* For Recruiters */}
-        <section className="py-12 sm:py-20">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <AnimatedSection className="max-w-3xl mx-auto text-center">
-              <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>For Recruiters</h2>
-              <p className="mt-4 text-lg text-white/50">
-                Post jobs, let AI rank candidates, manage your pipeline, and hire across 29 countries
-                with built-in visa compliance.
-              </p>
-            </AnimatedSection>
-            <StaggerSection className="mt-14 grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {[
-                { title: 'AI Candidate Ranking', desc: 'Candidates auto-ranked by match score against your JD', colorHex: '#3b82f6' },
-                { title: 'Visa Compliance', desc: 'Auto-tagged sponsorship requirements per country', colorHex: '#22c55e' },
-                { title: 'Pipeline Management', desc: 'Kanban board from applied to hired', colorHex: '#a855f7' },
-                { title: 'ATS Webhooks', desc: 'Integrate with your existing tools via webhooks', colorHex: '#6366f1' },
-              ].map((feature) => (
-                <StaggerItem key={feature.title}>
-                  <FeatureCard colorHex={feature.colorHex} className="p-5 h-full">
-                    <h3 className="font-semibold text-white text-sm">{feature.title}</h3>
-                    <p className="mt-2 text-xs text-white/50">{feature.desc}</p>
-                  </FeatureCard>
-                </StaggerItem>
-              ))}
-            </StaggerSection>
-            <AnimatedSection className="mt-10 text-center" delay={0.3}>
-              <Link
-                href="/auth?mode=signup&role=recruiter"
-                className="px-8 py-3 text-white bg-gradient-to-r from-blue-600 to-indigo-600 rounded-lg font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 transition-all"
-              >
-                Start Hiring — Free
-              </Link>
-            </AnimatedSection>
-          </div>
-        </section>
+        {/* Platform Showcase — the SaaS product features */}
+        <PlatformShowcase />
+
+        {/* Two-Sided Value — Candidates vs Recruiters */}
+        <TwoSidedValue />
+
+        {/* Pricing Tiers — SaaS monetization */}
+        <PricingSection />
 
         {/* Testimonials */}
         <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <AnimatedSection className="text-center">
-              <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>What People Say</h2>
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-pink-500/10 ring-1 ring-pink-500/20 text-pink-400 text-xs font-semibold tracking-wider uppercase mb-4">
+                Testimonials
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>What People Say</h2>
               <p className="mt-3 text-white/50">Join thousands of professionals finding their perfect match</p>
             </AnimatedSection>
             <div className="mt-14 grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -129,11 +120,17 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Integrations & Trust */}
+        <IntegrationsTrust />
+
         {/* Countries */}
         <section className="py-12 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <AnimatedSection>
-              <h2 className="text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>Hire Globally</h2>
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-green-500/10 ring-1 ring-green-500/20 text-green-400 text-xs font-semibold tracking-wider uppercase mb-4">
+                Global Coverage
+              </span>
+              <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>Hire Globally</h2>
               <p className="mt-4 text-lg text-white/50">
                 29 countries with real-time visa requirements and work permit data.
               </p>
@@ -154,6 +151,9 @@ export default function HomePage() {
             </StaggerSection>
           </div>
         </section>
+
+        {/* Final CTA */}
+        <FinalCTA />
 
         <Footer />
       </main>

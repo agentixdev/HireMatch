@@ -21,9 +21,9 @@ export interface HeroSectionProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const STATS = [
-  { label: 'Countries',            value: '29',   numericValue: 29,  suffix: '',    color: '#3b82f6' },
-  { label: 'Visa Types',           value: '130+', numericValue: 130, suffix: '+',   color: '#a855f7' },
-  { label: 'AI Features',          value: '4',    numericValue: 4,   suffix: '',    color: '#22c55e' },
+  { label: 'Companies Hiring',     value: '500+', numericValue: 500, suffix: '+',   color: '#3b82f6' },
+  { label: 'Candidates Matched',   value: '12K+', numericValue: 12000, suffix: '+', color: '#22c55e' },
+  { label: 'Countries',            value: '29',   numericValue: 29,  suffix: '',    color: '#a855f7' },
   { label: 'Free for Candidates',  value: '100%', numericValue: 100, suffix: '%',   color: '#ec4899' },
 ] as const;
 
@@ -298,7 +298,7 @@ export default function HeroSection({
             className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"
             style={{ boxShadow: '0 0 6px #22c55e' }}
           />
-          AI-Powered Global Recruitment
+          AI-Powered Recruitment Platform
         </motion.div>
 
         {/* ── 3. Headline with animated gradient shimmer ── */}
@@ -398,7 +398,7 @@ export default function HeroSection({
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1, duration: 0.8 }}
         >
-          No credit card required &middot; Free for candidates, always
+          No credit card required &middot; Free plan available &middot; Setup in 2 minutes
         </motion.p>
 
         {/* ── 6. Temperature stat cards ── */}

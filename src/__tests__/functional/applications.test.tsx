@@ -4,6 +4,21 @@ import userEvent from '@testing-library/user-event';
 
 /* ---- Mocks ---- */
 
+// Mock window.matchMedia (used by DashboardLayout)
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: jest.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: jest.fn(),
+    removeListener: jest.fn(),
+    addEventListener: jest.fn(),
+    removeEventListener: jest.fn(),
+    dispatchEvent: jest.fn(),
+  })),
+});
+
 const mockPush = jest.fn();
 let mockPathname = '/en/dashboard/candidate/applications';
 
@@ -138,7 +153,7 @@ describe('Candidate Applications', () => {
 
     expect(screen.getAllByText('Applied').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Shortlisted')).toBeInTheDocument();
-    expect(screen.getByText('Rejected')).toBeInTheDocument();
+    expect(screen.getAllByText('Rejected').length).toBeGreaterThanOrEqual(1);
   });
 
   it('filter pills work for each status', async () => {
@@ -182,7 +197,7 @@ describe('Candidate Applications', () => {
       expect(screen.getByText('No applications yet')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Browse Jobs')).toBeInTheDocument();
+    expect(screen.getByText('Go to Matchmaker')).toBeInTheDocument();
   });
 
   it('links to job details', async () => {

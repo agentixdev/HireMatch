@@ -25,6 +25,61 @@ export function readingTime(html: string): string {
   return `${minutes} min read`;
 }
 
+/**
+ * Category-based gradient color schemes for blog cover images.
+ * Each category gets a visually distinct gradient.
+ */
+const CATEGORY_GRADIENTS: Record<string, { from: string; via: string; to: string }> = {
+  'AI & Recruitment': { from: 'from-blue-600', via: 'via-indigo-500', to: 'to-blue-800' },
+  'Visa & Compliance': { from: 'from-emerald-500', via: 'via-teal-500', to: 'to-emerald-700' },
+  'Remote Hiring': { from: 'from-purple-600', via: 'via-violet-500', to: 'to-purple-800' },
+  'Career Tips': { from: 'from-amber-500', via: 'via-orange-500', to: 'to-amber-700' },
+  'Hiring Trends': { from: 'from-rose-500', via: 'via-pink-500', to: 'to-rose-700' },
+  'Global Hiring': { from: 'from-cyan-500', via: 'via-sky-500', to: 'to-cyan-700' },
+  'Job Search': { from: 'from-lime-500', via: 'via-green-500', to: 'to-lime-700' },
+};
+
+const DEFAULT_GRADIENT = { from: 'from-slate-600', via: 'via-slate-500', to: 'to-slate-800' };
+
+/**
+ * Returns Tailwind gradient classes for a blog post based on its first matching category tag.
+ */
+export function getCategoryGradient(tags: string[] | undefined): {
+  from: string;
+  via: string;
+  to: string;
+} {
+  if (!tags || tags.length === 0) return DEFAULT_GRADIENT;
+  for (const tag of tags) {
+    if (CATEGORY_GRADIENTS[tag]) return CATEGORY_GRADIENTS[tag];
+  }
+  return DEFAULT_GRADIENT;
+}
+
+/**
+ * Returns the primary category label from a post's tags (first known category).
+ */
+export function getPrimaryCategory(tags: string[] | undefined): string {
+  if (!tags || tags.length === 0) return 'Article';
+  for (const tag of tags) {
+    if (CATEGORY_GRADIENTS[tag]) return tag;
+  }
+  return tags[0];
+}
+
+/**
+ * Category badge color mapping for temperature-coded badges.
+ */
+export const CATEGORY_BADGE_COLORS: Record<string, { bg: string; text: string; ring: string }> = {
+  'AI & Recruitment': { bg: 'bg-blue-500/15', text: 'text-blue-400', ring: 'ring-blue-500/25' },
+  'Visa & Compliance': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', ring: 'ring-emerald-500/25' },
+  'Remote Hiring': { bg: 'bg-purple-500/15', text: 'text-purple-400', ring: 'ring-purple-500/25' },
+  'Career Tips': { bg: 'bg-amber-500/15', text: 'text-amber-400', ring: 'ring-amber-500/25' },
+  'Hiring Trends': { bg: 'bg-rose-500/15', text: 'text-rose-400', ring: 'ring-rose-500/25' },
+  'Global Hiring': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', ring: 'ring-cyan-500/25' },
+  'Job Search': { bg: 'bg-lime-500/15', text: 'text-lime-400', ring: 'ring-lime-500/25' },
+};
+
 export const sampleBlogPosts: BlogPost[] = [
   {
     id: 'sample-1',

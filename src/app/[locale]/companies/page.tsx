@@ -34,6 +34,8 @@ interface CompanyProfile {
   tier: string;
   jobs_posted_count: number;
   created_at: string;
+  source?: string; // 'recruiter' | 'arbeitnow' | 'remoteok' | etc.
+  is_external?: boolean;
 }
 
 interface JobListing {
@@ -73,6 +75,31 @@ const COUNTRY_FLAGS: Record<string, string> = {
   ch: '🇨🇭', be: '🇧🇪', at: '🇦🇹', pt: '🇵🇹', ie: '🇮🇪', se: '🇸🇪', dk: '🇩🇰', no: '🇳🇴',
   fi: '🇫🇮', pl: '🇵🇱', cz: '🇨🇿', ro: '🇷🇴', in: '🇮🇳', mx: '🇲🇽', br: '🇧🇷', ar: '🇦🇷',
   cn: '🇨🇳', jp: '🇯🇵', kr: '🇰🇷', vn: '🇻🇳', ph: '🇵🇭',
+};
+
+const COUNTRY_NAMES: Record<string, string> = {
+  us: 'United States', ca: 'Canada', gb: 'United Kingdom', de: 'Germany', fr: 'France',
+  es: 'Spain', it: 'Italy', nl: 'Netherlands', ch: 'Switzerland', be: 'Belgium',
+  at: 'Austria', pt: 'Portugal', ie: 'Ireland', se: 'Sweden', dk: 'Denmark',
+  no: 'Norway', fi: 'Finland', pl: 'Poland', cz: 'Czech Republic', ro: 'Romania',
+  in: 'India', mx: 'Mexico', br: 'Brazil', ar: 'Argentina', cn: 'China',
+  jp: 'Japan', kr: 'South Korea', vn: 'Vietnam', ph: 'Philippines',
+};
+
+function formatCountry(code: string): string {
+  if (!code) return '';
+  const lower = code.toLowerCase().trim();
+  const flag = COUNTRY_FLAGS[lower] || '';
+  const name = COUNTRY_NAMES[lower] || code.toUpperCase();
+  return `${flag} ${name}`;
+}
+
+const SOURCE_LABELS: Record<string, { label: string; color: string }> = {
+  arbeitnow: { label: 'Arbeitnow', color: '#22c55e' },
+  remoteok: { label: 'Remote OK', color: '#f59e0b' },
+  weworkremotely: { label: 'WeWorkRemotely', color: '#3b82f6' },
+  remotive: { label: 'Remotive', color: '#a855f7' },
+  recruiter: { label: 'Direct', color: '#6366f1' },
 };
 
 const SIZE_LABELS: Record<string, string> = {
@@ -335,9 +362,9 @@ function CompanyDrawer({
               </div>
               <p className="text-sm mt-0.5" style={{ color: industryColor }}>{company.industry}</p>
               <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-white/30">
-                <span>{COUNTRY_FLAGS[company.country] || ''} {company.country.toUpperCase()}</span>
+                <span>{formatCountry(company.country)}</span>
                 {company.city && <span>&middot; {company.city}</span>}
-                <span>&middot; {SIZE_LABELS[company.company_size] || company.company_size}</span>
+                {company.company_size && <span>&middot; {SIZE_LABELS[company.company_size] || company.company_size}</span>}
                 <span>&middot; {company.jobs_posted_count} jobs posted</span>
               </div>
             </div>
@@ -532,56 +559,121 @@ function CompanyDrawer({
 
 // ── Company Card ───────────────────────────────────────────────
 
+function getJobCountTemperature(jobCount: number): { border: string; glow: string; bg: string; label: string } {
+  if (jobCount >= 20) return { border: 'border-amber-500/30', glow: 'shadow-amber-500/15', bg: 'from-amber-500/10 to-orange-500/5', label: 'Hot' };
+  if (jobCount >= 10) return { border: 'border-green-500/25', glow: 'shadow-green-500/10', bg: 'from-green-500/8 to-emerald-500/3', label: 'Warm' };
+  if (jobCount >= 5) return { border: 'border-blue-500/20', glow: 'shadow-blue-500/10', bg: 'from-blue-500/8 to-indigo-500/3', label: 'Active' };
+  return { border: 'border-white/[0.08]', glow: '', bg: 'from-white/[0.02] to-transparent', label: '' };
+}
+
 function CompanyCard({
   company,
   onSelect,
+  index,
 }: {
   company: CompanyProfile;
   onSelect: () => void;
+  index: number;
 }) {
   const industryColor = getIndustryColor(company.industry);
   const tierStyle = TIER_COLORS[company.tier] || TIER_COLORS.free;
+  const temp = getJobCountTemperature(company.jobs_posted_count);
+  const sourceInfo = company.source ? SOURCE_LABELS[company.source] : undefined;
 
   return (
     <motion.div
       variants={staggerItem}
-      whileHover={{ y: -4, scale: 1.015 }}
+      whileHover={{ y: -6, scale: 1.02 }}
       transition={springSnappy}
       onClick={onSelect}
-      className="group overflow-hidden rounded-2xl bg-[#161929] border border-[#1e2235] cursor-pointer hover:border-white/10 transition-colors"
+      className={`group overflow-hidden rounded-2xl bg-[#161929] border ${temp.border} cursor-pointer hover:border-white/15 transition-all ${temp.glow ? `shadow-lg ${temp.glow}` : ''}`}
     >
-      {/* Header area */}
-      <div className="relative h-28 overflow-hidden" style={{ background: `linear-gradient(135deg, ${industryColor}20 0%, ${industryColor}05 100%)` }}>
+      {/* Header area with temperature gradient */}
+      <div className={`relative h-28 overflow-hidden bg-gradient-to-br ${temp.bg}`} style={{ background: `linear-gradient(135deg, ${industryColor}18 0%, ${industryColor}05 100%)` }}>
+        {/* Temperature indicator bar */}
+        {temp.label && (
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: '100%' }}
+            transition={{ delay: index * 0.03 + 0.3, duration: 0.6, ease: 'easeOut' }}
+            className="absolute top-0 left-0 h-[2px]"
+            style={{
+              background: company.jobs_posted_count >= 20
+                ? 'linear-gradient(90deg, #f59e0b, #ef4444)'
+                : company.jobs_posted_count >= 10
+                ? 'linear-gradient(90deg, #22c55e, #3b82f6)'
+                : 'linear-gradient(90deg, #3b82f6, #6366f1)',
+            }}
+          />
+        )}
+
         {/* Company logo */}
         <div className="absolute bottom-0 left-0 right-0 p-4 flex items-end gap-3">
-          <div className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-[#0d1117] shrink-0 flex items-center justify-center">
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ delay: index * 0.03 + 0.1, ...springBouncy }}
+            className="w-12 h-12 rounded-xl overflow-hidden border border-white/10 bg-[#0d1117] shrink-0 flex items-center justify-center"
+          >
             {company.company_logo_url ? (
               <Image src={company.company_logo_url} alt={company.company_name} width={48} height={48} className="object-contain" />
             ) : (
               <span className="text-lg font-bold" style={{ color: industryColor }}>{company.company_name[0]}</span>
             )}
-          </div>
+          </motion.div>
           <div className="min-w-0 flex-1 pb-0.5">
             <p className="text-sm font-bold text-white truncate">{company.company_name}</p>
             <p className="text-[11px] truncate" style={{ color: industryColor }}>{company.industry}</p>
           </div>
         </div>
 
-        {/* Tier badge */}
-        <div className="absolute top-2 right-2">
-          <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${tierStyle.bg} ${tierStyle.text} border ${tierStyle.border}`}>
-            {company.tier}
-          </span>
+        {/* Tier / Source badge */}
+        <div className="absolute top-2 right-2 flex items-center gap-1">
+          {company.is_external && sourceInfo && (
+            <span
+              className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider"
+              style={{ backgroundColor: sourceInfo.color + '15', color: sourceInfo.color, border: `1px solid ${sourceInfo.color}25` }}
+            >
+              {sourceInfo.label}
+            </span>
+          )}
+          {!company.is_external && (
+            <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wider ${tierStyle.bg} ${tierStyle.text} border ${tierStyle.border}`}>
+              {company.tier}
+            </span>
+          )}
         </div>
+
+        {/* Temperature label */}
+        {temp.label && (
+          <div className="absolute top-2 left-2">
+            <motion.span
+              initial={{ opacity: 0, scale: 0.5 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: index * 0.03 + 0.4, ...springBouncy }}
+              className={`px-1.5 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-wider ${
+                temp.label === 'Hot' ? 'bg-amber-500/15 text-amber-400' :
+                temp.label === 'Warm' ? 'bg-green-500/15 text-green-400' :
+                'bg-blue-500/15 text-blue-400'
+              }`}
+            >
+              {temp.label}
+            </motion.span>
+          </div>
+        )}
       </div>
 
       {/* Body */}
       <div className="px-3 py-2.5">
         <div className="flex items-center gap-1.5 text-[10px] text-white/30 mb-2">
-          <span>{COUNTRY_FLAGS[company.country] || ''} {company.country.toUpperCase()}</span>
+          {company.country && <span>{formatCountry(company.country)}</span>}
           {company.city && <><span>&middot;</span><span className="truncate">{company.city}</span></>}
-          <span>&middot;</span>
-          <span>{SIZE_LABELS[company.company_size] || company.company_size}</span>
+          {company.company_size && (
+            <>
+              <span>&middot;</span>
+              <span>{SIZE_LABELS[company.company_size] || company.company_size}</span>
+            </>
+          )}
         </div>
 
         {/* Culture tags */}
@@ -596,23 +688,36 @@ function CompanyCard({
           </div>
         )}
 
-        {/* Jobs count */}
-        <div className="flex items-center gap-1 text-[10px] text-white/20">
-          <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        {/* Jobs count with temperature indicator */}
+        <div className="flex items-center gap-1.5 text-[10px]">
+          <svg className="w-3 h-3 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
           </svg>
-          {company.jobs_posted_count} active jobs
+          <span className={company.jobs_posted_count >= 10 ? 'text-green-400 font-semibold' : 'text-white/30'}>
+            {company.jobs_posted_count} active job{company.jobs_posted_count !== 1 ? 's' : ''}
+          </span>
         </div>
       </div>
 
       {/* Action */}
       <div className="px-3 pb-3">
-        <motion.button
-          whileTap={{ scale: 0.97 }}
-          className="w-full py-2 rounded-lg text-[11px] font-semibold cursor-pointer bg-[#0d1117] border border-white/[0.06] text-white/60 hover:border-blue-500/30 hover:text-blue-300 transition-all"
-        >
-          View Company →
-        </motion.button>
+        {company.is_external ? (
+          <Link href={`/jobs?company=${encodeURIComponent(company.company_name)}`} onClick={(e) => e.stopPropagation()}>
+            <motion.button
+              whileTap={{ scale: 0.97 }}
+              className="w-full py-2 rounded-lg text-[11px] font-semibold cursor-pointer bg-gradient-to-r from-blue-600/20 to-indigo-600/20 border border-blue-500/20 text-blue-300 hover:border-blue-500/40 hover:from-blue-600/30 hover:to-indigo-600/30 transition-all"
+            >
+              View {company.jobs_posted_count} Job{company.jobs_posted_count !== 1 ? 's' : ''} →
+            </motion.button>
+          </Link>
+        ) : (
+          <motion.button
+            whileTap={{ scale: 0.97 }}
+            className="w-full py-2 rounded-lg text-[11px] font-semibold cursor-pointer bg-[#0d1117] border border-white/[0.06] text-white/60 hover:border-blue-500/30 hover:text-blue-300 transition-all"
+          >
+            View Company →
+          </motion.button>
+        )}
       </div>
     </motion.div>
   );
@@ -632,18 +737,103 @@ export default function CompaniesPage() {
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
 
-  // Fetch companies
+  // Fetch companies from recruiters table + aggregate from jobs table
   useEffect(() => {
     async function fetchCompanies() {
       setLoading(true);
-      const { data } = await supabase
+
+      // 1. Recruiter-created companies
+      const { data: recruiterData } = await supabase
         .from('recruiters')
         .select('id, user_id, company_name, company_logo_url, company_website, industry, company_size, country, city, bio, culture_tags, tier, jobs_posted_count, created_at')
         .order('jobs_posted_count', { ascending: false })
         .limit(60);
-      setCompanies((data as CompanyProfile[]) || []);
+
+      const recruiterCompanies: CompanyProfile[] = (recruiterData || []).map((r: Record<string, unknown>) => ({
+        ...r,
+        source: 'recruiter',
+        is_external: false,
+      } as CompanyProfile));
+
+      // 2. External companies from the jobs table (aggregated)
+      const { data: jobCompanies } = await supabase
+        .from('jobs')
+        .select('company_name, company_logo, source, country')
+        .not('company_name', 'is', null)
+        .not('company_name', 'eq', '');
+
+      // Aggregate by company_name
+      const companyMap = new Map<string, {
+        company_name: string;
+        company_logo?: string;
+        source: string;
+        country: string;
+        job_count: number;
+      }>();
+
+      (jobCompanies || []).forEach((job: Record<string, unknown>) => {
+        const name = (job.company_name as string || '').trim();
+        if (!name) return;
+        const key = name.toLowerCase();
+        const existing = companyMap.get(key);
+        if (existing) {
+          existing.job_count += 1;
+          // Keep the logo if we find one
+          if (!existing.company_logo && job.company_logo) {
+            existing.company_logo = job.company_logo as string;
+          }
+        } else {
+          companyMap.set(key, {
+            company_name: name,
+            company_logo: job.company_logo as string | undefined,
+            source: (job.source as string) || 'external',
+            country: (job.country as string) || '',
+            job_count: 1,
+          });
+        }
+      });
+
+      // Filter out companies that already exist as recruiter companies
+      const recruiterNames = new Set(recruiterCompanies.map((c) => c.company_name.toLowerCase()));
+
+      const externalCompanies: CompanyProfile[] = Array.from(companyMap.values())
+        .filter((c) => !recruiterNames.has(c.company_name.toLowerCase()))
+        .map((c, i) => ({
+          id: `ext-${i}-${c.company_name.replace(/\s+/g, '-').toLowerCase()}`,
+          user_id: '',
+          company_name: c.company_name,
+          company_logo_url: c.company_logo || undefined,
+          industry: inferIndustry(c.source),
+          company_size: '',
+          country: c.country,
+          city: undefined,
+          bio: undefined,
+          culture_tags: [],
+          tier: 'free',
+          jobs_posted_count: c.job_count,
+          created_at: new Date().toISOString(),
+          source: c.source,
+          is_external: true,
+        }));
+
+      // Merge and sort by job count (most active first)
+      const all = [...recruiterCompanies, ...externalCompanies]
+        .sort((a, b) => b.jobs_posted_count - a.jobs_posted_count);
+
+      setCompanies(all);
       setLoading(false);
     }
+
+    function inferIndustry(source: string): string {
+      switch (source) {
+        case 'remoteok': return 'Remote Tech';
+        case 'weworkremotely': return 'Remote Work';
+        case 'remotive': return 'Remote Tech';
+        case 'arbeitnow': return 'Technology';
+        default: return 'Technology';
+      }
+    }
+
     fetchCompanies();
   }, []);
 
@@ -715,10 +905,10 @@ export default function CompaniesPage() {
     let result = companies;
     if (filter !== 'all') {
       result = result.filter((c) => {
-        if (filter === 'pro') return c.tier === 'pro';
-        if (filter === 'enterprise') return c.tier === 'enterprise';
-        if (filter === 'startup') return ['1-10', '11-50'].includes(c.company_size);
+        if (filter === 'external') return c.is_external;
+        if (filter === 'direct') return !c.is_external;
         if (filter === 'hiring') return c.jobs_posted_count > 0;
+        if (filter === 'hot') return c.jobs_posted_count >= 10;
         return true;
       });
     }
@@ -728,6 +918,8 @@ export default function CompaniesPage() {
         (c) =>
           c.company_name.toLowerCase().includes(q) ||
           c.industry.toLowerCase().includes(q) ||
+          (c.source || '').toLowerCase().includes(q) ||
+          (c.country || '').toLowerCase().includes(q) ||
           c.culture_tags.some((t) => t.toLowerCase().includes(q))
       );
     }
@@ -742,9 +934,9 @@ export default function CompaniesPage() {
   const filterOptions = [
     { key: 'all', label: 'All' },
     { key: 'hiring', label: 'Actively Hiring' },
-    { key: 'startup', label: 'Startups' },
-    { key: 'pro', label: 'Pro' },
-    { key: 'enterprise', label: 'Enterprise' },
+    { key: 'external', label: 'External Sources' },
+    { key: 'direct', label: 'Direct / Recruiter' },
+    { key: 'hot', label: 'Hot (10+ jobs)' },
   ];
 
   return (
@@ -862,11 +1054,12 @@ export default function CompaniesPage() {
               animate="visible"
               className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
             >
-              {filtered.map((company) => (
+              {filtered.map((company, i) => (
                 <CompanyCard
                   key={company.id}
                   company={company}
-                  onSelect={() => setSelectedCompany(company)}
+                  index={i}
+                  onSelect={() => company.is_external ? undefined : setSelectedCompany(company)}
                 />
               ))}
             </motion.div>

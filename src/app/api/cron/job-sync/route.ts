@@ -3,17 +3,23 @@ import { createServiceClient } from '@/lib/supabase-server';
 
 export const maxDuration = 300;
 
-// Search queries — top tech roles
+// Search queries — globally diverse tech roles + location-specific queries
 const SEARCH_QUERIES_LIST = [
+  // Generic roles (work across all sources/countries)
   'software engineer', 'data scientist', 'product manager', 'devops engineer', 'frontend developer',
   'backend developer', 'full stack developer', 'mobile developer', 'AI engineer', 'machine learning engineer',
   'security engineer', 'QA engineer', 'data engineer', 'cloud architect', 'UX designer',
-  'technical writer', 'engineering manager', 'solutions architect', 'site reliability engineer',
-  'blockchain developer',
+  'engineering manager', 'solutions architect', 'site reliability engineer',
+  // Location-specific queries for global diversity
+  'software engineer london', 'developer new york', 'product manager singapore',
+  'data scientist toronto', 'frontend developer amsterdam', 'backend developer paris',
+  'devops engineer zurich', 'full stack developer dublin', 'software engineer sydney',
+  'cloud engineer tokyo', 'AI engineer san francisco', 'mobile developer barcelona',
+  'data engineer stockholm', 'software developer india', 'product manager berlin',
 ];
 
 // Countries to search across for paid APIs
-const SEARCH_COUNTRIES = ['us', 'gb', 'de', 'ca', 'fr', 'nl', 'ch', 'es', 'au', 'sg', 'ae', 'jp'];
+const SEARCH_COUNTRIES = ['us', 'gb', 'de', 'ca', 'fr', 'nl', 'ch', 'es', 'au', 'sg', 'ae', 'jp', 'ie', 'se', 'in'];
 
 // Build query/country combos for paid sources
 const SEARCH_QUERIES = SEARCH_QUERIES_LIST.map((query) => ({
@@ -398,6 +404,13 @@ const REMOTIVE_CATEGORIES = [
   'product',
   'devops',
   'marketing',
+  'customer-support',
+  'finance-legal',
+  'human-resources',
+  'qa',
+  'writing',
+  'sales',
+  'project-management',
 ];
 
 interface RemotiveJob {
@@ -535,32 +548,78 @@ function normalizeArbeitnowJob(job: ArbeitnowJob): NormalizedJob {
   };
 }
 
+/**
+ * Arbeitnow location filters — fetch jobs across multiple countries,
+ * not just the default German-heavy results.
+ */
+const ARBEITNOW_LOCATIONS = [
+  '', // default (includes German jobs)
+  'united-kingdom',
+  'united-states',
+  'netherlands',
+  'france',
+  'switzerland',
+  'spain',
+  'ireland',
+  'canada',
+  'sweden',
+  'austria',
+  'remote',
+];
+
 async function fetchArbeitnow(): Promise<NormalizedJob[]> {
-  const ARBEITNOW_PAGES = [1, 2, 3, 4, 5];
+  const ARBEITNOW_PAGES = [1, 2, 3];
 
-  const results = await Promise.allSettled(
-    ARBEITNOW_PAGES.map(async (page) => {
-      const url = `https://www.arbeitnow.com/api/job-board-api?page=${page}`;
-      const res = await fetch(url, {
-        headers: COMMON_HEADERS,
-        signal: AbortSignal.timeout(15000),
-      });
+  // Build all (location, page) combos
+  const combos: { location: string; page: number }[] = [];
+  for (const location of ARBEITNOW_LOCATIONS) {
+    for (const page of ARBEITNOW_PAGES) {
+      combos.push({ location, page });
+    }
+  }
 
-      if (!res.ok) {
-        console.warn(`Arbeitnow API error ${res.status} for page ${page}`);
-        return [] as NormalizedJob[];
-      }
+  // Process in batches of 6 to be polite
+  const BATCH_SIZE = 6;
+  const allJobs: NormalizedJob[] = [];
 
-      const json = await res.json();
-      const jobs: ArbeitnowJob[] = json?.data ?? [];
-      console.log(`Arbeitnow page ${page}: ${jobs.length} jobs`);
-      return jobs.map(normalizeArbeitnowJob);
-    })
-  );
+  for (let i = 0; i < combos.length; i += BATCH_SIZE) {
+    const batch = combos.slice(i, i + BATCH_SIZE);
 
-  return results
-    .filter((r): r is PromiseFulfilledResult<NormalizedJob[]> => r.status === 'fulfilled')
-    .flatMap((r) => r.value);
+    const results = await Promise.allSettled(
+      batch.map(async ({ location, page }) => {
+        const params = new URLSearchParams({ page: String(page) });
+        if (location) params.set('location', location);
+        const url = `https://www.arbeitnow.com/api/job-board-api?${params}`;
+        const res = await fetch(url, {
+          headers: COMMON_HEADERS,
+          signal: AbortSignal.timeout(15000),
+        });
+
+        if (!res.ok) {
+          console.warn(`Arbeitnow API error ${res.status} for location="${location}" page ${page}`);
+          return [] as NormalizedJob[];
+        }
+
+        const json = await res.json();
+        const jobs: ArbeitnowJob[] = json?.data ?? [];
+        if (jobs.length > 0) {
+          console.log(`Arbeitnow location="${location || 'default'}" page ${page}: ${jobs.length} jobs`);
+        }
+        return jobs.map(normalizeArbeitnowJob);
+      })
+    );
+
+    allJobs.push(
+      ...results
+        .filter((r): r is PromiseFulfilledResult<NormalizedJob[]> => r.status === 'fulfilled')
+        .flatMap((r) => r.value)
+    );
+
+    // Small delay between batches
+    if (i + BATCH_SIZE < combos.length) await delay(300);
+  }
+
+  return allJobs;
 }
 
 // ---------------------------------------------------------------------------
@@ -721,32 +780,56 @@ function normalizeWWRItem(item: WWRParsedItem): NormalizedJob {
   };
 }
 
+/**
+ * WeWorkRemotely category-specific RSS feeds for broader coverage.
+ */
+const WWR_CATEGORY_FEEDS = [
+  'https://weworkremotely.com/remote-jobs.rss', // all jobs
+  'https://weworkremotely.com/categories/remote-programming-jobs.rss',
+  'https://weworkremotely.com/categories/remote-design-jobs.rss',
+  'https://weworkremotely.com/categories/remote-devops-sysadmin-jobs.rss',
+  'https://weworkremotely.com/categories/remote-management-finance-jobs.rss',
+  'https://weworkremotely.com/categories/remote-product-jobs.rss',
+  'https://weworkremotely.com/categories/remote-customer-support-jobs.rss',
+  'https://weworkremotely.com/categories/remote-sales-marketing-jobs.rss',
+  'https://weworkremotely.com/categories/remote-full-stack-programming-jobs.rss',
+  'https://weworkremotely.com/categories/remote-front-end-programming-jobs.rss',
+  'https://weworkremotely.com/categories/remote-back-end-programming-jobs.rss',
+];
+
 async function fetchWeWorkRemotely(): Promise<NormalizedJob[]> {
-  try {
-    const url = 'https://weworkremotely.com/remote-jobs.rss';
-    const res = await fetch(url, {
-      headers: {
-        'User-Agent': 'HireMatch-JobSync/1.0 (https://hirematch.app)',
-        Accept: 'application/rss+xml, application/xml, text/xml',
-      },
-      signal: AbortSignal.timeout(15000),
-    });
+  const results = await Promise.allSettled(
+    WWR_CATEGORY_FEEDS.map(async (feedUrl) => {
+      try {
+        const res = await fetch(feedUrl, {
+          headers: {
+            'User-Agent': 'HireMatch-JobSync/1.0 (https://hirematch.app)',
+            Accept: 'application/rss+xml, application/xml, text/xml',
+          },
+          signal: AbortSignal.timeout(15000),
+        });
 
-    if (!res.ok) {
-      console.warn(`WeWorkRemotely RSS error ${res.status}`);
-      return [];
-    }
+        if (!res.ok) {
+          console.warn(`WeWorkRemotely RSS error ${res.status} for ${feedUrl}`);
+          return [] as NormalizedJob[];
+        }
 
-    const xml = await res.text();
-    const items = parseWWRRss(xml);
+        const xml = await res.text();
+        const items = parseWWRRss(xml);
 
-    return items
-      .filter((item) => item.title && item.link)
-      .map(normalizeWWRItem);
-  } catch (err) {
-    console.warn('WeWorkRemotely fetch failed:', err);
-    return [];
-  }
+        return items
+          .filter((item) => item.title && item.link)
+          .map(normalizeWWRItem);
+      } catch (err) {
+        console.warn(`WeWorkRemotely fetch failed for ${feedUrl}:`, err);
+        return [] as NormalizedJob[];
+      }
+    })
+  );
+
+  return results
+    .filter((r): r is PromiseFulfilledResult<NormalizedJob[]> => r.status === 'fulfilled')
+    .flatMap((r) => r.value);
 }
 
 // ---------------------------------------------------------------------------

@@ -199,7 +199,7 @@ function makeJsonRequest(body: Record<string, unknown>): Request {
 
 function buildChain(resolvedData: unknown, resolvedError: unknown = null) {
   const chain: Record<string, jest.Mock> = {};
-  const methods = ['select', 'eq', 'gte', 'lte', 'overlaps', 'order', 'limit', 'single', 'update', 'insert'];
+  const methods = ['select', 'eq', 'gte', 'lte', 'overlaps', 'order', 'limit', 'single', 'update', 'insert', 'upsert'];
   for (const m of methods) {
     chain[m] = jest.fn().mockReturnValue(chain);
   }

@@ -216,7 +216,7 @@ function buildChain(resolvedData: unknown, resolvedError: unknown = null) {
   const chain: any = {};
   const methods = [
     'select', 'eq', 'gte', 'lte', 'overlaps', 'order', 'limit',
-    'single', 'maybeSingle', 'insert', 'update', 'delete', 'neq',
+    'single', 'maybeSingle', 'insert', 'update', 'upsert', 'delete', 'neq',
     'in', 'contains', 'ilike',
   ];
   for (const m of methods) {

@@ -6,8 +6,9 @@ import { springSnappy, springBouncy } from '@/lib/wow';
 
 /* ── Reusable variant presets ── */
 const staggerContainer = {
-  hidden: {},
+  hidden: { opacity: 1 },
   show: {
+    opacity: 1,
     transition: { staggerChildren: 0.08 },
   },
 };
@@ -49,14 +50,11 @@ export function AnimatedSection({
   className?: string;
   delay?: number;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.1 });
-
   return (
     <motion.div
-      ref={ref}
       initial={{ opacity: 0, y: 30 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 30 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.05, margin: '0px 0px -60px 0px' }}
       transition={{ type: 'spring', stiffness: 300, damping: 25, delay }}
       className={className}
     >
@@ -74,7 +72,7 @@ export function StaggerSection({
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.1 });
+  const isInView = useInView(ref, { once: true, amount: 0.05 });
   const [glowOpacity, setGlowOpacity] = useState(0);
 
   useEffect(() => {
@@ -89,7 +87,7 @@ export function StaggerSection({
   }, [isInView]);
 
   return (
-    <div className="relative">
+    <div className="relative" ref={ref}>
       {/* Background glow layer */}
       <div
         className="pointer-events-none absolute inset-0 -z-10 rounded-3xl transition-opacity"
@@ -100,10 +98,10 @@ export function StaggerSection({
         }}
       />
       <motion.div
-        ref={ref}
         variants={staggerContainer}
         initial="hidden"
-        animate={isInView ? 'show' : 'hidden'}
+        whileInView="show"
+        viewport={{ once: true, amount: 0.05, margin: '0px 0px -40px 0px' }}
         className={className}
       >
         {children}
@@ -132,8 +130,8 @@ export function HeroAnimated({ children, className }: { children: ReactNode; cla
   return (
     <motion.div
       variants={{
-        hidden: {},
-        show: { transition: { staggerChildren: 0.12 } },
+        hidden: { opacity: 1 },
+        show: { opacity: 1, transition: { staggerChildren: 0.12 } },
       }}
       initial="hidden"
       animate="show"
@@ -165,7 +163,7 @@ export function CountUp({
   className?: string;
 }) {
   const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.5 });
+  const isInView = useInView(ref, { once: true, amount: 0.3 });
   const [count, setCount] = useState(0);
   const [done, setDone] = useState(false);
 
@@ -304,7 +302,7 @@ export function TestimonialCard({
   location: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, amount: 0.2 });
+  const isInView = useInView(ref, { once: true, amount: 0.1 });
   const [hovered, setHovered] = useState(false);
 
   return (
@@ -313,7 +311,8 @@ export function TestimonialCard({
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       initial={{ opacity: 0, y: 24 }}
-      animate={isInView ? { opacity: 1, y: 0 } : { opacity: 0, y: 24 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, amount: 0.1, margin: '0px 0px -40px 0px' }}
       transition={springBouncy}
       whileHover={{ y: -4 }}
       style={{

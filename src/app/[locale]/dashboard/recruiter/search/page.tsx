@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useMotionValue, useTransform, animate } from '
 import { Icon } from '@iconify/react';
 import DashboardLayout from '@/components/DashboardLayout';
 import CandidateCard from '@/components/CandidateCard';
-import { createClient } from '@/lib/supabase';
+// supabase client removed — search uses /api/candidates/search (service client)
 
 /* ---------- types ---------- */
 
@@ -124,7 +124,7 @@ function ScanningOverlay() {
 /* ---------- main page ---------- */
 
 export default function RecruiterSearchPage() {
-  const supabase = useMemo(() => createClient(), []);
+  // supabase client removed — using API route instead
 
   /* state */
   const [query, setQuery] = useState('');
@@ -161,7 +161,7 @@ export default function RecruiterSearchPage() {
     return 'from-[#0F172A] via-[#1a1635] to-[#1e1230]';
   }, [searched, totalCount]);
 
-  /* search function */
+  /* search function — uses service-client API route to bypass RLS */
   const fetchCandidates = useCallback(
     async (q: string, f: Filters, p: number) => {
       setLoading(true);
@@ -170,40 +170,41 @@ export default function RecruiterSearchPage() {
       // Small delay so scanning animation is visible
       await new Promise((r) => setTimeout(r, 600));
 
-      let builder = supabase
-        .from('candidates')
-        .select('*', { count: 'exact' })
-        .eq('is_public', true)
-        .range(p * PAGE_SIZE, (p + 1) * PAGE_SIZE - 1)
-        .order('match_score', { ascending: false, nullsFirst: false });
+      try {
+        const res = await fetch('/api/candidates/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: q,
+            page: p,
+            country: f.country,
+            remote: f.remote,
+            visa: f.visa,
+            expMin: f.expMin,
+            expMax: f.expMax,
+            skills: f.skills,
+          }),
+        });
 
-      /* text search */
-      if (q.trim()) {
-        const term = `%${q.trim()}%`;
-        builder = builder.or(`full_name.ilike.${term},headline.ilike.${term}`);
-      }
+        const json = await res.json();
 
-      /* filters */
-      if (f.country) builder = builder.eq('country', f.country);
-      if (f.remote) builder = builder.eq('remote_preference', f.remote);
-      if (f.visa) builder = builder.eq('visa_status', f.visa);
-      if (f.expMin > 0) builder = builder.gte('experience_years', f.expMin);
-      if (f.expMax < 30) builder = builder.lte('experience_years', f.expMax);
-      if (f.skills.length > 0) builder = builder.overlaps('skills', f.skills);
-
-      const { data, count, error } = await builder;
-
-      if (error) {
-        console.error('Search error:', error);
+        if (!res.ok || json.error) {
+          console.error('Search error:', json.error);
+          setCandidates([]);
+          setTotalCount(0);
+        } else {
+          setCandidates((json.candidates as Candidate[]) ?? []);
+          setTotalCount(json.total ?? 0);
+        }
+      } catch (err) {
+        console.error('Search fetch error:', err);
         setCandidates([]);
         setTotalCount(0);
-      } else {
-        setCandidates((data as Candidate[]) ?? []);
-        setTotalCount(count ?? 0);
       }
+
       setLoading(false);
     },
-    [supabase],
+    [],
   );
 
   /* debounced search on query/filter/page change */

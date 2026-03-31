@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Icon } from '@iconify/react';
@@ -18,6 +18,18 @@ interface NavItem {
   href: string;
   icon: string;
   iconActive: string;
+}
+
+function useIsMd() {
+  const [isMd, setIsMd] = useState(false);
+  useEffect(() => {
+    const mql = window.matchMedia('(min-width: 768px)');
+    setIsMd(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMd(e.matches);
+    mql.addEventListener('change', handler);
+    return () => mql.removeEventListener('change', handler);
+  }, []);
+  return isMd;
 }
 
 const candidateNav: NavItem[] = [
@@ -47,9 +59,12 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
   const router = useRouter();
   const supabase = createClient();
   const [collapsed, setCollapsed] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
+  const isMd = useIsMd();
 
   const navItems = role === 'candidate' ? candidateNav : recruiterNav;
-  const mobileNavItems = navItems.slice(0, 5);
+  const mobileNavItems = navItems.slice(0, 4); // 4 items + "More" button = 5 slots
 
   const isActive = (href: string) => {
     const cleanPath = pathname.replace(/^\/[a-z]{2}(?=\/)/, '');
@@ -225,22 +240,212 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
         </div>
       </motion.aside>
 
+      {/* ---- Mobile Drawer Overlay ---- */}
+      <AnimatePresence>
+        {mobileDrawerOpen && !isMd && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileDrawerOpen(false)}
+            />
+            {/* Drawer */}
+            <motion.aside
+              className="fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#0a0c16] border-r border-white/[0.06] flex flex-col md:hidden"
+              initial={{ x: '-100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '-100%' }}
+              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+            >
+              {/* Drawer header */}
+              <div className="flex items-center justify-between h-14 px-4 border-b border-white/[0.06]">
+                <Link href="/" className="flex items-center gap-2.5" onClick={() => setMobileDrawerOpen(false)}>
+                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
+                    <span className="text-white font-bold text-sm">H</span>
+                  </div>
+                  <span className="font-bold text-lg text-white">HireMatch</span>
+                </Link>
+                <motion.button
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                  whileTap={{ scale: 0.9 }}
+                  aria-label="Close menu"
+                >
+                  <Icon icon="solar:close-circle-linear" className="w-6 h-6" />
+                </motion.button>
+              </div>
+
+              {/* Drawer user info */}
+              <div className="px-4 py-4 border-b border-white/[0.06]">
+                <div className="flex items-center gap-3">
+                  <motion.div
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
+                  >
+                    {initials}
+                  </motion.div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
+                    <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${
+                      role === 'recruiter'
+                        ? 'bg-purple-500/20 text-purple-400'
+                        : 'bg-blue-500/20 text-blue-400'
+                    }`}>
+                      {role === 'recruiter' ? 'Recruiter' : 'Candidate'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Drawer nav items */}
+              <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+                {navItems.map((item, i) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileDrawerOpen(false)}
+                      className="block"
+                    >
+                      <motion.div
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium relative ${
+                          active
+                            ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
+                            : 'text-white/50 hover:text-white hover:bg-white/5'
+                        }`}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.05 * i }}
+                        whileTap={{ scale: 0.97 }}
+                      >
+                        {active && (
+                          <motion.div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
+                            layoutId="drawerActiveIndicator"
+                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                          />
+                        )}
+                        <Icon
+                          icon={active ? item.iconActive : item.icon}
+                          className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-400' : ''}`}
+                        />
+                        <span>{item.label}</span>
+                      </motion.div>
+                    </Link>
+                  );
+                })}
+              </nav>
+
+              {/* Drawer sign out */}
+              <div className="px-3 py-3 border-t border-white/[0.06]">
+                <motion.button
+                  onClick={() => { setMobileDrawerOpen(false); handleSignOut(); }}
+                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors"
+                  whileTap={{ scale: 0.97 }}
+                >
+                  <Icon icon="solar:logout-2-linear" className="w-5 h-5 flex-shrink-0" />
+                  <span>Sign Out</span>
+                </motion.button>
+              </div>
+            </motion.aside>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* ---- Mobile "More" Bottom Sheet ---- */}
+      <AnimatePresence>
+        {mobileMoreOpen && !isMd && (
+          <>
+            <motion.div
+              className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm md:hidden"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={() => setMobileMoreOpen(false)}
+            />
+            <motion.div
+              className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0c16] border-t border-white/[0.06] rounded-t-2xl md:hidden"
+              initial={{ y: '100%' }}
+              animate={{ y: 0 }}
+              exit={{ y: '100%' }}
+              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+            >
+              {/* Handle bar */}
+              <div className="flex justify-center pt-3 pb-2">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+              <div className="px-4 pb-2">
+                <p className="text-xs font-medium text-white/40 uppercase tracking-wider">All Pages</p>
+              </div>
+              <nav className="px-3 pb-6 grid grid-cols-3 gap-1 max-h-[60vh] overflow-y-auto">
+                {navItems.map((item, i) => {
+                  const active = isActive(item.href);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      onClick={() => setMobileMoreOpen(false)}
+                      className="block"
+                    >
+                      <motion.div
+                        className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-center ${
+                          active
+                            ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
+                            : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                        }`}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.03 * i }}
+                        whileTap={{ scale: 0.93 }}
+                      >
+                        <Icon
+                          icon={active ? item.iconActive : item.icon}
+                          className="w-6 h-6"
+                        />
+                        <span className="text-[10px] font-medium leading-tight">{item.label}</span>
+                      </motion.div>
+                    </Link>
+                  );
+                })}
+              </nav>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* ---- Main Content ---- */}
       <motion.div
         className="flex-1 flex flex-col min-h-screen"
-        animate={{ marginLeft: collapsed ? 64 : 240 }}
+        animate={{ marginLeft: isMd ? (collapsed ? 64 : 240) : 0 }}
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-        style={{ marginLeft: 0 }} // mobile default
       >
         {/* Mobile top bar */}
         <header className="md:hidden sticky top-0 z-40 bg-[#0a0c16]/95 backdrop-blur-md border-b border-white/[0.06]">
           <div className="flex items-center justify-between h-14 px-4">
-            <Link href="/" className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-xs">H</span>
-              </div>
-              <span className="font-bold text-white">HireMatch</span>
-            </Link>
+            <div className="flex items-center gap-3">
+              <motion.button
+                onClick={() => setMobileDrawerOpen(true)}
+                className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
+                whileTap={{ scale: 0.9 }}
+                aria-label="Open menu"
+              >
+                <Icon icon="solar:hamburger-menu-linear" className="w-6 h-6" />
+              </motion.button>
+              <Link href="/" className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">H</span>
+                </div>
+                <span className="font-bold text-white">HireMatch</span>
+              </Link>
+            </div>
             <button
               onClick={handleSignOut}
               className="p-2 text-white/40 hover:text-red-400 transition-colors"
@@ -266,20 +471,25 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 ${
+                className={`relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 ${
                   active
                     ? 'text-blue-400'
                     : 'text-white/40 hover:text-white/70'
                 }`}
               >
-                <Icon
-                  icon={active ? item.iconActive : item.icon}
-                  className="w-5 h-5"
-                />
+                <motion.div
+                  animate={active ? { scale: [1, 1.2, 1] } : { scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                >
+                  <Icon
+                    icon={active ? item.iconActive : item.icon}
+                    className="w-5 h-5"
+                  />
+                </motion.div>
                 <span className="text-[10px] font-medium truncate">{item.label}</span>
                 {active && (
                   <motion.div
-                    className="absolute bottom-1 w-4 h-0.5 bg-blue-400 rounded-full"
+                    className="absolute -bottom-0.5 w-4 h-0.5 bg-blue-400 rounded-full"
                     layoutId="mobileActiveTab"
                     transition={{ type: 'spring', stiffness: 300, damping: 25 }}
                   />
@@ -287,6 +497,14 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
               </Link>
             );
           })}
+          {/* More button */}
+          <button
+            onClick={() => setMobileMoreOpen(true)}
+            className="relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 text-white/40 hover:text-white/70"
+          >
+            <Icon icon="solar:menu-dots-bold" className="w-5 h-5" />
+            <span className="text-[10px] font-medium">More</span>
+          </button>
         </div>
       </nav>
     </div>
