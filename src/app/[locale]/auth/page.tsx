@@ -125,7 +125,7 @@ export default function AuthPage() {
         const { data: profile } = await supabase
           .from('profiles')
           .select('role')
-          .single();
+          .maybeSingle();
 
         if (profile?.role === 'recruiter') {
           router.push('/dashboard/recruiter');

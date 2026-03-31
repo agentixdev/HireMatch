@@ -530,8 +530,8 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
   const recruiter: Recruiter = recruiterProp ?? {
     id: '',
     user_id: '',
-    company_name: (job as unknown as { company_name?: string }).company_name || 'Company',
-    company_logo_url: (job as unknown as { company_logo?: string }).company_logo || undefined,
+    company_name: job.company_name || 'Company',
+    company_logo_url: job.company_logo || undefined,
     industry: job.industry,
     company_size: '',
     country: job.country,
@@ -575,7 +575,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
           .select('score, breakdown')
           .eq('candidate_id', cand.id)
           .eq('job_id', job.id)
-          .single();
+          .maybeSingle();
 
         if (match) {
           setMatchScore(match.score);
@@ -859,7 +859,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
               recruiterId={job.recruiter_id}
               candidateId={candidateId}
               theme={theme}
-              externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
+              externalUrl={isExternalJob ? job.external_url : undefined}
               companyName={recruiter.company_name}
             />
           </motion.div>
@@ -1275,7 +1275,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
                 recruiterId={job.recruiter_id}
                 candidateId={candidateId}
                 theme={theme}
-                externalUrl={isExternalJob ? (job as unknown as Record<string, unknown>).external_url as string : undefined}
+                externalUrl={isExternalJob ? job.external_url : undefined}
                 companyName={recruiter.company_name}
               />
             </motion.div>
