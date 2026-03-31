@@ -9,9 +9,10 @@ import { createServerSupabase, createServiceClient } from '@/lib/supabase-server
 export async function GET(request: Request) {
   try {
     const supabase = await createServerSupabase();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const { data: { user } } = await supabase.auth.getUser().catch(() => ({ data: { user: null } }));
+    if (!user) {
+      // Return empty notifications for unauthenticated users (bell component calls on every page)
+      return NextResponse.json({ notifications: [], unread_count: 0 });
     }
 
     const { searchParams } = new URL(request.url);
