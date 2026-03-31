@@ -64,24 +64,24 @@ interface MatchedJob {
 
 // -- Constants -----------------------------------------------------------
 
-const ROLE_MAP: { keywords: string[]; abbr: string; color: string }[] = [
-  { keywords: ['software', 'developer', 'engineer', 'swe', 'frontend', 'backend', 'fullstack', 'devops'], abbr: 'SWE', color: '#3b82f6' },
-  { keywords: ['product manager', 'product lead', 'product owner'], abbr: 'PM', color: '#a855f7' },
-  { keywords: ['data scientist', 'data science', 'machine learning', 'ml', 'ai engineer'], abbr: 'DS', color: '#22c55e' },
-  { keywords: ['designer', 'ux', 'ui', 'design', 'creative'], abbr: 'UXD', color: '#ec4899' },
-  { keywords: ['marketing', 'growth', 'content', 'seo'], abbr: 'MKT', color: '#f97316' },
-  { keywords: ['finance', 'accounting', 'cfo'], abbr: 'FIN', color: '#14b8a6' },
-  { keywords: ['sales', 'account executive', 'bdr', 'sdr'], abbr: 'SAL', color: '#eab308' },
-  { keywords: ['hr', 'human resources', 'people', 'talent'], abbr: 'HR', color: '#f43f5e' },
+const ROLE_MAP: { keywords: string[]; abbr: string; label: string; color: string }[] = [
+  { keywords: ['software', 'developer', 'engineer', 'swe', 'frontend', 'backend', 'fullstack', 'devops'], abbr: 'SWE', label: 'Engineering', color: '#3b82f6' },
+  { keywords: ['product manager', 'product lead', 'product owner'], abbr: 'PM', label: 'Product', color: '#a855f7' },
+  { keywords: ['data scientist', 'data science', 'machine learning', 'ml', 'ai engineer'], abbr: 'DS', label: 'Data & AI', color: '#22c55e' },
+  { keywords: ['designer', 'ux', 'ui', 'design', 'creative'], abbr: 'UXD', label: 'Design', color: '#ec4899' },
+  { keywords: ['marketing', 'growth', 'content', 'seo'], abbr: 'MKT', label: 'Marketing', color: '#f97316' },
+  { keywords: ['finance', 'accounting', 'cfo'], abbr: 'FIN', label: 'Finance', color: '#14b8a6' },
+  { keywords: ['sales', 'account executive', 'bdr', 'sdr'], abbr: 'SAL', label: 'Sales', color: '#eab308' },
+  { keywords: ['hr', 'human resources', 'people', 'talent'], abbr: 'HR', label: 'People & HR', color: '#f43f5e' },
 ];
 
 function getRoleInfo(headline?: string) {
-  if (!headline) return { abbr: '---', color: '#6b7280' };
+  if (!headline) return { abbr: '---', label: 'Other', color: '#6b7280' };
   const lower = headline.toLowerCase();
   for (const role of ROLE_MAP) {
     if (role.keywords.some((kw) => lower.includes(kw))) return role;
   }
-  return { abbr: headline.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || '---', color: '#6b7280' };
+  return { abbr: headline.replace(/[^a-zA-Z]/g, '').slice(0, 3).toUpperCase() || '---', label: 'Other', color: '#6b7280' };
 }
 
 function getInitials(name: string) {
@@ -1426,7 +1426,10 @@ export default function TalentPage() {
     });
   }, []);
 
-  const roleFilters = ['all', 'SWE', 'PM', 'DS', 'UXD', 'MKT', 'FIN', 'SAL', 'HR'];
+  const roleFilters: { key: string; label: string }[] = [
+    { key: 'all', label: 'All' },
+    ...ROLE_MAP.map((r) => ({ key: r.abbr, label: r.label })),
+  ];
 
   const scoreDistribution = useMemo(() => {
     let gold = 0, green = 0, purple = 0, blue = 0;
@@ -1537,18 +1540,18 @@ export default function TalentPage() {
                   <div className="flex flex-wrap gap-1.5">
                     {roleFilters.map((f) => (
                       <motion.button
-                        key={f}
+                        key={f.key}
                         whileTap={{ scale: 0.9 }}
-                        animate={filterPulse === f ? { scale: [1, 1.15, 1] } : {}}
+                        animate={filterPulse === f.key ? { scale: [1, 1.15, 1] } : {}}
                         transition={springSnappy}
-                        onClick={() => handleFilterClick(f)}
+                        onClick={() => handleFilterClick(f.key)}
                         className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] ${
-                          filter === f
+                          filter === f.key
                             ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20'
                             : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
                         }`}
                       >
-                        {f === 'all' ? 'All' : f}
+                        {f.label}
                       </motion.button>
                     ))}
                   </div>

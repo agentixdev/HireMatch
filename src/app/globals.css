@@ -182,6 +182,28 @@ body {
   50% { opacity: 0.8; transform: scale(1.05); }
 }
 
+/* ── Dark-themed native dropdowns ── */
+select {
+  background-color: #0d0f1a;
+  color: rgba(255, 255, 255, 0.7);
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.3)' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+select option {
+  background-color: #0d0f1a;
+  color: rgba(255, 255, 255, 0.8);
+  padding: 8px 12px;
+}
+select option:hover,
+select option:checked {
+  background-color: #1e293b;
+}
+
 /* Micro bounce for interactive elements */
 .hover-bounce:hover {
   animation: subtleFloat 0.6s ease-in-out;
