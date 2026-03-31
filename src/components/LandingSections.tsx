@@ -126,7 +126,7 @@ function FeatureMetric({ value, label, color }: { value: string; label: string; 
       className="flex items-center gap-1.5 mt-3"
     >
       <span className="text-lg font-bold" style={{ color }}>{value}</span>
-      <span className="text-xs text-white/40">{label}</span>
+      <span className="text-xs text-slate-400 dark:text-white/40">{label}</span>
     </motion.div>
   );
 }
@@ -302,10 +302,10 @@ export function PricingSection() {
           <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 ring-1 ring-blue-500/20 text-blue-400 text-xs font-semibold tracking-wider uppercase mb-4">
             Pricing
           </span>
-          <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
             Simple, Transparent Pricing
           </h2>
-          <p className="mt-4 text-lg text-white/50">
+          <p className="mt-4 text-lg text-slate-500 dark:text-white/50">
             Candidates always free. Recruiters start free, upgrade when you&apos;re ready.
             <br className="hidden sm:block" />
             No hidden fees. Cancel anytime.
@@ -329,7 +329,7 @@ export function PricingSection() {
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, amount: 0.1 }}
           transition={{ delay: 0.4, duration: 0.6 }}
-          className="text-center mt-8 text-sm text-white/30"
+          className="text-center mt-8 text-sm text-slate-400 dark:text-white/30"
         >
           All plans include SSL encryption, GDPR compliance, and 99.9% uptime SLA
         </motion.p>
@@ -367,7 +367,7 @@ function PricingCard({
       transition={springSnappy}
       className={[
         'relative rounded-2xl backdrop-blur-md overflow-hidden p-6 flex flex-col',
-        popular ? 'bg-white/[0.06]' : 'bg-white/[0.03]',
+        popular ? 'bg-slate-100 dark:bg-white/[0.06]' : 'bg-slate-50 dark:bg-white/[0.03]',
       ].join(' ')}
     >
       {/* Popular badge */}
@@ -399,15 +399,15 @@ function PricingCard({
         </p>
 
         <div className="mt-3 flex items-baseline gap-1">
-          <span className="text-4xl font-extrabold text-white">{price}</span>
-          <span className="text-sm text-white/40">{period}</span>
+          <span className="text-4xl font-extrabold text-slate-900 dark:text-white">{price}</span>
+          <span className="text-sm text-slate-400 dark:text-white/40">{period}</span>
         </div>
 
-        <p className="mt-2 text-sm text-white/50">{desc}</p>
+        <p className="mt-2 text-sm text-slate-500 dark:text-white/50">{desc}</p>
 
         <ul className="mt-6 space-y-2.5 flex-1">
           {features.map((f) => (
-            <li key={f} className="flex items-start gap-2 text-sm text-white/60">
+            <li key={f} className="flex items-start gap-2 text-sm text-slate-600 dark:text-white/60">
               <svg className="w-4 h-4 mt-0.5 shrink-0" style={{ color }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
@@ -659,23 +659,22 @@ export function TwoSidedValue() {
           variants={sectionFadeUp}
           className="text-center"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
+          <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
             Built for Both Sides
           </h2>
-          <p className="mt-4 text-lg text-white/50">
+          <p className="mt-4 text-lg text-slate-500 dark:text-white/50">
             Whether you&apos;re looking for your next role or your next hire — HireMatch has you covered.
           </p>
 
           {/* Toggle tabs */}
-          <div className="mt-8 inline-flex rounded-xl bg-white/[0.05] ring-1 ring-white/[0.1] p-1">
+          <div className="mt-8 inline-flex rounded-xl bg-slate-100 dark:bg-white/[0.05] ring-1 ring-slate-200 dark:ring-white/[0.1] p-1">
             {(['candidate', 'recruiter'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className="relative px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                style={{
-                  color: activeTab === tab ? '#fff' : 'rgba(255,255,255,0.5)',
-                }}
+                className={`relative px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors ${
+                  activeTab === tab ? 'text-white' : 'text-slate-500 dark:text-white/50'
+                }`}
               >
                 {activeTab === tab && (
                   <motion.div
@@ -711,10 +710,10 @@ export function TwoSidedValue() {
               >
                 {active.tagline}
               </span>
-              <h3 className="text-2xl sm:text-3xl font-bold text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
+              <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white" style={{ fontFamily: 'var(--font-bebas)' }}>
                 {active.headline}
               </h3>
-              <p className="mt-3 text-white/50 leading-relaxed">{active.desc}</p>
+              <p className="mt-3 text-slate-500 dark:text-white/50 leading-relaxed">{active.desc}</p>
 
               <Link
                 href={active.href}
@@ -740,7 +739,7 @@ export function TwoSidedValue() {
                   initial={{ opacity: 0, x: 20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ ...springBouncy, delay: i * 0.06 }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/[0.04] ring-1 ring-white/[0.06]"
+                  className="flex items-center gap-3 px-4 py-3 rounded-xl bg-slate-100 dark:bg-white/[0.04] ring-1 ring-slate-200 dark:ring-white/[0.06]"
                 >
                   <svg
                     className="w-5 h-5 shrink-0"
@@ -754,7 +753,7 @@ export function TwoSidedValue() {
                   >
                     <polyline points="20 6 9 17 4 12" />
                   </svg>
-                  <span className="text-sm text-white/70">{f}</span>
+                  <span className="text-sm text-slate-600 dark:text-white/70">{f}</span>
                 </motion.div>
               ))}
             </div>
@@ -784,20 +783,20 @@ export function FinalCTA() {
           }}
         >
           {/* Border glow */}
-          <div className="absolute inset-0 rounded-3xl ring-1 ring-white/[0.1] pointer-events-none" />
+          <div className="absolute inset-0 rounded-3xl ring-1 ring-slate-200 dark:ring-white/[0.1] pointer-events-none" />
 
           {/* Floating orb */}
           <motion.div
             className="absolute -top-20 -right-20 w-64 h-64 rounded-full pointer-events-none"
             style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)' }}
             animate={{ scale: [1, 1.1, 1], rotate: [0, 10, 0] }}
-            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
+            transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' as const }}
           />
 
-          <h2 className="text-3xl sm:text-5xl font-bold text-white relative z-10" style={{ fontFamily: 'var(--font-bebas)' }}>
+          <h2 className="text-3xl sm:text-5xl font-bold text-slate-900 dark:text-white relative z-10" style={{ fontFamily: 'var(--font-bebas)' }}>
             Ready to Transform Your Hiring?
           </h2>
-          <p className="mt-4 text-lg text-white/60 max-w-2xl mx-auto relative z-10">
+          <p className="mt-4 text-lg text-slate-600 dark:text-white/60 max-w-2xl mx-auto relative z-10">
             Join 500+ companies already using HireMatch to find, match, and hire top talent globally.
           </p>
 
@@ -811,13 +810,13 @@ export function FinalCTA() {
             </Link>
             <Link
               href="/auth?mode=signup&role=candidate"
-              className="px-8 py-4 rounded-2xl font-semibold text-white/80 text-sm ring-1 ring-white/15 bg-white/[0.05] hover:bg-white/[0.1] transition-all"
+              className="px-8 py-4 rounded-2xl font-semibold text-slate-600 dark:text-white/80 text-sm ring-1 ring-slate-200 dark:ring-white/15 bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.1] transition-all"
             >
               Find Your Match
             </Link>
           </div>
 
-          <p className="mt-6 text-xs text-white/30 relative z-10">
+          <p className="mt-6 text-xs text-slate-400 dark:text-white/30 relative z-10">
             No credit card required &middot; Free plan available &middot; Setup in 2 minutes
           </p>
         </motion.div>

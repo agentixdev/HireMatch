@@ -128,6 +128,12 @@ export interface Job {
   created_at: string;
   updated_at: string;
   expires_at?: string;
+  // External job fields (scraped from job boards)
+  external_id?: string;
+  external_url?: string;
+  source?: string;
+  company_name?: string;
+  company_logo?: string;
 }
 
 // ---- Application Lifecycle ----

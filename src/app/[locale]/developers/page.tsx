@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
 import DevApiDocs from './DevApiDocs';
 
@@ -37,6 +38,7 @@ export default async function DevelopersPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumb) }}
       />
       <DevApiDocs locale={locale} />
+      <Footer />
     </>
   );
 }

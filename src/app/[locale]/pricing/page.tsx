@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { CountUp } from '@/components/AnimatedSection';
 
 const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 };
@@ -207,6 +208,7 @@ export default function PricingPage() {
           </div>
         </div>
       </main>
+      <Footer />
     </>
   );
 }

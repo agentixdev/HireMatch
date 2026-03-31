@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { createServerSupabase, createServiceClient } from '@/lib/supabase-server';
 import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { breadcrumbJsonLd } from '@/lib/structured-data';
 import VisaCountrySection from './VisaCountrySection';
 import VisaPaywall from './VisaPaywall';
@@ -221,6 +222,7 @@ export default async function VisaRulesPage({
           )}
         </div>
       </main>
+      <Footer />
     </>
   );
 }

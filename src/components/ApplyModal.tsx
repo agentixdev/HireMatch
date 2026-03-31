@@ -164,6 +164,14 @@ export default function ApplyModal({
   const handleQuickApply = async () => {
     if (!candidateId) return;
     setQuickLoading(true);
+
+    // Open external URL IMMEDIATELY (same tick as user click) to avoid popup blocker.
+    // Browsers block window.open after await/async boundaries.
+    let externalTab: Window | null = null;
+    if (externalUrl) {
+      externalTab = window.open(externalUrl, '_blank', 'noopener');
+    }
+
     try {
       const res = await fetch('/api/candidate/apply', {
         method: 'POST',
@@ -172,13 +180,13 @@ export default function ApplyModal({
       });
       if (!res.ok) throw new Error('Apply failed');
 
-      if (externalUrl) {
-        window.open(externalUrl, '_blank', 'noopener');
-      }
       setPhase('quick-success');
       fireConfetti();
       onApplied();
     } catch {
+      // If external tab was opened, the user can still apply on the real site.
+      // Close it only if the DB tracking failed and there was no external redirect.
+      if (externalTab && !externalUrl) externalTab.close();
       setErrorMsg('Something went wrong. Please try again.');
       setPhase('error');
     } finally {

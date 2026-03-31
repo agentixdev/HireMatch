@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import createMiddleware from 'next-intl/middleware';
 import { locales, defaultLocale } from '@/i18n/request';
 // ---------------------------------------------------------------------------
@@ -47,7 +48,7 @@ const intlMiddleware = createMiddleware({
 // Main proxy (renamed from middleware per Next.js 16 convention)
 // ---------------------------------------------------------------------------
 
-export default function proxy(request: NextRequest): NextResponse {
+export default async function proxy(request: NextRequest): Promise<NextResponse> {
   const { pathname } = request.nextUrl;
   const requestId = request.headers.get('x-request-id') || crypto.randomUUID();
 
@@ -90,6 +91,35 @@ export default function proxy(request: NextRequest): NextResponse {
     response.headers.set(k, v);
   }
   response.headers.set('X-Request-ID', requestId);
+
+  // Protect /dashboard/* routes — redirect unauthenticated users to sign-in
+  if (pathname.includes('/dashboard')) {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return request.cookies.getAll();
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              response.cookies.set(name, value, options);
+            });
+          },
+        },
+      }
+    );
+
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      const signInUrl = new URL('/auth', request.url);
+      signInUrl.searchParams.set('mode', 'signin');
+      signInUrl.searchParams.set('next', pathname);
+      return NextResponse.redirect(signInUrl);
+    }
+  }
 
   return response;
 }

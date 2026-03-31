@@ -2,9 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import { Icon } from '@iconify/react';
-import { createClient } from '@/lib/supabase';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface DashboardLayoutProps {
@@ -56,8 +55,6 @@ const recruiterNav: NavItem[] = [
 
 export default function DashboardLayout({ role, userName, children }: DashboardLayoutProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const supabase = createClient();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [mobileMoreOpen, setMobileMoreOpen] = useState(false);
@@ -75,25 +72,16 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
     return cleanPath.startsWith(cleanHref);
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push('/auth?mode=signin');
-  };
-
-  const initials = userName
-    ? userName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
-    : role === 'candidate' ? 'C' : 'R';
-
   return (
-    <div className="flex min-h-screen bg-[#0d0f1a]">
+    <div className="flex min-h-screen bg-slate-50 dark:bg-[#0d0f1a] pt-14">
       {/* ---- Desktop Sidebar ---- */}
       <motion.aside
-        className="hidden md:flex flex-col fixed top-0 left-0 h-screen bg-[#0a0c16] border-r border-white/[0.06] z-40"
+        className="hidden md:flex flex-col fixed top-14 left-0 h-[calc(100vh-3.5rem)] bg-white dark:bg-[#0a0c16] border-r border-slate-200 dark:border-white/[0.06] z-40"
         animate={{ width: collapsed ? 64 : 240 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
       >
-        {/* Logo + Collapse Toggle */}
-        <div className="flex items-center justify-between h-14 px-3 border-b border-white/[0.06]">
+        {/* Collapse Toggle */}
+        <div className="flex items-center justify-between h-12 px-3 border-b border-slate-200 dark:border-white/[0.06]">
           <AnimatePresence mode="wait">
             {!collapsed && (
               <motion.div
@@ -101,19 +89,15 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.15 }}
+                className="text-xs font-medium text-slate-400 dark:text-white/40 uppercase tracking-wider"
               >
-                <Link href="/" className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <span className="text-white font-bold text-sm">H</span>
-                  </div>
-                  <span className="font-bold text-lg text-white">HireMatch</span>
-                </Link>
+                Navigation
               </motion.div>
             )}
           </AnimatePresence>
           <motion.button
             onClick={() => setCollapsed(!collapsed)}
-            className={`p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors ${
+            className={`p-1.5 rounded-lg text-slate-400 dark:text-white/40 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors ${
               collapsed ? 'mx-auto' : ''
             }`}
             whileHover={{ scale: 1.1 }}
@@ -122,48 +106,49 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
           >
             <motion.div
               animate={{ rotate: collapsed ? 180 : 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
             >
               <Icon icon="solar:alt-arrow-left-linear" className="w-5 h-5" />
             </motion.div>
           </motion.button>
         </div>
 
-        {/* User Info */}
-        <div className={`px-3 py-4 border-b border-white/[0.06] ${collapsed ? 'flex justify-center' : ''}`}>
-          <div className={`flex items-center gap-3 ${collapsed ? 'justify-center' : ''}`}>
-            <motion.div
-              className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-xs font-bold text-white flex-shrink-0"
-              whileHover={{ scale: 1.1, boxShadow: '0 0 20px rgba(99, 102, 241, 0.4)' }}
-              transition={{ type: 'spring', stiffness: 300, damping: 20 }}
-            >
-              {initials}
-            </motion.div>
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.div
-                  className="min-w-0"
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -8 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
-                  <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                    role === 'recruiter'
-                      ? 'bg-purple-500/20 text-purple-400'
-                      : 'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {role === 'recruiter' ? 'Recruiter' : 'Candidate'}
-                  </span>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        </div>
-
         {/* Nav Items */}
         <nav className="flex-1 px-2 py-3 space-y-1 overflow-y-auto">
+          {/* Home link */}
+          <Link
+            href="/"
+            className="block"
+            title={collapsed ? 'Back to Home' : undefined}
+          >
+            <motion.div
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 ${collapsed ? 'justify-center px-0' : ''}`}
+              whileHover={{ x: collapsed ? 0 : 3, scale: 1.01 }}
+              whileTap={{ scale: 0.97 }}
+              transition={{ type: 'spring' as const, stiffness: 400, damping: 25 }}
+            >
+              <Icon
+                icon="solar:arrow-left-linear"
+                className="w-5 h-5 flex-shrink-0"
+              />
+              <AnimatePresence mode="wait">
+                {!collapsed && (
+                  <motion.span
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.1 }}
+                  >
+                    Back to Home
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </Link>
+
+          {/* Separator */}
+          <div className="border-b border-slate-200 dark:border-white/[0.06] mx-2 my-2" />
+
           {navItems.map((item) => {
             const active = isActive(item.href);
             return (
@@ -176,23 +161,23 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                 <motion.div
                   className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium relative ${
                     active
-                      ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
-                      : 'text-white/50 hover:text-white hover:bg-white/5'
+                      ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
+                      : 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                   } ${collapsed ? 'justify-center px-0' : ''}`}
                   whileHover={{ x: collapsed ? 0 : 3, scale: active ? 1 : 1.01 }}
                   whileTap={{ scale: 0.97 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  transition={{ type: 'spring' as const, stiffness: 400, damping: 25 }}
                 >
                   {active && (
                     <motion.div
-                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
+                      className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 dark:bg-blue-400 rounded-full"
                       layoutId="activeIndicator"
-                      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                      transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
                     />
                   )}
                   <Icon
                     icon={active ? item.iconActive : item.icon}
-                    className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-400' : ''}`}
+                    className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : ''}`}
                   />
                   <AnimatePresence mode="wait">
                     {!collapsed && (
@@ -211,33 +196,6 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
             );
           })}
         </nav>
-
-        {/* Sign Out */}
-        <div className="px-2 py-3 border-t border-white/[0.06]">
-          <motion.button
-            onClick={handleSignOut}
-            className={`flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors ${
-              collapsed ? 'justify-center px-0' : ''
-            }`}
-            whileHover={{ x: collapsed ? 0 : 3 }}
-            whileTap={{ scale: 0.97 }}
-            title={collapsed ? 'Sign Out' : undefined}
-          >
-            <Icon icon="solar:logout-2-linear" className="w-5 h-5 flex-shrink-0" />
-            <AnimatePresence mode="wait">
-              {!collapsed && (
-                <motion.span
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.1 }}
-                >
-                  Sign Out
-                </motion.span>
-              )}
-            </AnimatePresence>
-          </motion.button>
-        </div>
       </motion.aside>
 
       {/* ---- Mobile Drawer Overlay ---- */}
@@ -255,23 +213,18 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
             />
             {/* Drawer */}
             <motion.aside
-              className="fixed top-0 left-0 bottom-0 z-50 w-72 bg-[#0a0c16] border-r border-white/[0.06] flex flex-col md:hidden"
+              className="fixed top-0 left-0 bottom-0 z-50 w-72 bg-white dark:bg-[#0a0c16] border-r border-slate-200 dark:border-white/[0.06] flex flex-col md:hidden"
               initial={{ x: '-100%' }}
               animate={{ x: 0 }}
               exit={{ x: '-100%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              transition={{ type: 'spring' as const, stiffness: 350, damping: 30 }}
             >
               {/* Drawer header */}
-              <div className="flex items-center justify-between h-14 px-4 border-b border-white/[0.06]">
-                <Link href="/" className="flex items-center gap-2.5" onClick={() => setMobileDrawerOpen(false)}>
-                  <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-500/20">
-                    <span className="text-white font-bold text-sm">H</span>
-                  </div>
-                  <span className="font-bold text-lg text-white">HireMatch</span>
-                </Link>
+              <div className="flex items-center justify-between h-14 px-4 border-b border-slate-200 dark:border-white/[0.06]">
+                <span className="text-sm font-semibold text-slate-700 dark:text-white/70 uppercase tracking-wider">Menu</span>
                 <motion.button
                   onClick={() => setMobileDrawerOpen(false)}
-                  className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/5 transition-colors"
+                  className="p-1.5 rounded-lg text-slate-400 dark:text-white/40 hover:text-slate-700 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
                   whileTap={{ scale: 0.9 }}
                   aria-label="Close menu"
                 >
@@ -279,32 +232,29 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                 </motion.button>
               </div>
 
-              {/* Drawer user info */}
-              <div className="px-4 py-4 border-b border-white/[0.06]">
-                <div className="flex items-center gap-3">
-                  <motion.div
-                    className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-sm font-bold text-white flex-shrink-0"
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    transition={{ type: 'spring', stiffness: 400, damping: 15, delay: 0.1 }}
-                  >
-                    {initials}
-                  </motion.div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-white truncate">{userName || 'User'}</p>
-                    <span className={`inline-block px-2 py-0.5 text-[10px] font-medium rounded-full ${
-                      role === 'recruiter'
-                        ? 'bg-purple-500/20 text-purple-400'
-                        : 'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {role === 'recruiter' ? 'Recruiter' : 'Candidate'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
               {/* Drawer nav items */}
               <nav className="flex-1 px-3 py-3 space-y-1 overflow-y-auto">
+                {/* Home link */}
+                <Link
+                  href="/"
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="block"
+                >
+                  <motion.div
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ type: 'spring' as const, stiffness: 400, damping: 25, delay: 0 }}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <Icon icon="solar:arrow-left-linear" className="w-5 h-5 flex-shrink-0" />
+                    <span>Back to Home</span>
+                  </motion.div>
+                </Link>
+
+                {/* Separator */}
+                <div className="border-b border-slate-200 dark:border-white/[0.06] mx-2 my-2" />
+
                 {navItems.map((item, i) => {
                   const active = isActive(item.href);
                   return (
@@ -317,24 +267,24 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                       <motion.div
                         className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium relative ${
                           active
-                            ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
-                            : 'text-white/50 hover:text-white hover:bg-white/5'
+                            ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
+                            : 'text-slate-500 dark:text-white/50 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5'
                         }`}
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.05 * i }}
+                        transition={{ type: 'spring' as const, stiffness: 400, damping: 25, delay: 0.05 * (i + 1) }}
                         whileTap={{ scale: 0.97 }}
                       >
                         {active && (
                           <motion.div
-                            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-400 rounded-full"
+                            className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 bg-blue-500 dark:bg-blue-400 rounded-full"
                             layoutId="drawerActiveIndicator"
-                            transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                            transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
                           />
                         )}
                         <Icon
                           icon={active ? item.iconActive : item.icon}
-                          className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-400' : ''}`}
+                          className={`w-5 h-5 flex-shrink-0 ${active ? 'text-blue-600 dark:text-blue-400' : ''}`}
                         />
                         <span>{item.label}</span>
                       </motion.div>
@@ -342,18 +292,6 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                   );
                 })}
               </nav>
-
-              {/* Drawer sign out */}
-              <div className="px-3 py-3 border-t border-white/[0.06]">
-                <motion.button
-                  onClick={() => { setMobileDrawerOpen(false); handleSignOut(); }}
-                  className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-white/40 hover:text-red-400 hover:bg-red-500/5 transition-colors"
-                  whileTap={{ scale: 0.97 }}
-                >
-                  <Icon icon="solar:logout-2-linear" className="w-5 h-5 flex-shrink-0" />
-                  <span>Sign Out</span>
-                </motion.button>
-              </div>
             </motion.aside>
           </>
         )}
@@ -372,18 +310,18 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
               onClick={() => setMobileMoreOpen(false)}
             />
             <motion.div
-              className="fixed bottom-0 left-0 right-0 z-50 bg-[#0a0c16] border-t border-white/[0.06] rounded-t-2xl md:hidden"
+              className="fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-[#0a0c16] border-t border-slate-200 dark:border-white/[0.06] rounded-t-2xl md:hidden"
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', stiffness: 350, damping: 30 }}
+              transition={{ type: 'spring' as const, stiffness: 350, damping: 30 }}
             >
               {/* Handle bar */}
               <div className="flex justify-center pt-3 pb-2">
-                <div className="w-10 h-1 rounded-full bg-white/20" />
+                <div className="w-10 h-1 rounded-full bg-slate-300 dark:bg-white/20" />
               </div>
               <div className="px-4 pb-2">
-                <p className="text-xs font-medium text-white/40 uppercase tracking-wider">All Pages</p>
+                <p className="text-xs font-medium text-slate-400 dark:text-white/40 uppercase tracking-wider">All Pages</p>
               </div>
               <nav className="px-3 pb-6 grid grid-cols-3 gap-1 max-h-[60vh] overflow-y-auto">
                 {navItems.map((item, i) => {
@@ -398,12 +336,12 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                       <motion.div
                         className={`flex flex-col items-center gap-1.5 px-2 py-3 rounded-xl text-center ${
                           active
-                            ? 'bg-blue-600/10 text-blue-400 ring-1 ring-blue-500/20'
-                            : 'text-white/40 hover:text-white/70 hover:bg-white/5'
+                            ? 'bg-blue-600/10 text-blue-600 dark:text-blue-400 ring-1 ring-blue-500/20'
+                            : 'text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70 hover:bg-slate-100 dark:hover:bg-white/5'
                         }`}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ type: 'spring', stiffness: 400, damping: 25, delay: 0.03 * i }}
+                        transition={{ type: 'spring' as const, stiffness: 400, damping: 25, delay: 0.03 * i }}
                         whileTap={{ scale: 0.93 }}
                       >
                         <Icon
@@ -423,36 +361,22 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
 
       {/* ---- Main Content ---- */}
       <motion.div
-        className="flex-1 flex flex-col min-h-screen"
+        className="flex-1 flex flex-col min-h-[calc(100vh-3.5rem)]"
         animate={{ marginLeft: isMd ? (collapsed ? 64 : 240) : 0 }}
-        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+        transition={{ type: 'spring' as const, stiffness: 300, damping: 30 }}
       >
-        {/* Mobile top bar */}
-        <header className="md:hidden sticky top-0 z-40 bg-[#0a0c16]/95 backdrop-blur-md border-b border-white/[0.06]">
-          <div className="flex items-center justify-between h-14 px-4">
-            <div className="flex items-center gap-3">
-              <motion.button
-                onClick={() => setMobileDrawerOpen(true)}
-                className="p-1.5 rounded-lg text-white/60 hover:text-white hover:bg-white/5 transition-colors"
-                whileTap={{ scale: 0.9 }}
-                aria-label="Open menu"
-              >
-                <Icon icon="solar:hamburger-menu-linear" className="w-6 h-6" />
-              </motion.button>
-              <Link href="/" className="flex items-center gap-2">
-                <div className="w-7 h-7 bg-gradient-to-br from-blue-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">H</span>
-                </div>
-                <span className="font-bold text-white">HireMatch</span>
-              </Link>
-            </div>
-            <button
-              onClick={handleSignOut}
-              className="p-2 text-white/40 hover:text-red-400 transition-colors"
-              aria-label="Sign out"
+        {/* Mobile top bar (hamburger only, no branding/signout — Header handles those) */}
+        <header className="md:hidden sticky top-14 z-40 bg-white/95 dark:bg-[#0a0c16]/95 backdrop-blur-md border-b border-slate-200 dark:border-white/[0.06]">
+          <div className="flex items-center h-12 px-4">
+            <motion.button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="p-1.5 rounded-lg text-slate-500 dark:text-white/60 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-white/5 transition-colors"
+              whileTap={{ scale: 0.9 }}
+              aria-label="Open menu"
             >
-              <Icon icon="solar:logout-2-linear" className="w-5 h-5" />
-            </button>
+              <Icon icon="solar:hamburger-menu-linear" className="w-6 h-6" />
+            </motion.button>
+            <span className="ml-3 text-sm font-medium text-slate-600 dark:text-white/60 capitalize">{role} Dashboard</span>
           </div>
         </header>
 
@@ -463,7 +387,7 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
       </motion.div>
 
       {/* ---- Mobile Bottom Tab Bar ---- */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0a0c16]/95 backdrop-blur-md border-t border-white/[0.06]">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white/95 dark:bg-[#0a0c16]/95 backdrop-blur-md border-t border-slate-200 dark:border-white/[0.06]">
         <div className="flex items-center justify-around h-16 px-2">
           {mobileNavItems.map((item) => {
             const active = isActive(item.href);
@@ -473,13 +397,13 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                 href={item.href}
                 className={`relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 ${
                   active
-                    ? 'text-blue-400'
-                    : 'text-white/40 hover:text-white/70'
+                    ? 'text-blue-600 dark:text-blue-400'
+                    : 'text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70'
                 }`}
               >
                 <motion.div
                   animate={active ? { scale: [1, 1.2, 1] } : { scale: 1 }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+                  transition={{ type: 'spring' as const, stiffness: 400, damping: 15 }}
                 >
                   <Icon
                     icon={active ? item.iconActive : item.icon}
@@ -489,9 +413,9 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
                 <span className="text-[10px] font-medium truncate">{item.label}</span>
                 {active && (
                   <motion.div
-                    className="absolute -bottom-0.5 w-4 h-0.5 bg-blue-400 rounded-full"
+                    className="absolute -bottom-0.5 w-4 h-0.5 bg-blue-500 dark:bg-blue-400 rounded-full"
                     layoutId="mobileActiveTab"
-                    transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+                    transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
                   />
                 )}
               </Link>
@@ -500,7 +424,7 @@ export default function DashboardLayout({ role, userName, children }: DashboardL
           {/* More button */}
           <button
             onClick={() => setMobileMoreOpen(true)}
-            className="relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 text-white/40 hover:text-white/70"
+            className="relative flex flex-col items-center gap-1 px-3 py-1.5 rounded-lg transition-all min-w-0 text-slate-400 dark:text-white/40 hover:text-slate-600 dark:hover:text-white/70"
           >
             <Icon icon="solar:menu-dots-bold" className="w-5 h-5" />
             <span className="text-[10px] font-medium">More</span>

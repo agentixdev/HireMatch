@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,11 +10,13 @@ import {
   springSnappy,
   springBouncy,
   springSmooth,
+  springDramatic,
   getTemperatureColors,
   staggerContainer,
   staggerItem,
   spotlightReveal,
   glowPulse,
+  scoreCountUp,
 } from '@/lib/wow';
 
 // ── Types ──────────────────────────────────────────────────────
@@ -736,6 +738,12 @@ export default function CompaniesPage() {
   const [shareModal, setShareModal] = useState<{ name: string; type: 'company' | 'job' | 'recruiter'; url: string } | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [search, setSearch] = useState('');
+  const [countryFilter, setCountryFilter] = useState<string>('');
+  const [industryFilter, setIndustryFilter] = useState<string>('');
+  const [sizeFilter, setSizeFilter] = useState<string>('');
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [filterPulse, setFilterPulse] = useState<string | null>(null);
+  const [revealPhase, setRevealPhase] = useState(0); // 0=loading, 1=stats, 2=filters, 3=grid
 
   // Fetch companies from recruiters table + aggregate from jobs table
   useEffect(() => {
@@ -900,6 +908,47 @@ export default function CompaniesPage() {
     }
   }, [shortlisted]);
 
+  // Phase-based progressive disclosure
+  useEffect(() => {
+    if (!loading && companies.length > 0 && revealPhase === 0) {
+      // Phase 1: Stats reveal
+      const t1 = setTimeout(() => setRevealPhase(1), 200);
+      // Phase 2: Filters reveal
+      const t2 = setTimeout(() => setRevealPhase(2), 600);
+      // Phase 3: Grid reveal
+      const t3 = setTimeout(() => setRevealPhase(3), 900);
+      return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [loading, companies.length, revealPhase]);
+
+  // Animated stats counters
+  const [displayedCompanyCount, setDisplayedCompanyCount] = useState(0);
+  const [displayedJobCount, setDisplayedJobCount] = useState(0);
+  const [displayedCountryCount, setDisplayedCountryCount] = useState(0);
+  const statsAnimated = useRef(false);
+
+  // Micro-feedback: pulse animation on filter click
+  const triggerPulse = useCallback((key: string) => {
+    setFilterPulse(key);
+    setTimeout(() => setFilterPulse(null), 400);
+  }, []);
+
+  // Derive unique values for advanced filters
+  const availableCountries = useMemo(() => {
+    const codes = new Set(companies.map((c) => (c.country || '').toLowerCase()).filter(Boolean));
+    return Array.from(codes).sort((a, b) => (COUNTRY_NAMES[a] || a).localeCompare(COUNTRY_NAMES[b] || b));
+  }, [companies]);
+
+  const availableIndustries = useMemo(() => {
+    const industries = new Set(companies.map((c) => c.industry).filter(Boolean));
+    return Array.from(industries).sort();
+  }, [companies]);
+
+  const availableSizes = useMemo(() => {
+    const sizes = new Set(companies.map((c) => c.company_size).filter(Boolean));
+    return Array.from(sizes).sort();
+  }, [companies]);
+
   // Filter + search
   const filtered = useMemo(() => {
     let result = companies;
@@ -911,6 +960,15 @@ export default function CompaniesPage() {
         if (filter === 'hot') return c.jobs_posted_count >= 10;
         return true;
       });
+    }
+    if (countryFilter) {
+      result = result.filter((c) => (c.country || '').toLowerCase() === countryFilter.toLowerCase());
+    }
+    if (industryFilter) {
+      result = result.filter((c) => c.industry === industryFilter);
+    }
+    if (sizeFilter) {
+      result = result.filter((c) => c.company_size === sizeFilter);
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -924,7 +982,21 @@ export default function CompaniesPage() {
       );
     }
     return result;
-  }, [companies, filter, search]);
+  }, [companies, filter, search, countryFilter, industryFilter, sizeFilter]);
+
+  // Animate stats when they first appear
+  useEffect(() => {
+    if (revealPhase >= 1 && filtered.length > 0 && !statsAnimated.current) {
+      statsAnimated.current = true;
+      const totalJobs = filtered.reduce((acc, c) => acc + c.jobs_posted_count, 0);
+      const totalCountries = new Set(filtered.map((c) => c.country)).size;
+      scoreCountUp(0, filtered.length, 800, setDisplayedCompanyCount).start();
+      scoreCountUp(0, totalJobs, 1000, setDisplayedJobCount).start();
+      scoreCountUp(0, totalCountries, 600, setDisplayedCountryCount).start();
+    }
+  }, [revealPhase, filtered]);
+
+  const activeFilterCount = [countryFilter, industryFilter, sizeFilter].filter(Boolean).length;
 
   const handlePromote = useCallback((type: 'company' | 'job', name: string) => {
     const base = typeof window !== 'undefined' ? window.location.origin : '';
@@ -989,84 +1061,335 @@ export default function CompaniesPage() {
             </p>
           </motion.div>
 
-          {/* Search + Filters */}
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="flex flex-col sm:flex-row items-center gap-3 mb-8"
-          >
-            <div className="relative flex-1 w-full sm:max-w-sm">
-              <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search companies, industries, culture..."
-                className="w-full pl-9 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/40 transition-colors"
-              />
-            </div>
+          {/* Stats Bar — Phase 1 */}
+          <AnimatePresence>
+            {revealPhase >= 1 && !loading && filtered.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={springBouncy}
+                className="grid grid-cols-3 gap-4 mb-8"
+              >
+                {[
+                  { value: displayedCompanyCount, label: 'Companies', icon: '🏢' },
+                  { value: displayedJobCount, label: 'Total Jobs', icon: '💼' },
+                  { value: displayedCountryCount, label: 'Countries', icon: '🌍' },
+                ].map((stat, i) => (
+                  <motion.div
+                    key={stat.label}
+                    initial={{ opacity: 0, y: 15 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: i * 0.1, ...springBouncy }}
+                    className="relative overflow-hidden rounded-xl bg-white/[0.03] border border-white/[0.06] px-4 py-3 text-center"
+                  >
+                    <motion.div
+                      className="absolute inset-0 opacity-0"
+                      animate={{ opacity: [0, 0.08, 0] }}
+                      transition={{ delay: i * 0.15 + 0.3, duration: 0.8 }}
+                      style={{ background: 'linear-gradient(135deg, #6366f1, #3b82f6)' }}
+                    />
+                    <span className="text-lg mr-1">{stat.icon}</span>
+                    <span className="text-xl font-bold text-white">{stat.value}</span>
+                    <p className="text-[10px] text-white/30 mt-0.5">{stat.label}</p>
+                  </motion.div>
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-            <div className="flex flex-wrap gap-1.5">
-              {filterOptions.map((f) => (
-                <motion.button
-                  key={f.key}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => setFilter(f.key)}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] ${
-                    filter === f.key
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
-                  }`}
-                >
-                  {f.label}
-                </motion.button>
-              ))}
-            </div>
-          </motion.div>
+          {/* Search + Filters — Phase 2 */}
+          <AnimatePresence>
+            {revealPhase >= 2 && (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={springSmooth}
+                className="mb-8"
+              >
+                {/* Search + Quick Filters Row */}
+                <div className="flex flex-col sm:flex-row items-center gap-3 mb-3">
+                  <div className="relative flex-1 w-full sm:max-w-sm">
+                    <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <input
+                      type="text"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Search companies, industries, culture..."
+                      className="w-full pl-9 pr-4 py-2.5 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-blue-500/40 transition-colors"
+                    />
+                  </div>
 
-          {/* Loading */}
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {filterOptions.map((f) => (
+                      <motion.button
+                        key={f.key}
+                        whileTap={{ scale: 0.95 }}
+                        animate={filterPulse === f.key ? { scale: [1, 1.12, 1] } : {}}
+                        transition={springSnappy}
+                        onClick={() => { setFilter(f.key); triggerPulse(f.key); }}
+                        className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] ${
+                          filter === f.key
+                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                            : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
+                        }`}
+                      >
+                        {f.label}
+                      </motion.button>
+                    ))}
+
+                    {/* Advanced Filters Toggle */}
+                    <motion.button
+                      whileTap={{ scale: 0.95 }}
+                      onClick={() => setShowAdvanced(!showAdvanced)}
+                      className={`px-3 py-2 rounded-lg text-xs font-medium cursor-pointer transition-all min-h-[36px] flex items-center gap-1.5 ${
+                        showAdvanced || activeFilterCount > 0
+                          ? 'bg-blue-600/20 text-blue-300 border border-blue-500/30'
+                          : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
+                      }`}
+                    >
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                      </svg>
+                      Filters
+                      {activeFilterCount > 0 && (
+                        <motion.span
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={springBouncy}
+                          className="w-4 h-4 rounded-full bg-blue-500 text-[9px] font-bold flex items-center justify-center text-white"
+                        >
+                          {activeFilterCount}
+                        </motion.span>
+                      )}
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* Advanced Filter Panel */}
+                <AnimatePresence>
+                  {showAdvanced && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={springSmooth}
+                      className="overflow-hidden"
+                    >
+                      <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] p-4 space-y-4">
+                        {/* Country Filter */}
+                        <div>
+                          <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2 block">Country</label>
+                          <div className="flex flex-wrap gap-1.5">
+                            <motion.button
+                              whileTap={{ scale: 0.95 }}
+                              animate={filterPulse === 'country-all' ? { scale: [1, 1.12, 1] } : {}}
+                              onClick={() => { setCountryFilter(''); triggerPulse('country-all'); }}
+                              className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                !countryFilter ? 'bg-indigo-600 text-white' : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08]'
+                              }`}
+                            >
+                              All Countries
+                            </motion.button>
+                            {availableCountries.map((code) => (
+                              <motion.button
+                                key={code}
+                                whileTap={{ scale: 0.95 }}
+                                animate={filterPulse === `country-${code}` ? { scale: [1, 1.12, 1] } : {}}
+                                transition={springSnappy}
+                                onClick={() => { setCountryFilter(countryFilter === code ? '' : code); triggerPulse(`country-${code}`); }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                  countryFilter === code
+                                    ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                    : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
+                                }`}
+                              >
+                                {COUNTRY_FLAGS[code] || ''} {COUNTRY_NAMES[code] || code.toUpperCase()}
+                              </motion.button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Industry Filter */}
+                        {availableIndustries.length > 0 && (
+                          <div>
+                            <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2 block">Industry</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => { setIndustryFilter(''); triggerPulse('industry-all'); }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                  !industryFilter ? 'bg-indigo-600 text-white' : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08]'
+                                }`}
+                              >
+                                All Industries
+                              </motion.button>
+                              {availableIndustries.map((ind) => {
+                                const color = getIndustryColor(ind);
+                                return (
+                                  <motion.button
+                                    key={ind}
+                                    whileTap={{ scale: 0.95 }}
+                                    animate={filterPulse === `industry-${ind}` ? { scale: [1, 1.12, 1] } : {}}
+                                    transition={springSnappy}
+                                    onClick={() => { setIndustryFilter(industryFilter === ind ? '' : ind); triggerPulse(`industry-${ind}`); }}
+                                    className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                      industryFilter === ind
+                                        ? 'text-white shadow-lg'
+                                        : 'text-white/40 hover:text-white/60'
+                                    }`}
+                                    style={{
+                                      backgroundColor: industryFilter === ind ? color : 'rgba(255,255,255,0.04)',
+                                      boxShadow: industryFilter === ind ? `0 4px 14px ${color}40` : 'none',
+                                    }}
+                                  >
+                                    {ind}
+                                  </motion.button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Company Size Filter */}
+                        {availableSizes.length > 0 && (
+                          <div>
+                            <label className="text-[11px] font-semibold text-white/50 uppercase tracking-wider mb-2 block">Company Size</label>
+                            <div className="flex flex-wrap gap-1.5">
+                              <motion.button
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => { setSizeFilter(''); triggerPulse('size-all'); }}
+                                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                  !sizeFilter ? 'bg-indigo-600 text-white' : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08]'
+                                }`}
+                              >
+                                All Sizes
+                              </motion.button>
+                              {availableSizes.map((size) => (
+                                <motion.button
+                                  key={size}
+                                  whileTap={{ scale: 0.95 }}
+                                  animate={filterPulse === `size-${size}` ? { scale: [1, 1.12, 1] } : {}}
+                                  transition={springSnappy}
+                                  onClick={() => { setSizeFilter(sizeFilter === size ? '' : size); triggerPulse(`size-${size}`); }}
+                                  className={`px-2.5 py-1.5 rounded-lg text-[11px] font-medium cursor-pointer transition-all ${
+                                    sizeFilter === size
+                                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                                      : 'bg-white/[0.04] text-white/40 hover:bg-white/[0.08] hover:text-white/60'
+                                  }`}
+                                >
+                                  {SIZE_LABELS[size] || size} <span className="text-white/20 ml-0.5">({size})</span>
+                                </motion.button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Clear All Filters */}
+                        {activeFilterCount > 0 && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={springSnappy}
+                            whileTap={{ scale: 0.95 }}
+                            onClick={() => { setCountryFilter(''); setIndustryFilter(''); setSizeFilter(''); }}
+                            className="text-[11px] text-red-400/70 hover:text-red-400 cursor-pointer transition-colors"
+                          >
+                            Clear all filters
+                          </motion.button>
+                        )}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Dramatic Loading Reveal */}
           {loading && (
-            <div className="flex items-center justify-center py-20">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="flex flex-col items-center justify-center py-20 gap-4"
+            >
               <motion.div
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
-                className="w-8 h-8 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full"
+                className="w-10 h-10 border-2 border-indigo-500/30 border-t-indigo-500 rounded-full"
               />
-            </div>
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="flex flex-col items-center gap-1"
+              >
+                <motion.p
+                  className="text-white/40 text-sm font-medium"
+                  animate={{ opacity: [0.4, 1, 0.4] }}
+                  transition={{ duration: 1.5, repeat: Infinity, ease: 'easeInOut' }}
+                >
+                  Discovering companies...
+                </motion.p>
+                <p className="text-white/15 text-xs">Scanning job boards & recruiter profiles</p>
+              </motion.div>
+            </motion.div>
           )}
 
           {/* No results */}
           {!loading && filtered.length === 0 && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center py-20">
-              <p className="text-white/30 text-lg mb-2">No companies found</p>
-              <p className="text-white/15 text-sm">Try adjusting your filters or search terms.</p>
-            </motion.div>
-          )}
-
-          {/* Companies Grid */}
-          {!loading && filtered.length > 0 && (
             <motion.div
-              variants={staggerContainer}
-              initial="hidden"
-              animate="visible"
-              className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={springSmooth}
+              className="text-center py-20"
             >
-              {filtered.map((company, i) => (
-                <CompanyCard
-                  key={company.id}
-                  company={company}
-                  index={i}
-                  onSelect={() => company.is_external ? undefined : setSelectedCompany(company)}
-                />
-              ))}
+              <motion.div
+                animate={{ y: [0, -5, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="text-4xl mb-4"
+              >
+                🔍
+              </motion.div>
+              <p className="text-white/30 text-lg mb-2">No companies found</p>
+              <p className="text-white/15 text-sm mb-4">Try adjusting your filters or search terms.</p>
+              {activeFilterCount > 0 && (
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => { setCountryFilter(''); setIndustryFilter(''); setSizeFilter(''); setFilter('all'); setSearch(''); }}
+                  className="px-4 py-2 rounded-lg bg-indigo-600/20 text-indigo-300 text-sm cursor-pointer hover:bg-indigo-600/30 transition-colors"
+                >
+                  Reset all filters
+                </motion.button>
+              )}
             </motion.div>
           )}
 
-          {/* Stats */}
-          {!loading && filtered.length > 0 && (
+          {/* Companies Grid — Phase 3 */}
+          <AnimatePresence>
+            {!loading && filtered.length > 0 && revealPhase >= 3 && (
+              <motion.div
+                variants={staggerContainer}
+                initial="hidden"
+                animate="visible"
+                className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4"
+              >
+                {filtered.map((company, i) => (
+                  <CompanyCard
+                    key={company.id}
+                    company={company}
+                    index={i}
+                    onSelect={() => company.is_external ? undefined : setSelectedCompany(company)}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Bottom Stats */}
+          {!loading && filtered.length > 0 && revealPhase >= 3 && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

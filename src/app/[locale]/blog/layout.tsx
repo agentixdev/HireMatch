@@ -1,3 +1,5 @@
+import Header from '@/components/Header';
+import Footer from '@/components/Footer';
 import { organizationJsonLd, webSiteJsonLd } from '@/lib/structured-data';
 import type { Metadata } from 'next';
 
@@ -19,6 +21,7 @@ export default async function BlogLayout({
   const { locale } = await params;
   return (
     <>
+      <Header />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
@@ -30,6 +33,7 @@ export default async function BlogLayout({
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </div>
+      <Footer />
     </>
   );
 }

@@ -91,7 +91,7 @@ function StatCard({
           : '0 0 0 1px rgba(255,255,255,0.07)',
         transition: 'box-shadow 0.35s ease',
       }}
-      className="relative flex flex-col items-center justify-center gap-1 px-4 sm:px-6 py-4 sm:py-5 rounded-2xl bg-white/[0.04] backdrop-blur-sm cursor-default select-none overflow-hidden"
+      className="relative flex flex-col items-center justify-center gap-1 px-4 sm:px-6 py-4 sm:py-5 rounded-2xl bg-slate-100 dark:bg-white/[0.04] backdrop-blur-sm cursor-default select-none overflow-hidden"
     >
       {/* Inner glow orb */}
       <motion.div
@@ -110,7 +110,7 @@ function StatCard({
       </span>
 
       {/* Label */}
-      <span className="text-xs text-white/50 font-medium tracking-wide text-center leading-tight">
+      <span className="text-xs text-slate-500 dark:text-white/50 font-medium tracking-wide text-center leading-tight">
         {label}
       </span>
     </motion.div>
@@ -133,7 +133,7 @@ function PulseRings() {
           transition={{
             duration: 2,
             repeat: Infinity,
-            ease: 'easeOut',
+            ease: 'easeOut' as const,
             delay: i * 0.65,
           }}
           style={{ width: '100%', height: '100%' }}
@@ -150,7 +150,7 @@ function PulseRings() {
 function ScrollChevron() {
   return (
     <motion.div
-      className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-white/30"
+      className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-slate-300 dark:text-white/30"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ delay: 2.2, duration: 0.8 }}
@@ -167,7 +167,7 @@ function ScrollChevron() {
         strokeLinecap="round"
         strokeLinejoin="round"
         animate={{ y: [0, 6, 0] }}
-        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }}
+        transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' as const }}
         aria-hidden
       >
         <polyline points="6 9 12 15 18 9" />
@@ -187,7 +187,7 @@ export default function HeroSection({
   recruiterCta,
 }: HeroSectionProps) {
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-24">
+    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden px-4 py-24 bg-white dark:bg-transparent">
 
       {/* ── 1. Animated gradient mesh background ── */}
       <div className="absolute inset-0 -z-10 overflow-hidden" aria-hidden>
@@ -207,7 +207,7 @@ export default function HeroSection({
             y: [0, 40, -20, 0],
             scale: [1, 1.12, 0.95, 1],
           }}
-          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' }}
+          transition={{ duration: 18, repeat: Infinity, ease: 'easeInOut' as const }}
         />
         {/* Orb 2 — purple, center-right */}
         <motion.div
@@ -225,7 +225,7 @@ export default function HeroSection({
             y: [0, -60, 30, 0],
             scale: [1, 0.92, 1.1, 1],
           }}
-          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut', delay: 3 }}
+          transition={{ duration: 22, repeat: Infinity, ease: 'easeInOut' as const, delay: 3 }}
         />
         {/* Orb 3 — indigo, bottom-center */}
         <motion.div
@@ -243,10 +243,10 @@ export default function HeroSection({
             y: [0, -30, 50, 0],
             scale: [1, 1.08, 0.96, 1],
           }}
-          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut', delay: 7 }}
+          transition={{ duration: 26, repeat: Infinity, ease: 'easeInOut' as const, delay: 7 }}
         />
-        {/* Deep background base */}
-        <div className="absolute inset-0 bg-[#0d0f1a]/60" />
+        {/* Deep background base — subtle in light mode */}
+        <div className="absolute inset-0 bg-slate-50/80 dark:bg-[#0d0f1a]/60" />
         {/* Subtle grid overlay */}
         <div
           className="absolute inset-0 opacity-[0.025]"
@@ -263,7 +263,7 @@ export default function HeroSection({
         {PARTICLES.map((p) => (
           <motion.span
             key={p.id}
-            className="absolute rounded-full bg-white/70"
+            className="absolute rounded-full bg-slate-400/70 dark:bg-white/70"
             style={{
               left: p.left,
               bottom: '-4px',
@@ -278,7 +278,7 @@ export default function HeroSection({
               duration: p.duration,
               delay: p.delay,
               repeat: Infinity,
-              ease: 'linear',
+              ease: 'linear' as const,
             }}
           />
         ))}
@@ -292,7 +292,7 @@ export default function HeroSection({
           initial={{ opacity: 0, y: -16, scale: 0.88 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ ...springSnappy, delay: 0.1 }}
-          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.06] ring-1 ring-white/[0.12] text-white/70 text-xs font-semibold tracking-widest uppercase"
+          className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-100 dark:bg-white/[0.06] ring-1 ring-slate-200 dark:ring-white/[0.12] text-slate-600 dark:text-white/70 text-xs font-semibold tracking-widest uppercase"
         >
           <span
             className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"
@@ -327,7 +327,7 @@ export default function HeroSection({
 
         {/* ── 4. Subtitle — spring entrance ── */}
         <motion.p
-          className="max-w-2xl text-lg sm:text-xl text-white/60 leading-relaxed"
+          className="max-w-2xl text-lg sm:text-xl text-slate-600 dark:text-white/60 leading-relaxed"
           initial={{ opacity: 0, y: 24 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...springBouncy, delay: 0.45 }}
@@ -365,13 +365,13 @@ export default function HeroSection({
               <path d="M12 2a5 5 0 1 0 0 10 5 5 0 0 0 0-10z" />
               <path d="M12 14c-6 0-9 2.5-9 4v1h18v-1c0-1.5-3-4-9-4z" />
             </svg>
-            {candidateCta}
+            Find Your Match
           </Link>
 
           {/* Secondary CTA — recruiter */}
           <Link
             href="/auth?mode=signup&role=recruiter"
-            className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 rounded-2xl font-semibold text-white/80 text-sm sm:text-base ring-1 ring-white/[0.15] bg-white/[0.05] hover:bg-white/[0.09] hover:text-white hover:ring-white/25 backdrop-blur-sm transition-all w-full sm:w-auto"
+            className="inline-flex items-center justify-center gap-2 px-6 sm:px-8 py-4 rounded-2xl font-semibold text-slate-600 dark:text-white/80 text-sm sm:text-base ring-1 ring-slate-200 dark:ring-white/[0.15] bg-slate-100 dark:bg-white/[0.05] hover:bg-slate-200 dark:hover:bg-white/[0.09] hover:text-slate-900 dark:hover:text-white hover:ring-slate-300 dark:hover:ring-white/25 backdrop-blur-sm transition-all w-full sm:w-auto"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -387,13 +387,13 @@ export default function HeroSection({
               <rect x="2" y="7" width="20" height="14" rx="2" />
               <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
             </svg>
-            {recruiterCta}
+            Start Hiring
           </Link>
         </motion.div>
 
         {/* Trust note */}
         <motion.p
-          className="text-xs text-white/30 tracking-wide"
+          className="text-xs text-slate-400 dark:text-white/30 tracking-wide"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 1.1, duration: 0.8 }}

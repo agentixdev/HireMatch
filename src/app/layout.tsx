@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter, Bebas_Neue } from "next/font/google";
 import Script from "next/script";
+import { ThemeProvider } from "@/components/ThemeProvider";
 import "./globals.css";
 
 const inter = Inter({
@@ -31,7 +32,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${bebas.variable} dark h-full antialiased`}>
+    <html className={`${inter.variable} ${bebas.variable} h-full antialiased`} suppressHydrationWarning>
       <head>
         {process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN && (
           <Script
@@ -42,7 +43,9 @@ export default function RootLayout({
           />
         )}
       </head>
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <ThemeProvider>{children}</ThemeProvider>
+      </body>
     </html>
   );
 }
