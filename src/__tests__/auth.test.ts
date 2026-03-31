@@ -69,6 +69,21 @@ jest.mock('resend', () => ({
   })),
 }));
 
+// Mock rate limiter to always allow requests in tests
+jest.mock('@/lib/rate-limit', () => ({
+  rateLimit: () => ({ success: true, remaining: 10, reset: Date.now() + 60000 }),
+  getClientIp: () => '127.0.0.1',
+  createRateLimiter: () => () => ({ success: true, remaining: 10, reset: Date.now() + 60000 }),
+}));
+
+// Mock email module to avoid React Email render dependency
+jest.mock('@/lib/email', () => ({
+  sendWelcomeEmail: jest.fn().mockResolvedValue(true),
+  sendPasswordResetEmail: jest.fn().mockResolvedValue(true),
+  sendApplicationNotification: jest.fn().mockResolvedValue(true),
+  sendStatusUpdateEmail: jest.fn().mockResolvedValue(true),
+}));
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
