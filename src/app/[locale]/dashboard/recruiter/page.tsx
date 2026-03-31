@@ -31,10 +31,24 @@ function useCountUp(target: number, duration = 1200) {
 }
 
 /* ─── Animation variants ─── */
-const containerVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.08 } } };
-const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
-const statVariants = { hidden: { opacity: 0, scale: 0.8 }, visible: { opacity: 1, scale: 1, transition: { type: 'spring' as const, stiffness: 400, damping: 20 } } };
-const listItemVariants = { hidden: { opacity: 0, x: -12 }, visible: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
+const containerVariants = { hidden: {}, visible: { transition: { staggerChildren: 0.1 } } };
+const cardVariants = { hidden: { opacity: 0, y: 24 }, visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
+const statVariants = { hidden: { opacity: 0, scale: 0.85, y: 16 }, visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring' as const, stiffness: 400, damping: 22 } } };
+const listItemVariants = { hidden: { opacity: 0, x: -16 }, visible: { opacity: 1, x: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 25 } } };
+
+/* Phase-based section reveal — each major section enters in sequence */
+const sectionVariants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 260, damping: 24 } },
+};
+
+/* ─── Dashboard loading steps ─── */
+const DASHBOARD_LOADING_STEPS = [
+  { text: 'Connecting to your dashboard...', icon: '🔗' },
+  { text: 'Loading your jobs...', icon: '📋' },
+  { text: 'Calculating performance...', icon: '📊' },
+  { text: 'Ready!', icon: '✨' },
+];
 
 const PROCESSING_STEPS = [
   'Analyzing your job requirements...',
@@ -77,19 +91,74 @@ const tierThemes: Record<string, { badge: string; glow: string; gradient: string
   agency: { badge: 'bg-amber-500/20 text-amber-400 ring-1 ring-amber-500/30', glow: 'shadow-amber-500/10', gradient: 'from-amber-600/8 via-transparent to-orange-600/5', accent: 'text-amber-400' },
 };
 
-/* ─── Stat Card ─── */
-function StatCard({ value, label, color }: { value: number; label: string; color: string }) {
+/* ─── Stat Card with temperature backgrounds + shimmer ─── */
+function StatCard({ value, label, color, intensity = 0.5 }: { value: number; label: string; color: string; intensity?: number }) {
   const animatedValue = useCountUp(value);
-  const colorMap: Record<string, string> = {
-    blue: 'text-blue-400 from-blue-500/10 to-blue-600/5',
-    purple: 'text-purple-400 from-purple-500/10 to-purple-600/5',
-    green: 'text-green-400 from-green-500/10 to-green-600/5',
+  const [isHovered, setIsHovered] = useState(false);
+
+  // Temperature: higher intensity = warmer glow
+  const colorMap: Record<string, { text: string; gradLow: string; gradHigh: string; glow: string; shimmer: string }> = {
+    blue: {
+      text: 'text-blue-400',
+      gradLow: 'from-blue-500/8 to-cyan-600/5',
+      gradHigh: 'from-blue-500/20 to-cyan-500/12',
+      glow: 'shadow-blue-500/20',
+      shimmer: 'from-transparent via-blue-400/10 to-transparent',
+    },
+    purple: {
+      text: 'text-purple-400',
+      gradLow: 'from-purple-500/8 to-indigo-600/5',
+      gradHigh: 'from-purple-500/20 to-pink-500/12',
+      glow: 'shadow-purple-500/20',
+      shimmer: 'from-transparent via-purple-400/10 to-transparent',
+    },
+    green: {
+      text: 'text-emerald-400',
+      gradLow: 'from-emerald-500/8 to-green-600/5',
+      gradHigh: 'from-emerald-500/20 to-teal-500/12',
+      glow: 'shadow-emerald-500/20',
+      shimmer: 'from-transparent via-emerald-400/10 to-transparent',
+    },
   };
+
+  const c = colorMap[color] || colorMap.blue;
+  const grad = intensity > 0.6 ? c.gradHigh : c.gradLow;
+
   return (
-    <motion.div variants={statVariants} whileHover={{ y: -2, scale: 1.02 }} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 relative overflow-hidden">
-      <div className={`absolute inset-0 bg-gradient-to-br ${colorMap[color]?.split(' ').slice(1).join(' ')} opacity-50`} />
+    <motion.div
+      variants={statVariants}
+      whileHover={{ y: -3, scale: 1.015, boxShadow: `0 8px 32px rgba(0,0,0,0.3)` }}
+      whileTap={{ scale: 0.98 }}
+      onHoverStart={() => setIsHovered(true)}
+      onHoverEnd={() => setIsHovered(false)}
+      className={`bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 relative overflow-hidden cursor-default transition-shadow ${isHovered ? `shadow-lg ${c.glow}` : ''}`}
+    >
+      {/* Temperature gradient background */}
+      <div className={`absolute inset-0 bg-gradient-to-br ${grad} transition-opacity duration-500`} />
+
+      {/* Shimmer overlay on hover */}
+      <AnimatePresence>
+        {isHovered && (
+          <motion.div
+            className={`absolute inset-0 bg-gradient-to-r ${c.shimmer}`}
+            initial={{ x: '-100%' }}
+            animate={{ x: '200%' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 1, ease: 'easeInOut' }}
+          />
+        )}
+      </AnimatePresence>
+
       <div className="relative">
-        <div className={`text-3xl font-bold ${colorMap[color]?.split(' ')[0]}`}>{animatedValue}</div>
+        <motion.div
+          className={`text-3xl font-bold ${c.text}`}
+          key={value}
+          initial={{ scale: 1.1, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+        >
+          {animatedValue}
+        </motion.div>
         <div className="text-sm text-white/50 mt-1">{label}</div>
       </div>
     </motion.div>
@@ -208,15 +277,83 @@ export default function RecruiterDashboard() {
     }
   }, [selectedJobId]);
 
+  /* ── Dramatic loading reveal ── */
+  const [loadingPhase, setLoadingPhase] = useState(0);
+
+  useEffect(() => {
+    if (!loading) return;
+    const timers = DASHBOARD_LOADING_STEPS.map((_, i) =>
+      setTimeout(() => setLoadingPhase(i), i * 700)
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [loading]);
+
   if (loading) {
     return (
       <DashboardLayout role="recruiter">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          {[1, 2, 3].map(i => (
-            <div key={i} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 p-6 animate-pulse">
-              <div className="h-4 bg-white/5 rounded w-1/3 mb-3" /><div className="h-3 bg-white/5 rounded w-2/3" />
-            </div>
-          ))}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex flex-col items-center justify-center min-h-[60vh]">
+          {/* Pulsing logo */}
+          <motion.div
+            className="w-20 h-20 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-600/20 flex items-center justify-center mb-8 ring-1 ring-white/10"
+            animate={{
+              scale: [1, 1.06, 1],
+              boxShadow: [
+                '0 0 0 0 rgba(168, 85, 247, 0)',
+                '0 0 40px 8px rgba(168, 85, 247, 0.15)',
+                '0 0 0 0 rgba(168, 85, 247, 0)',
+              ],
+            }}
+            transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            <span className="text-3xl">🚀</span>
+          </motion.div>
+
+          {/* Steps */}
+          <div className="space-y-3 w-full max-w-xs">
+            {DASHBOARD_LOADING_STEPS.map((step, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{
+                  opacity: loadingPhase >= i ? 1 : 0.2,
+                  x: loadingPhase >= i ? 0 : -20,
+                }}
+                transition={{ type: 'spring', stiffness: 300, damping: 25, delay: i * 0.05 }}
+                className="flex items-center gap-3"
+              >
+                <motion.span
+                  className="text-lg"
+                  animate={loadingPhase === i ? { scale: [1, 1.2, 1] } : {}}
+                  transition={{ duration: 0.6, repeat: loadingPhase === i ? Infinity : 0 }}
+                >
+                  {step.icon}
+                </motion.span>
+                <span className={`text-sm font-medium transition-colors duration-300 ${loadingPhase >= i ? 'text-white/80' : 'text-white/20'}`}>
+                  {step.text}
+                </span>
+                {loadingPhase > i && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+                    className="text-emerald-400 text-xs"
+                  >
+                    ✓
+                  </motion.span>
+                )}
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Progress bar */}
+          <div className="mt-6 h-1 bg-white/5 rounded-full overflow-hidden w-full max-w-xs">
+            <motion.div
+              className="h-full rounded-full bg-gradient-to-r from-purple-500 via-pink-500 to-indigo-500"
+              initial={{ width: '0%' }}
+              animate={{ width: `${Math.min(95, ((loadingPhase + 1) / DASHBOARD_LOADING_STEPS.length) * 100)}%` }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+            />
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -233,10 +370,21 @@ export default function RecruiterDashboard() {
   const canPostJob = tier !== 'free' || jobs.length < limits.jobs;
   const activeJobs = jobs.filter(j => j.is_active);
 
+  /* ── Tier-based radial background colors ── */
+  const tierRadials: Record<string, string> = {
+    free: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.02) 0%, transparent 60%)',
+    pro: 'radial-gradient(ellipse at 50% 0%, rgba(59,130,246,0.06) 0%, transparent 60%)',
+    enterprise: 'radial-gradient(ellipse at 50% 0%, rgba(168,85,247,0.06) 0%, transparent 60%)',
+    agency: 'radial-gradient(ellipse at 50% 0%, rgba(245,158,11,0.06) 0%, transparent 60%)',
+  };
+
   return (
     <DashboardLayout role="recruiter" userName={recruiter?.company_name}>
-      {/* Temperature background */}
+      {/* Temperature background (processing) */}
       <motion.div className="fixed inset-0 bg-gradient-to-br from-purple-600/20 to-pink-600/20 pointer-events-none z-0" style={{ opacity: bgOpacity }} />
+
+      {/* Tier-based radial ambient glow */}
+      <div className="fixed inset-0 pointer-events-none z-0" style={{ background: tierRadials[tier] || tierRadials.free }} />
 
       <motion.div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8" variants={containerVariants} initial="hidden" animate="visible">
 
@@ -279,15 +427,21 @@ export default function RecruiterDashboard() {
           </div>
         </motion.div>
 
-        {/* Stats */}
+        {/* Stats — phase 2 reveal with temperature intensity */}
         <motion.div variants={containerVariants} className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8">
-          <StatCard value={stats.activeJobs} label="Active Jobs" color="blue" />
-          <StatCard value={stats.totalApplicants} label="Total Applicants" color="purple" />
-          <StatCard value={stats.shortlisted} label="In Pipeline" color="green" />
+          <StatCard value={stats.activeJobs} label="Active Jobs" color="blue" intensity={Math.min(1, stats.activeJobs / 10)} />
+          <StatCard value={stats.totalApplicants} label="Total Applicants" color="purple" intensity={Math.min(1, stats.totalApplicants / 50)} />
+          <StatCard value={stats.shortlisted} label="In Pipeline" color="green" intensity={Math.min(1, stats.shortlisted / 20)} />
         </motion.div>
 
-        {/* ── AI MATCHED CANDIDATES ── */}
-        <motion.div variants={cardVariants} className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 mb-8 overflow-hidden">
+        {/* ── AI MATCHED CANDIDATES — phase 2.5 ── */}
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="bg-[#0F172A] rounded-xl ring-1 ring-white/10 mb-8 overflow-hidden"
+        >
           <div className="px-6 py-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between flex-wrap gap-3">
               <div className="flex items-center gap-3">
@@ -500,8 +654,14 @@ export default function RecruiterDashboard() {
           )}
         </motion.div>
 
-        {/* Jobs List */}
-        <motion.div variants={cardVariants} className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl">
+        {/* Jobs List — phase 3: reveals on scroll with whileInView */}
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-60px' }}
+          className="bg-[#0F172A] ring-1 ring-white/10 rounded-xl mb-8"
+        >
           <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between">
             <h2 className="text-lg font-semibold text-white">{t('myJobs')}</h2>
             {tier === 'free' && <span className="text-sm text-white/50">{jobs.length}/{limits.jobs} jobs used</span>}
@@ -520,13 +680,28 @@ export default function RecruiterDashboard() {
               </motion.button>
             </motion.div>
           ) : (
-            <motion.div variants={containerVariants} className="divide-y divide-white/[0.04]">
+            <motion.div variants={containerVariants} initial="hidden" whileInView="visible" viewport={{ once: true }} className="divide-y divide-white/[0.04]">
               {jobs.map((job) => (
-                <motion.div key={job.id} variants={listItemVariants} whileHover={{ backgroundColor: 'rgba(255,255,255,0.02)', x: 4 }} className="px-6 py-4 flex items-center justify-between cursor-pointer transition-colors" onClick={() => router.push(`/dashboard/recruiter/jobs/${job.id}`)}>
+                <motion.div
+                  key={job.id}
+                  variants={listItemVariants}
+                  whileHover={{ backgroundColor: 'rgba(255,255,255,0.03)', x: 4, scale: 1.005 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="px-6 py-4 flex items-center justify-between cursor-pointer transition-colors"
+                  onClick={() => router.push(`/dashboard/recruiter/jobs/${job.id}`)}
+                >
                   <div>
                     <div className="flex items-center gap-3">
                       <span className="font-medium text-white">{job.title}</span>
-                      {!job.is_active && <span className="px-2 py-0.5 text-xs bg-white/5 text-white/50 rounded-full">Inactive</span>}
+                      {!job.is_active && (
+                        <motion.span
+                          className="px-2 py-0.5 text-xs bg-white/5 text-white/50 rounded-full"
+                          animate={{ opacity: [0.5, 1, 0.5] }}
+                          transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+                        >
+                          Inactive
+                        </motion.span>
+                      )}
                       {job.is_featured && (
                         <motion.span className="px-2 py-0.5 text-xs bg-amber-500/20 text-amber-400 rounded-full" animate={{ boxShadow: ['0 0 0 0 rgba(245,158,11,0)', '0 0 0 4px rgba(245,158,11,0.15)', '0 0 0 0 rgba(245,158,11,0)'] }} transition={{ duration: 2, repeat: Infinity }}>
                           Featured
@@ -551,6 +726,35 @@ export default function RecruiterDashboard() {
               ))}
             </motion.div>
           )}
+        </motion.div>
+
+        {/* Quick Actions — phase 4: final reveal wave */}
+        <motion.div
+          variants={sectionVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: '-40px' }}
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+        >
+          {[
+            { label: 'Post a Job', icon: '➕', href: '/dashboard/recruiter/post-job', gradient: 'from-blue-600 to-indigo-600', shadow: 'shadow-blue-500/15' },
+            { label: 'Company Profile', icon: '🏢', href: '/dashboard/recruiter/profile', gradient: 'from-purple-600 to-pink-600', shadow: 'shadow-purple-500/15' },
+            { label: tier === 'free' ? 'Upgrade Plan' : 'Manage Plan', icon: '⚡', href: '/pricing', gradient: 'from-amber-600 to-orange-600', shadow: 'shadow-amber-500/15' },
+          ].map((action, i) => (
+            <motion.button
+              key={action.label}
+              variants={cardVariants}
+              whileHover={{ scale: 1.015, y: -2, boxShadow: '0 8px 32px rgba(0,0,0,0.3)' }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => router.push(action.href)}
+              className={`bg-[#0F172A] ring-1 ring-white/10 rounded-xl p-5 flex items-center gap-4 cursor-pointer text-left transition-shadow shadow-lg ${action.shadow}`}
+            >
+              <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${action.gradient} flex items-center justify-center text-lg flex-shrink-0`}>
+                {action.icon}
+              </div>
+              <span className="text-sm font-medium text-white/80">{action.label}</span>
+            </motion.button>
+          ))}
         </motion.div>
       </motion.div>
     </DashboardLayout>

@@ -48,14 +48,16 @@ const jobTypeBadge: Record<string, { bg: string; text: string; label: string }> 
 /* ================================================================
    FRAMER MOTION VARIANTS (WHB-clone)
    ================================================================ */
+const springTransition = { type: 'spring' as const, stiffness: 320, damping: 24 };
+
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: 'easeOut' as const } },
+  show: { opacity: 1, y: 0, transition: springTransition },
 };
 
 const fadeOnly = {
   hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.3, ease: 'easeOut' as const } },
+  show: { opacity: 1, transition: { ...springTransition, stiffness: 200 } },
 };
 
 const stagger = {
@@ -67,6 +69,9 @@ const scaleIn = {
   hidden: { opacity: 0, scale: 0.7 },
   show: { opacity: 1, scale: 1 },
 };
+
+/* Phase-based reveal delays for desktop sections */
+const phaseDelay = (phase: number) => ({ ...springTransition, delay: phase * 0.12 });
 
 /* ================================================================
    ANIMATED NUMBER — spring-based count-up
@@ -157,7 +162,7 @@ function RequirementCard({ text, index, variant = 'required', mobile }: {
       ref={ref}
       initial={{ opacity: 0, x: fromLeft ? -offset : offset }}
       animate={isInView ? { opacity: 1, x: 0 } : { opacity: 0, x: fromLeft ? -offset : offset }}
-      transition={{ duration: 0.4, delay: index * 0.06, ease: 'easeOut' }}
+      transition={{ type: 'spring', stiffness: 340, damping: 26, delay: index * 0.06 }}
       className={`flex gap-3 items-start ${mobile ? 'p-3' : 'p-3.5'} rounded-lg ${colors}`}
     >
       {icon}
@@ -178,7 +183,9 @@ function SkillTag({ skill, hasSkill, index }: {
     <motion.span
       variants={scaleIn}
       transition={{ delay: index * 0.04, type: 'spring', stiffness: 200, damping: 15 }}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
+      whileHover={{ scale: 1.08, boxShadow: hasSkill === true ? '0 0 12px rgba(34,197,94,0.3)' : hasSkill === false ? '0 0 8px rgba(255,255,255,0.08)' : '0 0 12px rgba(59,130,246,0.3)' }}
+      whileTap={{ scale: 0.95 }}
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-medium border cursor-default transition-colors ${
         hasSkill === true
           ? 'bg-green-500/10 border-green-500/30 text-green-400'
           : hasSkill === false
@@ -267,8 +274,9 @@ function SimilarJobCard({ job, locale }: { job: Job & { recruiter?: Pick<Recruit
       href={`/${locale}/jobs/${job.id}`}
       variants={fadeUp}
       className="block p-4 rounded-xl bg-[#0F172A] ring-1 ring-white/10 hover:bg-white/[0.06] hover:ring-white/20 transition-all group"
-      whileHover={{ y: -2 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+      whileHover={{ y: -4, scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
+      transition={{ type: 'spring', stiffness: 350, damping: 22 }}
     >
       <div className="flex items-start gap-3">
         {job.recruiter?.company_logo_url ? (
@@ -427,15 +435,18 @@ function ShareMenu({ job, recruiter, locale }: { job: Job; recruiter: Recruiter;
 
   return (
     <div className="relative">
-      <button
+      <motion.button
         onClick={() => setShareOpen(!shareOpen)}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 400, damping: 22 }}
         className="w-full px-4 py-2.5 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors flex items-center justify-center gap-2 cursor-pointer industry-glow"
       >
         <svg className="w-4 h-4 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
         </svg>
         <span className="text-[12px] font-medium text-white/45">Share</span>
-      </button>
+      </motion.button>
 
       <AnimatePresence>
         {shareOpen && (
@@ -443,7 +454,7 @@ function ShareMenu({ job, recruiter, locale }: { job: Job; recruiter: Recruiter;
             initial={{ opacity: 0, y: 8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
+            transition={{ type: 'spring', stiffness: 400, damping: 25 }}
             className="absolute bottom-full left-0 right-0 mb-2 rounded-xl p-1.5 ring-1 ring-white/10 z-50"
             role="menu"
             aria-label="Share options"
@@ -465,11 +476,35 @@ function ShareMenu({ job, recruiter, locale }: { job: Job; recruiter: Recruiter;
               <span className="text-[12px] text-white/70">Email</span>
             </a>
             <div className="h-px bg-white/5 mx-2 my-1" />
-            <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer">
+            <button onClick={handleCopyLink} className="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors cursor-pointer relative">
               <svg className="w-4 h-4 text-white/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
               </svg>
-              <span className="text-[12px] text-white/70">{copied ? 'Copied!' : 'Copy link'}</span>
+              <AnimatePresence mode="wait">
+                {copied ? (
+                  <motion.span
+                    key="copied"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="text-[12px] text-green-400 font-medium"
+                  >
+                    Copied!
+                  </motion.span>
+                ) : (
+                  <motion.span
+                    key="copy"
+                    initial={{ opacity: 0, y: 4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -4 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 20 }}
+                    className="text-[12px] text-white/70"
+                  >
+                    Copy link
+                  </motion.span>
+                )}
+              </AnimatePresence>
             </button>
           </motion.div>
         )}
@@ -605,6 +640,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
         .industry-glow:hover {
           box-shadow: 0 0 20px var(--industry-glow), 0 0 40px color-mix(in srgb, var(--industry-color) 10%, transparent);
         }
+        @keyframes soft-pulse {
+          0%, 100% { box-shadow: 0 0 0 0 transparent; }
+          50% { box-shadow: 0 0 10px var(--industry-glow); }
+        }
       `}</style>
 
       {/* ================================================================
@@ -615,7 +654,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ duration: 0.4 }}
+          transition={{ type: 'spring', stiffness: 200, damping: 24 }}
           className={`relative pt-6 pb-8 px-5 bg-gradient-to-b ${tempBg || 'from-white/[0.02] via-transparent to-transparent'}`}
         >
           {/* Company logo + industry badge */}
@@ -656,7 +695,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
+            transition={{ delay: 0.15, type: 'spring', stiffness: 300, damping: 24 }}
             className="text-[26px] font-bold tracking-tight leading-tight title-shimmer"
           >
             {job.title}
@@ -734,7 +773,12 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
                 exit={{ opacity: 0, height: 0 }}
                 className="mb-6"
               >
-                <div className="p-4 rounded-xl bg-[#0F172A] ring-1 ring-white/10">
+                <div className={`p-4 rounded-xl bg-[#0F172A] ring-1 ${
+                  matchScore != null && matchScore >= 80 ? 'ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                  : matchScore != null && matchScore >= 60 ? 'ring-blue-500/30 shadow-lg shadow-blue-500/10'
+                  : matchScore != null && matchScore >= 40 ? 'ring-amber-500/30 shadow-lg shadow-amber-500/10'
+                  : 'ring-white/10'
+                }`}>
                   <p className="text-[10px] uppercase font-bold text-white/50 tracking-wider mb-3 text-center">
                     Your Match Score
                   </p>
@@ -902,14 +946,14 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
       {/* ================================================================
          DESKTOP LAYOUT (hidden lg:block) — WHB-clone: Left Sidebar + Right Content
          ================================================================ */}
-      <div className="hidden lg:block max-w-7xl mx-auto px-6 py-10">
+      <div className={`hidden lg:block max-w-7xl mx-auto px-6 py-10 ${tempBg ? `bg-gradient-to-b ${tempBg}` : ''}`}>
         <div className="flex gap-8 items-start">
 
           {/* ── LEFT SIDEBAR (sticky, ~380px) ── */}
           <motion.aside
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.5 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 26 }}
             className="w-[380px] shrink-0 sticky top-6"
           >
             <div className="p-6 rounded-xl bg-[#0F172A] ring-1 ring-white/10 space-y-5">
@@ -1015,9 +1059,14 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
               </div>
 
               {/* Contact Recruiter button (placeholder) */}
-              <button className="w-full py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors text-sm font-medium text-white/50 cursor-pointer industry-glow">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                transition={{ type: 'spring', stiffness: 400, damping: 22 }}
+                className="w-full py-3 rounded-xl bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.08] transition-colors text-sm font-medium text-white/50 cursor-pointer industry-glow"
+              >
                 Contact Recruiter
-              </button>
+              </motion.button>
             </div>
           </motion.aside>
 
@@ -1027,7 +1076,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={phaseDelay(0)}
             >
               <h1 className="text-[36px] font-bold tracking-tight leading-tight title-shimmer mb-4">
                 {job.title}
@@ -1077,7 +1126,7 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
+              transition={phaseDelay(1)}
               className={`flex items-center justify-center gap-12 p-6 rounded-xl bg-[#0F172A] ring-1 ${theme.ring}`}
             >
               {salaryLabel && (
@@ -1102,10 +1151,16 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             <AnimatePresence>
               {matchScore != null && (
                 <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="p-6 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
+                  initial={{ opacity: 0, y: 20, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.97 }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 22 }}
+                  className={`p-6 rounded-xl bg-[#0F172A] ring-1 ${
+                    matchScore != null && matchScore >= 80 ? 'ring-emerald-500/30 shadow-lg shadow-emerald-500/10'
+                    : matchScore != null && matchScore >= 60 ? 'ring-blue-500/30 shadow-lg shadow-blue-500/10'
+                    : matchScore != null && matchScore >= 40 ? 'ring-amber-500/30 shadow-lg shadow-amber-500/10'
+                    : 'ring-white/10'
+                  }`}
                 >
                   <p className="text-[11px] uppercase font-bold text-white/50 tracking-wider mb-4">Your Match Score</p>
                   <div className="flex items-center gap-8">
@@ -1126,10 +1181,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
 
             {/* About This Role — bio card */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              viewport={{ once: true, margin: '-60px' }}
+              transition={phaseDelay(2)}
               className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
             >
               <h2 className="text-lg font-semibold text-white mb-4">About This Role</h2>
@@ -1141,10 +1196,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             {/* Requirements card — items with checkmark icons, blue left border */}
             {job.requirements.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={phaseDelay(3)}
                 className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Requirements</h2>
@@ -1159,10 +1214,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             {/* Nice to Have card — green left border */}
             {job.nice_to_haves.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={phaseDelay(4)}
                 className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Nice to Have</h2>
@@ -1177,10 +1232,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             {/* Required Skills tags section */}
             {job.skills_required.length > 0 && (
               <motion.div
-                initial={{ opacity: 0, y: 20 }}
+                initial={{ opacity: 0, y: 24 }}
                 whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={phaseDelay(5)}
                 className="p-8 rounded-xl bg-[#0F172A] ring-1 ring-white/10"
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Required Skills</h2>
@@ -1210,10 +1265,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
 
             {/* Apply Now button — full-width, gradient, WHB vote button detail variant */}
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={phaseDelay(6)}
             >
               <DetailApplyButton
                 job={job}
@@ -1229,8 +1284,8 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
+              viewport={{ once: true, margin: '-40px' }}
+              transition={phaseDelay(7)}
             >
               <ShareMenu job={job} recruiter={recruiter} locale={locale} />
             </motion.div>
@@ -1239,10 +1294,10 @@ export default function JobDetailClient({ job, recruiter: recruiterProp, similar
             {similarJobs.length > 0 && (
               <motion.div
                 className="mt-6"
-                initial={{ opacity: 0 }}
-                whileInView={{ opacity: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5 }}
+                initial={{ opacity: 0, y: 24 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-60px' }}
+                transition={phaseDelay(8)}
               >
                 <h2 className="text-lg font-semibold text-white mb-5">Similar Jobs</h2>
                 <motion.div

@@ -16,80 +16,233 @@ const COLUMNS: {
   bgGradient: string;   // subtle column background
   ringColor: string;
   icon: string;
+  headerGradient: string; // temperature-coded header gradient
+  glowColor: string;      // glow accent for column
 }[] = [
   {
     status: 'applied',
     label: 'Applied',
     color: 'text-blue-400',
-    bgGradient: 'from-blue-500/[0.06] to-blue-600/[0.02]',
+    bgGradient: 'from-blue-500/[0.08] to-blue-900/[0.03]',
     ringColor: 'ring-blue-500/20',
     icon: 'solar:inbox-in-bold',
+    headerGradient: 'from-blue-500/20 via-blue-400/10 to-transparent',
+    glowColor: 'shadow-blue-500/5',
   },
   {
     status: 'reviewed',
     label: 'Reviewed',
-    color: 'text-sky-400',
-    bgGradient: 'from-sky-500/[0.06] to-sky-600/[0.02]',
-    ringColor: 'ring-sky-500/20',
+    color: 'text-amber-400',
+    bgGradient: 'from-amber-500/[0.08] to-amber-900/[0.03]',
+    ringColor: 'ring-amber-500/20',
     icon: 'solar:eye-bold',
+    headerGradient: 'from-amber-500/20 via-amber-400/10 to-transparent',
+    glowColor: 'shadow-amber-500/5',
   },
   {
     status: 'shortlisted',
     label: 'Shortlisted',
-    color: 'text-cyan-400',
-    bgGradient: 'from-cyan-500/[0.06] to-cyan-600/[0.02]',
-    ringColor: 'ring-cyan-500/20',
+    color: 'text-orange-400',
+    bgGradient: 'from-orange-500/[0.08] to-orange-900/[0.03]',
+    ringColor: 'ring-orange-500/20',
     icon: 'solar:star-bold',
+    headerGradient: 'from-orange-500/20 via-orange-400/10 to-transparent',
+    glowColor: 'shadow-orange-500/5',
   },
   {
     status: 'interview_scheduled',
     label: 'Interview Scheduled',
-    color: 'text-teal-400',
-    bgGradient: 'from-teal-500/[0.06] to-teal-600/[0.02]',
-    ringColor: 'ring-teal-500/20',
+    color: 'text-pink-400',
+    bgGradient: 'from-pink-500/[0.08] to-pink-900/[0.03]',
+    ringColor: 'ring-pink-500/20',
     icon: 'solar:calendar-bold',
+    headerGradient: 'from-pink-500/20 via-pink-400/10 to-transparent',
+    glowColor: 'shadow-pink-500/5',
   },
   {
     status: 'interview_completed',
     label: 'Interview Done',
-    color: 'text-emerald-400',
-    bgGradient: 'from-emerald-500/[0.06] to-emerald-600/[0.02]',
-    ringColor: 'ring-emerald-500/20',
+    color: 'text-rose-400',
+    bgGradient: 'from-rose-500/[0.08] to-rose-900/[0.03]',
+    ringColor: 'ring-rose-500/20',
     icon: 'solar:chat-round-check-bold',
+    headerGradient: 'from-rose-500/20 via-rose-400/10 to-transparent',
+    glowColor: 'shadow-rose-500/5',
   },
   {
     status: 'offer_extended',
     label: 'Offer Extended',
-    color: 'text-lime-400',
-    bgGradient: 'from-lime-500/[0.06] to-lime-600/[0.02]',
-    ringColor: 'ring-lime-500/20',
+    color: 'text-emerald-400',
+    bgGradient: 'from-emerald-500/[0.08] to-emerald-900/[0.03]',
+    ringColor: 'ring-emerald-500/20',
     icon: 'solar:letter-bold',
+    headerGradient: 'from-emerald-500/20 via-emerald-400/10 to-transparent',
+    glowColor: 'shadow-emerald-500/5',
   },
   {
     status: 'offer_accepted',
     label: 'Offer Accepted',
     color: 'text-green-400',
-    bgGradient: 'from-green-500/[0.06] to-green-600/[0.02]',
+    bgGradient: 'from-green-500/[0.08] to-green-900/[0.03]',
     ringColor: 'ring-green-500/20',
     icon: 'solar:check-circle-bold',
+    headerGradient: 'from-green-500/20 via-green-400/10 to-transparent',
+    glowColor: 'shadow-green-500/5',
   },
   {
     status: 'hired',
     label: 'Hired',
-    color: 'text-green-300',
-    bgGradient: 'from-green-400/[0.08] to-green-500/[0.03]',
-    ringColor: 'ring-green-400/25',
+    color: 'text-yellow-300',
+    bgGradient: 'from-yellow-400/[0.10] to-yellow-600/[0.04]',
+    ringColor: 'ring-yellow-400/30',
     icon: 'solar:medal-ribbons-star-bold',
+    headerGradient: 'from-yellow-400/25 via-yellow-300/15 to-transparent',
+    glowColor: 'shadow-yellow-400/10',
   },
   {
     status: 'rejected',
     label: 'Rejected',
     color: 'text-red-400',
-    bgGradient: 'from-red-500/[0.08] to-red-600/[0.03]',
+    bgGradient: 'from-red-500/[0.08] to-red-900/[0.03]',
     ringColor: 'ring-red-500/25',
     icon: 'solar:close-circle-bold',
+    headerGradient: 'from-red-500/20 via-red-400/10 to-transparent',
+    glowColor: 'shadow-red-500/5',
   },
 ];
+
+// ---- Dramatic loading messages ----
+const LOADING_MESSAGES = [
+  { text: 'Loading your pipeline...', icon: 'solar:refresh-bold' },
+  { text: 'Syncing candidate statuses...', icon: 'solar:users-group-rounded-bold' },
+  { text: 'Calculating match insights...', icon: 'solar:graph-new-bold' },
+  { text: 'Pipeline ready!', icon: 'solar:check-circle-bold' },
+];
+
+// ---- Animation variants for phase-based progressive disclosure ----
+const pipelineContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.08,
+      delayChildren: 0.1,
+    },
+  },
+};
+
+const columnVariants = {
+  hidden: { opacity: 0, y: 30, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 25,
+      staggerChildren: 0.06,
+      delayChildren: 0.15,
+    },
+  },
+};
+
+const cardStaggerVariants = {
+  hidden: { opacity: 0, y: 20, scale: 0.92 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 300,
+      damping: 25,
+    },
+  },
+};
+
+const actionButtonVariants = {
+  hidden: { opacity: 0, scale: 0.8 },
+  visible: {
+    opacity: 1,
+    scale: 1,
+    transition: {
+      type: 'spring' as const,
+      stiffness: 400,
+      damping: 20,
+      delay: 0.1,
+    },
+  },
+};
+
+// ---- Confetti burst for "Hired" status ----
+function ConfettiBurst({ show }: { show: boolean }) {
+  const colors = ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'];
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          className="fixed inset-0 z-50 pointer-events-none"
+          initial={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.5, delay: 1.2 }}
+        >
+          {[...Array(24)].map((_, i) => {
+            const angle = (i / 24) * Math.PI * 2;
+            const velocity = 80 + Math.random() * 120;
+            const size = 4 + Math.random() * 6;
+            return (
+              <motion.div
+                key={i}
+                className="absolute rounded-full"
+                style={{
+                  width: size,
+                  height: size,
+                  backgroundColor: colors[i % colors.length],
+                  left: '50%',
+                  top: '50%',
+                }}
+                initial={{ x: 0, y: 0, scale: 0, opacity: 1 }}
+                animate={{
+                  x: Math.cos(angle) * velocity,
+                  y: Math.sin(angle) * velocity + 40,
+                  scale: [0, 1.5, 1, 0],
+                  opacity: [1, 1, 0.8, 0],
+                  rotate: Math.random() * 720,
+                }}
+                transition={{ duration: 1.0 + Math.random() * 0.4, ease: 'easeOut' }}
+              />
+            );
+          })}
+          <motion.div
+            className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+            initial={{ scale: 0, opacity: 0 }}
+            animate={{ scale: [0, 1.5, 1], opacity: [0, 1, 0] }}
+            transition={{ duration: 0.8 }}
+          >
+            <Icon icon="solar:cup-star-bold" className="w-16 h-16 text-yellow-400" />
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ---- Red flash for reject ----
+function RejectFlash({ show }: { show: boolean }) {
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          className="absolute inset-0 z-20 pointer-events-none rounded-xl"
+          initial={{ opacity: 0, backgroundColor: 'rgba(239, 68, 68, 0)' }}
+          animate={{ opacity: [0, 0.3, 0], backgroundColor: ['rgba(239, 68, 68, 0)', 'rgba(239, 68, 68, 0.25)', 'rgba(239, 68, 68, 0)'] }}
+          transition={{ duration: 0.4 }}
+        />
+      )}
+    </AnimatePresence>
+  );
+}
 
 // ---- Enriched application with joined data ----
 interface EnrichedApplication extends Application {
@@ -154,7 +307,7 @@ function CheckmarkFeedback({ show }: { show: boolean }) {
             initial={{ scale: 0, rotate: -45 }}
             animate={{ scale: [0, 1.3, 1], rotate: 0 }}
             exit={{ scale: 0 }}
-            transition={{ type: 'spring', stiffness: 400, damping: 15 }}
+            transition={{ type: 'spring' as const, stiffness: 400, damping: 15 }}
           >
             <Icon icon="solar:check-circle-bold" className="w-10 h-10 text-green-400" />
           </motion.div>
@@ -177,14 +330,20 @@ function ApplicationCard({
   const [expanded, setExpanded] = useState(false);
   const [sparkle, setSparkle] = useState(false);
   const [checkmark, setCheckmark] = useState(false);
+  const [rejectFlash, setRejectFlash] = useState(false);
+  const [confetti, setConfetti] = useState(false);
   const sparkleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkmarkTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const rejectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const confettiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Clean up timers on unmount
   useEffect(() => {
     return () => {
       if (sparkleTimerRef.current) clearTimeout(sparkleTimerRef.current);
       if (checkmarkTimerRef.current) clearTimeout(checkmarkTimerRef.current);
+      if (rejectTimerRef.current) clearTimeout(rejectTimerRef.current);
+      if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
     };
   }, []);
 
@@ -205,6 +364,24 @@ function ApplicationCard({
     // Clear any existing timers before starting new ones
     if (sparkleTimerRef.current) clearTimeout(sparkleTimerRef.current);
     if (checkmarkTimerRef.current) clearTimeout(checkmarkTimerRef.current);
+    if (rejectTimerRef.current) clearTimeout(rejectTimerRef.current);
+    if (confettiTimerRef.current) clearTimeout(confettiTimerRef.current);
+
+    // Reject: red flash then remove
+    if (newStatus === 'rejected') {
+      setRejectFlash(true);
+      rejectTimerRef.current = setTimeout(() => {
+        setRejectFlash(false);
+        onStatusChange(app.id, newStatus);
+      }, 450);
+      return;
+    }
+
+    // Hired: confetti burst
+    if (newStatus === 'hired') {
+      setConfetti(true);
+      confettiTimerRef.current = setTimeout(() => setConfetti(false), 1800);
+    }
 
     setSparkle(true);
     sparkleTimerRef.current = setTimeout(() => {
@@ -217,25 +394,38 @@ function ApplicationCard({
     }, 500);
   }
 
+  // Temperature-coded match score badge
+  const score = app.match_score ?? 0;
   const scoreColor =
-    (app.match_score ?? 0) >= 80
-      ? 'text-green-400 bg-green-500/10'
-      : (app.match_score ?? 0) >= 60
-        ? 'text-yellow-400 bg-yellow-500/10'
-        : 'text-white/50 bg-white/5';
+    score >= 90
+      ? 'text-emerald-300 bg-emerald-500/15 ring-1 ring-emerald-500/30'
+      : score >= 80
+        ? 'text-green-400 bg-green-500/10 ring-1 ring-green-500/20'
+        : score >= 70
+          ? 'text-lime-400 bg-lime-500/10 ring-1 ring-lime-500/20'
+          : score >= 60
+            ? 'text-yellow-400 bg-yellow-500/10 ring-1 ring-yellow-500/20'
+            : score >= 50
+              ? 'text-orange-400 bg-orange-500/10 ring-1 ring-orange-500/20'
+              : 'text-white/40 bg-white/5 ring-1 ring-white/10';
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, scale: 0.9, y: 20 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.85, y: -10 }}
-      transition={{ type: 'spring', stiffness: 350, damping: 28 }}
-      className="relative bg-[#0F172A] ring-1 ring-white/10 rounded-xl overflow-hidden cursor-pointer hover:ring-white/20 transition-all group"
+      variants={cardStaggerVariants}
+      exit={{ opacity: 0, scale: 0.85, y: -10, transition: { duration: 0.2 } }}
+      transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
+      className="relative bg-[#0F172A] ring-1 ring-white/10 rounded-xl overflow-hidden cursor-pointer transition-all group"
       onClick={() => setExpanded(!expanded)}
-      whileHover={{ y: -2 }}
+      whileHover={{
+        scale: 1.015,
+        y: -3,
+        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.3), 0 2px 8px rgba(255, 255, 255, 0.03)',
+      }}
       whileTap={{ scale: 0.98 }}
     >
+      <RejectFlash show={rejectFlash} />
+      <ConfettiBurst show={confetti} />
       <SparkleOverlay show={sparkle} />
       <CheckmarkFeedback show={checkmark} />
 
@@ -289,7 +479,7 @@ function ApplicationCard({
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+            transition={{ type: 'spring' as const, stiffness: 350, damping: 28 }}
             className="overflow-hidden"
             onClick={(e) => e.stopPropagation()}
           >
@@ -354,8 +544,12 @@ function ApplicationCard({
                 </div>
               )}
 
-              {/* Status change buttons */}
-              <div>
+              {/* Status change buttons — fade in last (phase 3) */}
+              <motion.div
+                variants={actionButtonVariants}
+                initial="hidden"
+                animate="visible"
+              >
                 <p className="text-[10px] font-medium text-white/40 uppercase tracking-wider mb-2">
                   Move to
                 </p>
@@ -369,8 +563,9 @@ function ApplicationCard({
                     .map((col) => (
                       <motion.button
                         key={col.status}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        whileHover={{ scale: 1.08, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={{ type: 'spring' as const, stiffness: 500, damping: 15 }}
                         onClick={() => handleStatusChange(col.status)}
                         className={`px-2 py-1 text-[10px] font-medium rounded-md ring-1 ${col.ringColor} ${col.color} bg-white/[0.03] hover:bg-white/[0.06] transition-colors`}
                       >
@@ -380,8 +575,9 @@ function ApplicationCard({
                   {/* Reject button */}
                   {currentColumn !== 'rejected' && (
                     <motion.button
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
+                      whileHover={{ scale: 1.08, y: -1 }}
+                      whileTap={{ scale: 0.9 }}
+                      transition={{ type: 'spring' as const, stiffness: 500, damping: 15 }}
                       onClick={() => handleStatusChange('rejected')}
                       className="px-2 py-1 text-[10px] font-medium rounded-md ring-1 ring-red-500/25 text-red-400 bg-white/[0.03] hover:bg-red-500/10 transition-colors"
                     >
@@ -389,7 +585,7 @@ function ApplicationCard({
                     </motion.button>
                   )}
                 </div>
-              </div>
+              </motion.div>
             </div>
           </motion.div>
         )}
@@ -561,12 +757,72 @@ export default function RecruiterApplicationsPage() {
     return (
       <DashboardLayout role="recruiter">
         <div className="flex-1 flex items-center justify-center min-h-[60vh]">
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
-          >
-            <Icon icon="solar:refresh-bold" className="w-8 h-8 text-white/30" />
-          </motion.div>
+          <div className="flex flex-col items-center gap-6">
+            {/* Pulsing pipeline icon */}
+            <motion.div
+              className="relative"
+              animate={{ scale: [1, 1.05, 1] }}
+              transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+            >
+              <motion.div
+                className="absolute inset-0 rounded-full bg-blue-500/20 blur-xl"
+                animate={{ scale: [1, 1.4, 1], opacity: [0.3, 0.6, 0.3] }}
+                transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+              />
+              <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 1.2, ease: 'linear' }}
+              >
+                <Icon icon="solar:refresh-bold" className="w-10 h-10 text-blue-400 relative z-10" />
+              </motion.div>
+            </motion.div>
+
+            {/* Progressive loading messages */}
+            <div className="flex flex-col items-center gap-2">
+              {LOADING_MESSAGES.map((msg, i) => (
+                <motion.div
+                  key={i}
+                  className="flex items-center gap-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.6, duration: 0.4 }}
+                >
+                  <motion.div
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={{ delay: i * 0.6 + 0.2, type: 'spring' as const, stiffness: 400, damping: 15 }}
+                  >
+                    <Icon
+                      icon={msg.icon}
+                      className={`w-4 h-4 ${i === LOADING_MESSAGES.length - 1 ? 'text-green-400' : 'text-white/40'}`}
+                    />
+                  </motion.div>
+                  <span className={`text-sm ${i === LOADING_MESSAGES.length - 1 ? 'text-green-400 font-medium' : 'text-white/40'}`}>
+                    {msg.text}
+                  </span>
+                  {i < LOADING_MESSAGES.length - 1 && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      transition={{ delay: i * 0.6 + 0.4 }}
+                    >
+                      <Icon icon="solar:check-circle-bold" className="w-3.5 h-3.5 text-green-500/60" />
+                    </motion.div>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+
+            {/* Progress bar */}
+            <div className="w-48 h-1 bg-white/5 rounded-full overflow-hidden">
+              <motion.div
+                className="h-full rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-green-400"
+                initial={{ width: '0%' }}
+                animate={{ width: '100%' }}
+                transition={{ duration: 2.4, ease: 'easeInOut' }}
+              />
+            </div>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -577,11 +833,23 @@ export default function RecruiterApplicationsPage() {
       <div className="min-h-screen">
         <div className="max-w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {/* Page header */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+          <motion.div
+            className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6"
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
+          >
             <div>
               <h1 className="text-2xl font-bold text-white">Application Pipeline</h1>
               <p className="text-sm text-white/40 mt-0.5">
-                {totalCount} application{totalCount !== 1 ? 's' : ''} across all stages
+                <motion.span
+                  key={totalCount}
+                  initial={{ opacity: 0, y: 5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="inline-block"
+                >
+                  {totalCount} application{totalCount !== 1 ? 's' : ''} across all stages
+                </motion.span>
               </p>
             </div>
 
@@ -600,49 +868,86 @@ export default function RecruiterApplicationsPage() {
                   </option>
                 ))}
               </select>
-              <button
+              <motion.button
+                whileHover={{ scale: 1.05, x: -2 }}
+                whileTap={{ scale: 0.95 }}
                 onClick={() => router.push('/dashboard/recruiter')}
                 className="px-3 py-2 text-sm text-white/50 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors"
               >
                 <Icon icon="solar:arrow-left-linear" className="w-4 h-4" />
-              </button>
+              </motion.button>
             </div>
-          </div>
+          </motion.div>
 
-          {/* Kanban board */}
+          {/* Kanban board — phase-based progressive disclosure */}
           <div className="overflow-x-auto pb-4 -mx-4 px-4">
-            <div className="flex gap-4" style={{ minWidth: `${COLUMNS.length * 280}px` }}>
-              {COLUMNS.map((col) => {
+            <motion.div
+              className="flex gap-4"
+              style={{ minWidth: `${COLUMNS.length * 280}px` }}
+              variants={pipelineContainerVariants}
+              initial="hidden"
+              animate="visible"
+            >
+              {COLUMNS.map((col, colIndex) => {
                 const colApps = filteredByColumn(col.status);
+                const isInView = colIndex < 4; // First 4 columns visible immediately
                 return (
                   <motion.div
                     key={col.status}
                     layout
-                    className={`flex-1 min-w-[260px] max-w-[320px] rounded-xl bg-gradient-to-b ${col.bgGradient} ring-1 ${col.ringColor} flex flex-col`}
+                    variants={columnVariants}
+                    {...(!isInView ? { whileInView: 'visible', viewport: { once: true, margin: '-50px' }, initial: 'hidden' } : {})}
+                    className={`flex-1 min-w-[260px] max-w-[320px] rounded-xl bg-gradient-to-b ${col.bgGradient} ring-1 ${col.ringColor} flex flex-col ${col.glowColor} shadow-lg`}
+                    whileHover={{ scale: 1.005 }}
+                    transition={{ type: 'spring' as const, stiffness: 300, damping: 25 }}
                   >
-                    {/* Column header */}
-                    <div className="px-3.5 py-3 flex items-center justify-between border-b border-white/[0.04]">
+                    {/* Column header — phase 1: reveals first with temperature gradient */}
+                    <motion.div
+                      className={`px-3.5 py-3 flex items-center justify-between border-b border-white/[0.04] bg-gradient-to-r ${col.headerGradient} rounded-t-xl`}
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: colIndex * 0.08, type: 'spring' as const, stiffness: 300, damping: 25 }}
+                    >
                       <div className="flex items-center gap-2">
-                        <Icon icon={col.icon} className={`w-4 h-4 ${col.color}`} />
+                        <motion.div
+                          initial={{ scale: 0, rotate: -180 }}
+                          animate={{ scale: 1, rotate: 0 }}
+                          transition={{ delay: colIndex * 0.08 + 0.1, type: 'spring' as const, stiffness: 400, damping: 15 }}
+                        >
+                          <Icon icon={col.icon} className={`w-4 h-4 ${col.color}`} />
+                        </motion.div>
                         <span className={`text-sm font-semibold ${col.color}`}>{col.label}</span>
                       </div>
                       <motion.span
                         key={colApps.length}
-                        initial={{ scale: 1.3 }}
-                        animate={{ scale: 1 }}
+                        initial={{ scale: 0 }}
+                        animate={{ scale: [1.4, 1] }}
+                        transition={{ type: 'spring' as const, stiffness: 500, damping: 15 }}
                         className={`text-xs font-bold px-2 py-0.5 rounded-full ${col.color} bg-white/[0.06]`}
                       >
                         {colApps.length}
                       </motion.span>
-                    </div>
+                    </motion.div>
 
-                    {/* Cards */}
-                    <div className="p-2.5 flex-1 space-y-2.5 overflow-y-auto max-h-[calc(100vh-220px)]">
+                    {/* Cards — phase 2: stagger in within each stage */}
+                    <motion.div
+                      className="p-2.5 flex-1 space-y-2.5 overflow-y-auto max-h-[calc(100vh-220px)]"
+                      variants={{
+                        hidden: { opacity: 0 },
+                        visible: {
+                          opacity: 1,
+                          transition: { staggerChildren: 0.06, delayChildren: 0.1 },
+                        },
+                      }}
+                      initial="hidden"
+                      animate="visible"
+                    >
                       <AnimatePresence mode="popLayout">
                         {colApps.length === 0 ? (
                           <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.2 }}
                             className="py-8 text-center"
                           >
                             <Icon
@@ -662,11 +967,11 @@ export default function RecruiterApplicationsPage() {
                           ))
                         )}
                       </AnimatePresence>
-                    </div>
+                    </motion.div>
                   </motion.div>
                 );
               })}
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

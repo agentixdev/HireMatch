@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase';
 import DashboardLayout from '@/components/DashboardLayout';
 import AvatarUpload from '@/components/AvatarUpload';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import type { Candidate, CountryCode, Education, WorkExperience } from '@/types';
 import confetti from 'canvas-confetti';
 
@@ -62,6 +62,38 @@ const NOTICE_PERIODS = [
 ];
 
 const springTransition = { type: 'spring' as const, stiffness: 300, damping: 25 };
+const springBouncy = { type: 'spring' as const, stiffness: 400, damping: 15 };
+const springPress = { type: 'spring' as const, stiffness: 500, damping: 20 };
+
+/* ─── Popular skills (warm temperature coloring) ─── */
+const HOT_SKILLS = new Set([
+  'javascript', 'typescript', 'react', 'python', 'aws', 'docker', 'kubernetes',
+  'node.js', 'next.js', 'machine learning', 'go', 'rust', 'graphql', 'terraform',
+]);
+const WARM_SKILLS = new Set([
+  'java', 'c#', 'sql', 'postgresql', 'mongodb', 'redis', 'git', 'ci/cd',
+  'rest api', 'agile', 'data analysis', 'swift', 'kotlin', 'figma',
+]);
+
+function getSkillTemperature(skill: string): 'hot' | 'warm' | 'cool' {
+  const lower = skill.toLowerCase();
+  if (HOT_SKILLS.has(lower)) return 'hot';
+  if (WARM_SKILLS.has(lower)) return 'warm';
+  return 'cool';
+}
+
+const skillTempClasses = {
+  hot: 'bg-orange-500/10 text-orange-400 ring-orange-500/20',
+  warm: 'bg-blue-500/10 text-blue-400 ring-blue-500/20',
+  cool: 'bg-slate-500/10 text-slate-400 ring-slate-500/20',
+};
+
+/* ─── Save Sequence Stages ─── */
+const SAVE_STAGES = [
+  'Saving your changes...',
+  'Updating AI match profile...',
+  'Done!',
+];
 
 /* ─── Section Component (Progressive Disclosure) ─── */
 
@@ -97,13 +129,17 @@ function ProfileSection({
     ? 'from-blue-500/[0.04] to-indigo-500/[0.02]'
     : 'from-white/[0.02] to-transparent';
 
+  const sectionRef = useRef<HTMLDivElement>(null);
+  const isInView = useInView(sectionRef, { once: true, margin: '-50px' });
+
   return (
     <motion.div
+      ref={sectionRef}
       layout
       className={`bg-gradient-to-br ${tempBg} ring-1 ring-white/10 rounded-xl overflow-hidden`}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={springTransition}
+      initial={{ opacity: 0, y: 30, scale: 0.97 }}
+      animate={isInView ? { opacity: 1, y: 0, scale: 1 } : { opacity: 0, y: 30, scale: 0.97 }}
+      transition={{ ...springTransition, delay: 0.05 }}
     >
       <button
         onClick={() => setOpen(!open)}
@@ -153,9 +189,14 @@ function CompletenessRing({ score }: { score: number }) {
   const c = 2 * Math.PI * r;
   const offset = c - (score / 100) * c;
   const color = score >= 80 ? '#22c55e' : score >= 50 ? '#eab308' : '#ef4444';
+  const glowColor = score >= 80 ? 'shadow-emerald-500/40' : score >= 50 ? 'shadow-amber-500/30' : 'shadow-red-500/25';
 
   return (
-    <div className="relative w-20 h-20">
+    <motion.div
+      className={`relative w-20 h-20 rounded-full shadow-lg ${glowColor}`}
+      animate={{ boxShadow: score >= 80 ? '0 0 25px rgba(34,197,94,0.35)' : score >= 50 ? '0 0 20px rgba(234,179,8,0.25)' : '0 0 15px rgba(239,68,68,0.2)' }}
+      transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse', ease: 'easeInOut' }}
+    >
       <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
         <circle cx="40" cy="40" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
         <motion.circle
@@ -163,14 +204,71 @@ function CompletenessRing({ score }: { score: number }) {
           strokeLinecap="round"
           initial={{ strokeDashoffset: c }}
           animate={{ strokeDashoffset: offset }}
-          transition={{ duration: 1, ease: 'easeOut' }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
           strokeDasharray={c}
         />
       </svg>
       <div className="absolute inset-0 flex items-center justify-center">
-        <span className="text-lg font-bold" style={{ color }}>{score}%</span>
+        <motion.span
+          key={score}
+          initial={{ scale: 1.3 }}
+          animate={{ scale: 1 }}
+          transition={springBouncy}
+          className="text-lg font-bold"
+          style={{ color }}
+        >{score}%</motion.span>
       </div>
-    </div>
+    </motion.div>
+  );
+}
+
+/* ─── Profile Strength Meter ─── */
+
+function ProfileStrengthMeter({ score }: { score: number }) {
+  const label = score >= 80 ? 'Excellent' : score >= 60 ? 'Strong' : score >= 40 ? 'Getting there' : 'Just started';
+  const gradientStop = `${score}%`;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ ...springTransition, delay: 0.15 }}
+      className="mb-6 p-4 rounded-xl bg-white/[0.02] ring-1 ring-white/[0.08]"
+    >
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-semibold text-white/60 uppercase tracking-wider">Profile Strength</span>
+        <motion.span
+          key={label}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={springTransition}
+          className={`text-xs font-bold ${
+            score >= 80 ? 'text-emerald-400' : score >= 60 ? 'text-amber-400' : score >= 40 ? 'text-orange-400' : 'text-red-400'
+          }`}
+        >{label}</motion.span>
+      </div>
+      <div className="relative h-2 bg-white/[0.06] rounded-full overflow-hidden">
+        <motion.div
+          className="absolute inset-y-0 left-0 rounded-full"
+          style={{
+            background: `linear-gradient(90deg, #ef4444 0%, #f59e0b ${Math.min(score + 20, 50)}%, #22c55e ${gradientStop})`,
+          }}
+          initial={{ width: '0%' }}
+          animate={{ width: `${score}%` }}
+          transition={{ duration: 1, ease: 'easeOut', delay: 0.3 }}
+        />
+        {/* Glow pulse on the leading edge */}
+        <motion.div
+          className="absolute inset-y-0 w-4 rounded-full blur-sm"
+          style={{
+            background: score >= 80 ? '#22c55e' : score >= 50 ? '#f59e0b' : '#ef4444',
+            left: `calc(${score}% - 8px)`,
+          }}
+          animate={{ opacity: [0.4, 0.8, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+        />
+      </div>
+    </motion.div>
   );
 }
 
@@ -183,9 +281,12 @@ export default function EditProfilePage() {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveStage, setSaveStage] = useState(-1); // dramatic save sequence
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [saveCount, setSaveCount] = useState(0); // micro-feedback pulse
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Form state
   const [fullName, setFullName] = useState('');
@@ -389,17 +490,35 @@ export default function EditProfilePage() {
       setCertifications(c.certifications || []);
       setLanguages(c.languages || []);
       setLoading(false);
+      // Mark initial load done after a tick so the unsaved-changes tracker ignores the hydration
+      setTimeout(() => setInitialLoadDone(true), 100);
     }
     load();
   }, []);
+
+  /* ─── Unsaved changes tracker ─── */
+  useEffect(() => {
+    if (initialLoadDone) setHasUnsavedChanges(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [fullName, headline, bio, skills, country, city, remotePreference, visaStatus, salaryMin, salaryMax, isPublic, photoUrl, availableNow, noticePeriod, availableFrom, openToRelocation, experienceYears, education, workHistory, certifications, languages]);
 
   /* ─── Skills ─── */
 
   const addSkill = () => {
     const trimmed = newSkill.trim();
     if (trimmed && !skills.includes(trimmed)) {
-      setSkills([...skills, trimmed]);
+      const next = [...skills, trimmed];
+      setSkills(next);
       setNewSkill('');
+      // Confetti burst on 10th skill milestone
+      if (next.length === 10) {
+        confetti({
+          particleCount: 60,
+          spread: 80,
+          origin: { y: 0.5, x: 0.5 },
+          colors: ['#3b82f6', '#6366f1', '#f59e0b', '#22c55e'],
+        });
+      }
     }
   };
 
@@ -407,13 +526,15 @@ export default function EditProfilePage() {
 
   const handleSave = async () => {
     setSaving(true);
+    setSaveStage(0);
     setError('');
     setSuccess(false);
 
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+    if (!user) { setSaving(false); setSaveStage(-1); return; }
 
-    const { error: updateError } = await supabase
+    // Stage 0: "Saving your changes..."
+    const savePromise = supabase
       .from('candidates')
       .update({
         full_name: fullName,
@@ -442,13 +563,26 @@ export default function EditProfilePage() {
       })
       .eq('user_id', user.id);
 
+    // Dramatic stage animation in parallel with save
+    const stageAnimation = async () => {
+      await new Promise((r) => setTimeout(r, 600));
+      setSaveStage(1); // "Updating AI match profile..."
+      await new Promise((r) => setTimeout(r, 500));
+    };
+
+    const [{ error: updateError }] = await Promise.all([savePromise, stageAnimation()]);
+
     if (updateError) {
       setError('Failed to save');
+      setSaveStage(-1);
     } else {
+      setSaveStage(2); // "Done!"
       setSuccess(true);
+      setHasUnsavedChanges(false);
       setSaveCount((c) => c + 1);
-      // Subtle celebration on save
       confetti({ particleCount: 30, spread: 50, origin: { y: 0.8, x: 0.85 }, gravity: 1.2, colors: ['#22c55e', '#3b82f6'] });
+      await new Promise((r) => setTimeout(r, 800));
+      setSaveStage(-1);
       setTimeout(() => setSuccess(false), 3000);
     }
     setSaving(false);
@@ -518,6 +652,87 @@ export default function EditProfilePage() {
           <CompletenessRing score={completeness} />
         </motion.div>
 
+        {/* Profile Strength Meter */}
+        <ProfileStrengthMeter score={completeness} />
+
+        {/* Unsaved changes indicator */}
+        <AnimatePresence>
+          {hasUnsavedChanges && !saving && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={springTransition}
+              className="mb-4"
+            >
+              <motion.div
+                animate={{ boxShadow: ['0 0 0px rgba(245,158,11,0)', '0 0 12px rgba(245,158,11,0.15)', '0 0 0px rgba(245,158,11,0)'] }}
+                transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                className="p-3 bg-amber-500/[0.06] ring-1 ring-amber-500/20 rounded-lg text-amber-400 text-sm flex items-center gap-2"
+              >
+                <motion.span
+                  animate={{ scale: [1, 1.15, 1] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: 'easeInOut' }}
+                  className="text-amber-400"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" /></svg>
+                </motion.span>
+                You have unsaved changes
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Dramatic save sequence overlay */}
+        <AnimatePresence>
+          {saving && saveStage >= 0 && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={springTransition}
+              className="mb-4 p-4 bg-gradient-to-br from-blue-500/[0.06] to-indigo-500/[0.04] ring-1 ring-blue-500/25 rounded-xl overflow-hidden relative"
+            >
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-indigo-500/8 to-blue-500/5"
+                animate={{ x: ['-100%', '100%'] }}
+                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
+              />
+              <div className="relative space-y-2">
+                {SAVE_STAGES.map((stage, i) => (
+                  <motion.div
+                    key={stage}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={i <= saveStage ? { opacity: 1, x: 0 } : { opacity: 0.15, x: 0 }}
+                    transition={{ ...springTransition, delay: i * 0.05 }}
+                    className="flex items-center gap-2"
+                  >
+                    {i < saveStage ? (
+                      <motion.span
+                        initial={{ scale: 0, rotate: -180 }}
+                        animate={{ scale: 1, rotate: 0 }}
+                        transition={{ type: 'spring' as const, stiffness: 500, damping: 15 }}
+                        className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center text-[8px] text-white font-bold"
+                      >&#10003;</motion.span>
+                    ) : i === saveStage ? (
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 0.7, repeat: Infinity, ease: 'linear' }}
+                        className="w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full"
+                      />
+                    ) : (
+                      <div className="w-4 h-4 rounded-full bg-white/[0.06]" />
+                    )}
+                    <span className={`text-sm font-medium ${
+                      i < saveStage ? 'text-green-400' : i === saveStage ? 'text-blue-400' : 'text-white/20'
+                    }`}>{stage}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Feedback banners */}
         <AnimatePresence>
           {error && (
@@ -551,7 +766,15 @@ export default function EditProfilePage() {
           )}
         </AnimatePresence>
 
-        <div className="space-y-4">
+        <motion.div
+          className="space-y-4"
+          initial="hidden"
+          animate="visible"
+          variants={{
+            hidden: {},
+            visible: { transition: { staggerChildren: 0.08 } },
+          }}
+        >
           {/* Section 1: Photo & Identity */}
           <ProfileSection
             title="Photo & Identity"
@@ -569,13 +792,13 @@ export default function EditProfilePage() {
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Full Name</label>
                   <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Headline</label>
                   <input type="text" value={headline} onChange={(e) => setHeadline(e.target.value)}
                     placeholder="Senior React Developer | 8yr exp"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
               </div>
               <div>
@@ -718,46 +941,74 @@ export default function EditProfilePage() {
             <div className="space-y-3">
               <div className="flex flex-wrap gap-2">
                 <AnimatePresence>
-                  {skills.map((skill) => (
-                    <motion.span
-                      key={skill}
-                      layout
-                      initial={{ opacity: 0, scale: 0.8 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.8 }}
-                      transition={springTransition}
-                      className="px-3 py-1.5 bg-blue-500/10 text-blue-400 text-sm rounded-full flex items-center gap-1.5 ring-1 ring-blue-500/20"
-                    >
-                      {skill}
-                      <button onClick={() => setSkills(skills.filter(s => s !== skill))}
-                        className="text-blue-500/60 hover:text-blue-300 transition-colors">&times;</button>
-                    </motion.span>
-                  ))}
+                  {skills.map((skill) => {
+                    const temp = getSkillTemperature(skill);
+                    return (
+                      <motion.span
+                        key={skill}
+                        layout
+                        initial={{ opacity: 0, scale: 0.5, rotate: -5 }}
+                        animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                        exit={{ opacity: 0, scale: 0.5, rotate: 5 }}
+                        transition={springBouncy}
+                        whileHover={{ scale: 1.05, y: -1 }}
+                        className={`px-3 py-1.5 text-sm rounded-full flex items-center gap-1.5 ring-1 cursor-default ${skillTempClasses[temp]}`}
+                      >
+                        {temp === 'hot' && <span className="w-1.5 h-1.5 rounded-full bg-orange-400 animate-pulse" />}
+                        {skill}
+                        <motion.button
+                          whileTap={{ scale: 0.7, rotate: 90 }}
+                          transition={springPress}
+                          onClick={() => setSkills(skills.filter(s => s !== skill))}
+                          className="opacity-60 hover:opacity-100 transition-opacity">&times;</motion.button>
+                      </motion.span>
+                    );
+                  })}
                 </AnimatePresence>
               </div>
               <div className="flex gap-2">
                 <input type="text" value={newSkill} onChange={(e) => setNewSkill(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
                   placeholder="Type a skill..."
-                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
-                <motion.button whileTap={{ scale: 0.95 }} onClick={addSkill}
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20">Add</motion.button>
+                  className="flex-1 px-4 py-2 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.88, rotate: -2 }}
+                  transition={springPress}
+                  onClick={addSkill}
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg text-sm font-medium shadow-lg shadow-blue-500/20 hover:shadow-blue-500/40 transition-shadow">Add</motion.button>
               </div>
               {/* Quick suggestions */}
               <div>
                 <p className="text-xs text-white/30 mb-2">Quick add:</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {SKILL_SUGGESTIONS.filter(s => !skills.includes(s)).slice(0, 12).map((s) => (
-                    <motion.button
-                      key={s}
-                      whileHover={{ scale: 1.05 }}
-                      whileTap={{ scale: 0.95 }}
-                      onClick={() => setSkills([...skills, s])}
-                      className="px-2 py-1 text-[11px] text-white/40 bg-white/[0.03] rounded-md ring-1 ring-white/[0.06] hover:text-blue-400 hover:ring-blue-500/20 hover:bg-blue-500/5 transition-all"
-                    >
-                      + {s}
-                    </motion.button>
-                  ))}
+                  {SKILL_SUGGESTIONS.filter(s => !skills.includes(s)).slice(0, 12).map((s) => {
+                    const temp = getSkillTemperature(s);
+                    return (
+                      <motion.button
+                        key={s}
+                        whileHover={{ scale: 1.08, y: -1 }}
+                        whileTap={{ scale: 0.9 }}
+                        transition={springBouncy}
+                        onClick={() => {
+                          const next = [...skills, s];
+                          setSkills(next);
+                          if (next.length === 10) {
+                            confetti({ particleCount: 60, spread: 80, origin: { y: 0.5, x: 0.5 }, colors: ['#3b82f6', '#6366f1', '#f59e0b', '#22c55e'] });
+                          }
+                        }}
+                        className={`px-2 py-1 text-[11px] rounded-md ring-1 transition-all ${
+                          temp === 'hot'
+                            ? 'text-orange-400/60 ring-orange-500/10 hover:text-orange-400 hover:ring-orange-500/30 hover:bg-orange-500/5'
+                            : temp === 'warm'
+                            ? 'text-blue-400/60 ring-blue-500/10 hover:text-blue-400 hover:ring-blue-500/30 hover:bg-blue-500/5'
+                            : 'text-white/40 ring-white/[0.06] hover:text-blue-400 hover:ring-blue-500/20 hover:bg-blue-500/5'
+                        }`}
+                      >
+                        + {s}
+                      </motion.button>
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -815,13 +1066,13 @@ export default function EditProfilePage() {
                               <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Company</label>
                               <input type="text" value={entry.company}
                                 onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], company: e.target.value }; setWorkHistory(n); }}
-                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                             </div>
                             <div>
                               <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Job Title</label>
                               <input type="text" value={entry.title}
                                 onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], title: e.target.value }; setWorkHistory(n); }}
-                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                                className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                             </div>
                           </div>
                           <motion.button whileTap={{ scale: 0.9 }}
@@ -835,13 +1086,13 @@ export default function EditProfilePage() {
                             <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Start Date</label>
                             <input type="month" value={entry.start_date}
                               onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], start_date: e.target.value }; setWorkHistory(n); }}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                           </div>
                           <div>
                             <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">End Date</label>
                             <input type="month" value={entry.end_date || ''} disabled={entry.is_current}
                               onChange={(e) => { const n = [...workHistory]; n[idx] = { ...n[idx], end_date: e.target.value }; setWorkHistory(n); }}
-                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all disabled:opacity-30" />
+                              className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300 disabled:opacity-30" />
                           </div>
                           <div className="flex items-end pb-1">
                             <label className="flex items-center gap-2 cursor-pointer">
@@ -908,21 +1159,21 @@ export default function EditProfilePage() {
                           <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Institution</label>
                           <input type="text" value={entry.institution}
                             onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], institution: e.target.value }; setEducation(n); }}
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Degree</label>
                           <input type="text" value={entry.degree}
                             onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], degree: e.target.value }; setEducation(n); }}
                             placeholder="BS, MS, PhD..."
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                         </div>
                         <div>
                           <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">Field of Study</label>
                           <input type="text" value={entry.field}
                             onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], field: e.target.value }; setEducation(n); }}
                             placeholder="Computer Science"
-                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                            className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                         </div>
                       </div>
                       <motion.button whileTap={{ scale: 0.9 }}
@@ -937,14 +1188,14 @@ export default function EditProfilePage() {
                         <input type="number" value={entry.start_year || ''}
                           onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], start_year: parseInt(e.target.value) || 0 }; setEducation(n); }}
                           placeholder="2018"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                       </div>
                       <div>
                         <label className="block text-[10px] font-medium text-white/40 mb-1 uppercase tracking-wider">End Year</label>
                         <input type="number" value={entry.end_year || ''}
                           onChange={(e) => { const n = [...education]; n[idx] = { ...n[idx], end_year: parseInt(e.target.value) || undefined }; setEducation(n); }}
                           placeholder="2022"
-                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                          className="w-full px-3 py-2 bg-white/5 border border-white/10 rounded-lg text-white text-sm placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                       </div>
                     </div>
                   </motion.div>
@@ -1093,14 +1344,14 @@ export default function EditProfilePage() {
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Notice Period</label>
                   <select value={noticePeriod} onChange={(e) => setNoticePeriod(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all">
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300">
                     {NOTICE_PERIODS.map((np) => <option key={np.value} value={np.value}>{np.label}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Available From</label>
                   <input type="date" value={availableFrom} onChange={(e) => setAvailableFrom(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
               </div>
 
@@ -1137,7 +1388,7 @@ export default function EditProfilePage() {
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Country</label>
                   <select value={country} onChange={(e) => setCountry(e.target.value as CountryCode)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all">
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300">
                     {COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.flag} {c.name}</option>)}
                   </select>
                 </div>
@@ -1145,7 +1396,7 @@ export default function EditProfilePage() {
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">City</label>
                   <input type="text" value={city} onChange={(e) => setCity(e.target.value)}
                     placeholder="San Francisco"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
               </div>
 
@@ -1170,7 +1421,7 @@ export default function EditProfilePage() {
               <div>
                 <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Visa / Work Authorization</label>
                 <select value={visaStatus} onChange={(e) => setVisaStatus(e.target.value)}
-                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 outline-none transition-all">
+                  className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300">
                   <option value="">Select...</option>
                   <option value="citizen">Citizen</option>
                   <option value="permanent_resident">Permanent Resident</option>
@@ -1193,13 +1444,13 @@ export default function EditProfilePage() {
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Min Salary (USD/yr)</label>
                   <input type="number" value={salaryMin} onChange={(e) => setSalaryMin(e.target.value)}
                     placeholder="50000"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-white/50 mb-1.5 uppercase tracking-wider">Max Salary (USD/yr)</label>
                   <input type="number" value={salaryMax} onChange={(e) => setSalaryMax(e.target.value)}
                     placeholder="80000"
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 outline-none transition-all" />
+                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-lg text-white placeholder-white/20 focus:ring-2 focus:ring-blue-500/50 focus:shadow-[0_0_20px_rgba(59,130,246,0.12)] outline-none transition-all duration-300" />
                 </div>
               </div>
 
@@ -1226,33 +1477,63 @@ export default function EditProfilePage() {
           {/* Save bar */}
           <motion.div
             className="flex justify-end gap-3 pt-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...springTransition, delay: 0.3 }}
           >
             <motion.button
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.95 }}
+              transition={springPress}
               onClick={() => router.push('/dashboard/candidate')}
               className="px-6 py-2.5 text-white/60 ring-1 ring-white/10 rounded-lg hover:bg-white/5 transition-colors"
             >
               Cancel
             </motion.button>
             <motion.button
-              whileTap={{ scale: 0.97 }}
+              whileHover={{ scale: 1.03, boxShadow: '0 8px 30px rgba(59,130,246,0.35)' }}
+              whileTap={{ scale: 0.92, y: 2 }}
+              transition={springPress}
               onClick={handleSave}
               disabled={saving}
-              className="px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 font-medium transition-all hover:shadow-blue-500/30"
+              className={`relative px-8 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-lg shadow-lg shadow-blue-500/20 disabled:opacity-50 font-medium transition-all hover:shadow-blue-500/30 overflow-hidden ${
+                hasUnsavedChanges && !saving ? 'ring-2 ring-blue-400/50' : ''
+              }`}
             >
-              {saving ? (
-                <span className="flex items-center gap-2">
-                  <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
-                    className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  Saving...
-                </span>
-              ) : 'Save Profile'}
+              {/* Flash effect on success */}
+              <AnimatePresence>
+                {success && (
+                  <motion.div
+                    initial={{ opacity: 0.6, scale: 0.5 }}
+                    animate={{ opacity: 0, scale: 3 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.6 }}
+                    className="absolute inset-0 bg-green-400 rounded-lg"
+                  />
+                )}
+              </AnimatePresence>
+              <span className="relative">
+                {saving ? (
+                  <span className="flex items-center gap-2">
+                    <motion.span animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 0.8, ease: 'linear' }}
+                      className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
+                    Saving...
+                  </span>
+                ) : success ? (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    transition={springBouncy}
+                    className="flex items-center gap-2"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>
+                    Saved!
+                  </motion.span>
+                ) : 'Save Profile'}
+              </span>
             </motion.button>
           </motion.div>
-        </div>
+        </motion.div>
       </div>
     </DashboardLayout>
   );
