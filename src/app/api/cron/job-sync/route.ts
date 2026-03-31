@@ -85,6 +85,18 @@ const VALID_COUNTRY_CODES = new Set([
 ]);
 
 /**
+ * Safely convert a date value (ISO string, Unix epoch seconds, or number) to ISO string.
+ */
+function toISODate(value: string | number | null | undefined): string {
+  if (!value) return new Date().toISOString();
+  if (typeof value === 'number' || /^\d{9,10}$/.test(String(value))) {
+    return new Date(Number(value) * 1000).toISOString();
+  }
+  const d = new Date(String(value));
+  return isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
+}
+
+/**
  * Try to extract a 2-letter country code from a free-form location string.
  * Falls back to defaultCode if nothing matches.
  */
@@ -483,7 +495,7 @@ interface ArbeitnowJob {
   remote: boolean;
   company_name: string;
   url: string;
-  created_at: string;
+  created_at: string | number;
 }
 
 function normalizeArbeitnowJob(job: ArbeitnowJob): NormalizedJob {
@@ -517,7 +529,7 @@ function normalizeArbeitnowJob(job: ArbeitnowJob): NormalizedJob {
     company_name: job.company_name || null,
     company_logo: null,
     source: 'arbeitnow',
-    posted_at: job.created_at || new Date().toISOString(),
+    posted_at: toISODate(job.created_at),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
@@ -591,7 +603,7 @@ function normalizeRemoteOKJob(job: RemoteOKJob): NormalizedJob {
     company_name: job.company || null,
     company_logo: job.logo || null,
     source: 'remoteok',
-    posted_at: job.date || new Date().toISOString(),
+    posted_at: toISODate(job.epoch || job.date),
     expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date().toISOString(),
   };
