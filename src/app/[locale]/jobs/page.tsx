@@ -3,6 +3,35 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import JobsList from '@/components/JobsList';
 import type { Job } from '@/types';
+import type { Metadata } from 'next';
+
+// Revalidate every 5 minutes — balances freshness with performance
+export const revalidate = 300;
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.hirematch.com';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ locale: string }>;
+}): Promise<Metadata> {
+  const { locale } = await params;
+  return {
+    title: 'Browse Jobs — AI-Matched Careers in 29+ Countries | HireMatch',
+    description:
+      'Explore hundreds of jobs worldwide. Filter by country, work mode, and type. AI-powered matching helps you find the perfect role across 29 countries.',
+    openGraph: {
+      title: 'Browse Jobs | HireMatch',
+      description: 'Explore hundreds of jobs worldwide with AI-powered matching across 29 countries.',
+      url: `${SITE_URL}/${locale}/jobs`,
+      siteName: 'HireMatch',
+      type: 'website',
+    },
+    alternates: {
+      canonical: `${SITE_URL}/${locale}/jobs`,
+    },
+  };
+}
 
 export default async function JobsPage({
   searchParams,

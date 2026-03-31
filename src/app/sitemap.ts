@@ -10,7 +10,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = [];
 
   // Static pages per locale
-  const staticPages = ['', '/jobs', '/candidates', '/matchmaker', '/pricing', '/visa', '/blog'];
+  const staticPages = ['', '/jobs', '/candidates', '/matchmaker', '/pricing', '/visa', '/blog', '/privacy', '/terms', '/referrals'];
 
   for (const locale of locales) {
     for (const page of staticPages) {
@@ -35,6 +35,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       languages[loc] = `${SITE_URL}/${loc}${path}`;
     }
     return { languages };
+  }
+
+  // Country landing pages
+  const countryCodes = [
+    'us', 'ca', 'gb', 'ch', 'de', 'fr', 'es', 'it', 'nl', 'be',
+    'at', 'pt', 'ie', 'se', 'dk', 'no', 'fi', 'pl', 'cz', 'ro',
+    'in', 'mx', 'br', 'ar', 'cn', 'jp', 'kr', 'vn', 'ph',
+  ];
+  for (const locale of locales) {
+    for (const cc of countryCodes) {
+      entries.push({
+        url: `${SITE_URL}/${locale}/jobs/country/${cc}`,
+        lastModified: new Date(),
+        changeFrequency: 'daily',
+        priority: 0.8,
+        alternates: buildAlternates(`/jobs/country/${cc}`),
+      });
+    }
   }
 
   // Job listings
