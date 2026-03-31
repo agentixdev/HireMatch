@@ -46,30 +46,46 @@ export async function POST(request: Request) {
           ? `\n\nTARGET JOB DESCRIPTION (tailor the resume to this):\n${jobDescription}`
           : '';
 
-        const prompt = `You are an elite career coach and resume writer. Analyze this candidate's profile and produce a dramatically improved version.
+        const prompt = `You are a Senior Career Strategist with 15+ years of experience at McKinsey, Google, and top executive search firms (Korn Ferry, Spencer Stuart). You have personally reviewed 50,000+ resumes and helped 3,000+ professionals land roles at FAANG, Big 4, Fortune 500, and high-growth startups.
+
+Perform a comprehensive, section-by-section audit of this candidate's profile. Be brutally honest but constructive. Every suggestion must be specific and actionable — no generic advice.
 
 CANDIDATE PROFILE:
 - Name: ${candidate.full_name}
 - Current Headline: ${candidate.headline || 'None'}
 - Bio: ${candidate.bio || 'None'}
-- Skills: ${(candidate.skills || []).join(', ')}
+- Skills: ${(candidate.skills || []).join(', ') || 'None listed'}
 - Experience: ${candidate.experience_years || 0} years
 - Education: ${JSON.stringify(candidate.education || [])}
 - Work History: ${JSON.stringify(candidate.work_history || [])}
-- Certifications: ${(candidate.certifications || []).join(', ')}
+- Certifications: ${(candidate.certifications || []).join(', ') || 'None'}
+- Languages: ${(candidate.languages || []).join(', ') || 'Not specified'}
+- Country: ${candidate.country || 'Not specified'}
 ${jobContext}
+
+YOUR ANALYSIS MUST COVER:
+1. HEADLINE — rewrite for maximum ATS + human impact (max 80 chars)
+2. BIO / SUMMARY — rewrite as a compelling 3-sentence executive summary with quantified achievements
+3. SKILLS — optimize skill list, identify missing high-value keywords for their role/industry
+4. WORK HISTORY — rewrite each role using the STAR method (Situation, Task, Action, Result) with metrics
+5. ATS COMPATIBILITY — score how well this resume passes Applicant Tracking Systems (keyword density, format compliance, section completeness)
+6. INDUSTRY BENCHMARK — estimate where this candidate ranks vs peers in their role/industry
+7. RED FLAGS — identify anything that could get the resume auto-rejected or raise concerns
+8. POWER SUMMARY — write a 3-sentence elevator pitch version
+9. LINKEDIN HEADLINE — optimized for LinkedIn specifically (different from resume headline, max 120 chars, use | separators)
+10. COMPETITIVE EDGE — what makes this candidate uniquely valuable
 
 Return JSON:
 {
   "improved_headline": "Power headline that grabs attention (max 80 chars)",
   "improved_bio": "Compelling 3-sentence professional summary with quantified achievements",
-  "improved_skills": ["skill1", "skill2", ...],
-  "added_skills": ["skills the candidate likely has but didn't list, based on their experience"],
+  "improved_skills": ["optimized skill list ordered by relevance"],
+  "added_skills": ["high-value skills the candidate likely has but didn't list"],
   "work_history_improvements": [
     {
       "company": "company name",
       "original_description": "what they wrote",
-      "improved_description": "rewritten with action verbs, metrics, and impact"
+      "improved_description": "STAR method rewrite with action verbs, metrics, and quantified impact"
     }
   ],
   "headline_score_before": 0-100,
@@ -78,7 +94,34 @@ Return JSON:
   "bio_score_after": 0-100,
   "overall_score_before": 0-100,
   "overall_score_after": 0-100,
-  "key_improvements": ["improvement1", "improvement2", "improvement3"]
+  "key_improvements": ["improvement1", "improvement2", "improvement3"],
+  "ats_score": 0-100,
+  "ats_issues": ["specific ATS compatibility issues found"],
+  "ats_keywords_missing": ["high-value keywords missing for their target role"],
+  "ats_keywords_present": ["relevant keywords already present"],
+  "industry_percentile": 0-100,
+  "industry_benchmark": "Detailed explanation of where they rank vs peers in their role, e.g. 'Your profile ranks in the 62nd percentile for Senior Software Engineers with 5-8 years experience. Top performers in this bracket typically highlight system design, distributed systems, and measurable scale metrics.'",
+  "power_summary": "3-sentence executive elevator pitch — punchy, memorable, suitable for networking events and cold outreach",
+  "linkedin_headline": "LinkedIn-optimized headline with | separators, keywords, and value proposition (max 120 chars)",
+  "red_flags": ["specific issues that could get the resume rejected — gaps, missing info, weak language, etc."],
+  "section_analysis": [
+    {
+      "section": "Contact|Summary|Experience|Skills|Education|Certifications",
+      "score_before": 0-100,
+      "score_after": 0-100,
+      "verdict": "strong|adequate|weak|missing",
+      "suggestion": "specific, actionable improvement for this section"
+    }
+  ],
+  "achievement_rewrites": [
+    {
+      "original": "what they wrote (or 'Missing — no achievements listed' if none)",
+      "rewritten": "STAR method rewrite with quantified metrics and impact",
+      "impact_type": "revenue|efficiency|leadership|technical|growth"
+    }
+  ],
+  "career_positioning": "2-sentence strategic positioning advice — how to position themselves in the market for maximum leverage",
+  "competitive_edge": "What makes this candidate uniquely valuable — their differentiator that no other candidate has"
 }`;
 
         const result = await model.generateContent(prompt);
